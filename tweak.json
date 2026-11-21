@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "template_version": "1.5.0",
+  "name": "DouyinDisc",
+  "id": "douyindisc",
+  "display_name": "抖音转盘",
+  "class_prefix": "DouyinDisc",
+  "symbol_prefix": "douyindisc",
+  "package": "com.minis.douyindisc",
+  "author": "Xiaofei",
+  "bundle": "com.ss.iphone.ugc.Aweme",
+  "sdk_version": "16.5",
+  "minimum_ios": "15.0",
+  "scheme": "trollfools",
+  "target_type": "dylib",
+  "architecture": "arm64",
+  "version": "0.10",
+  "preferences": false,
+  "slider": false,
+  "github_actions": true,
+  "toolchain_lock": "toolchain-lock.json"
+}
