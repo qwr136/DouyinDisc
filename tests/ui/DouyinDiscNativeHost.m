@@ -222,7 +222,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     [driver douyindisc_tick];
     DD_CHECK(unrelated.alpha == 1, "same text outside identified native fields untouched");
     share.hidden = YES;
-    [driver douyindisc_restore];
+    [a douyindisc_restore];
     [driver douyindisc_refresh:first];
     DD_CHECK(objc_getAssociatedObject(first, &douyindisc_leaseKey) == a, "temporary share disappearance does not revoke known surface");
     share.hidden = NO;
