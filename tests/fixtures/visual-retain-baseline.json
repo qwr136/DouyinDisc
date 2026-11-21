@@ -1,0 +1,12 @@
+{
+  "source_sha": "5c58edd54554c95c92a02b238b139242538906da",
+  "files": {
+    "Sources/DouyinDiscEntry.m": "521db0d7507982bb863bfa2f2e5fc8cb5d69d7fc4116f4d5b0d0cb1d24baba94",
+    "Sources/DouyinDiscPolicy.c": "1fb8b0756be7cfc0df0e4e8e16e0c8a52f76a4c4cf3cefc7176a417b3d0acff6",
+    "Sources/DouyinDiscPolicy.h": "465c53604f71a43dd06b01a942916c5518f7455da7ce3e701ed79842c0106a37",
+    "Sources/DouyinDiscArtwork.inc": "f2c10c09432336d2be9b2cfa78119263312140d8087845ccc273f7e144a7d7f2",
+    "toolchain-lock.json": "d73de84af53729c14fdcfa48a665dc3486d224fa49818441c761da07ba941841",
+    "scripts/build_dylib.py": "4266828e85e86eef88df5dba2620ec1c97d2b53e2ec874137da7ce23f65c4422",
+    "tests/verify_dylib.py": "d38f40179db397ac65fbd26eae67f11e682472c4cc6aa2137f6d4ab5178ec540"
+  }
+}

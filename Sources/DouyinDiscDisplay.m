@@ -145,14 +145,19 @@ static UIWindow *douyindisc_keyWindow(UIApplication *app) {
         UIWindow *window = app.delegate.window;
         if (window.isKeyWindow && window.windowLevel == UIWindowLevelNormal && douyindisc_visible(window)) key = window;
     }
-    return key.rootViewController.presentedViewController ? nil : key;
+    return key;
 }
+
+#include "DouyinDiscVisualLease.inc"
 
 @interface DouyinDiscDisplay : NSObject
 @property (nonatomic, strong) NSTimer *douyindisc_timer;
 @property (nonatomic, strong) UIImage *douyindisc_image;
 @property (nonatomic, strong) UIImage *douyindisc_clear;
 @property (nonatomic, weak) UIImageView *douyindisc_cover;
+@property (nonatomic, weak) UIControl *douyindisc_disc;
+@property (nonatomic, weak) UIWindow *douyindisc_window;
+@property (nonatomic, strong) NSArray<DouyinDiscTextLease *> *douyindisc_titles;
 @property (nonatomic, strong) CALayer *douyindisc_overlay;
 @property (nonatomic, strong) id douyindisc_original;
 @property (nonatomic) NSUInteger douyindisc_samples;
@@ -163,6 +168,10 @@ static UIWindow *douyindisc_keyWindow(UIApplication *app) {
 @implementation DouyinDiscDisplay
 
 - (void)douyindisc_restore {
+    for (DouyinDiscTextLease *title in self.douyindisc_titles) [title douyindisc_restore];
+    self.douyindisc_titles = nil;
+    self.douyindisc_disc = nil;
+    self.douyindisc_window = nil;
     CALayer *overlay = self.douyindisc_overlay;
     CALayer *target = self.douyindisc_cover.layer;
     [CATransaction begin];
@@ -179,17 +188,58 @@ static UIWindow *douyindisc_keyWindow(UIApplication *app) {
     self.douyindisc_nativeSpin = NO;
 }
 
+- (BOOL)douyindisc_leaseValid {
+    UIControl *disc = self.douyindisc_disc;
+    UIImageView *cover = self.douyindisc_cover;
+    UIWindow *window = self.douyindisc_window;
+    if (!disc || !cover || !window || disc.window != window || cover.window != window ||
+        ![cover isDescendantOfView:disc] || !douyindisc_discRole(disc) ||
+        !douyindisc_ancestorsVisible(disc, window)) return NO;
+    if (window.windowScene && window.windowScene.activationState != UISceneActivationStateForegroundActive) return NO;
+    CGRect b = window.bounds;
+    DouyinDiscRect area = { b.origin.x, b.origin.y, b.size.width, b.size.height };
+    return douyindisc_disc_inside_rail(douyindisc_rect(disc, window), area) &&
+           douyindisc_findCover(disc) == cover;
+}
+
+- (void)douyindisc_updateTitles:(UIControl *)disc window:(UIWindow *)window {
+    NSArray<UILabel *> *labels = douyindisc_localTitles(disc, window);
+    NSMutableArray<DouyinDiscTextLease *> *next = [NSMutableArray array];
+    for (DouyinDiscTextLease *old in self.douyindisc_titles) {
+        UILabel *label = old.douyindisc_label;
+        if (!label || ![labels containsObject:label]) [old douyindisc_restore];
+    }
+    for (UILabel *label in labels) {
+        DouyinDiscTextLease *lease = nil;
+        for (DouyinDiscTextLease *old in self.douyindisc_titles) {
+            if (old.douyindisc_label == label) { lease = old; break; }
+        }
+        if (!lease) {
+            lease = [DouyinDiscTextLease new];
+            lease.douyindisc_label = label;
+            lease.douyindisc_originalAlpha = label.alpha;
+        }
+        [lease douyindisc_suppress];
+        [next addObject:lease];
+    }
+    self.douyindisc_titles = next;
+}
+
 - (void)douyindisc_tick {
     UIApplication *app = UIApplication.sharedApplication;
-    if (app.applicationState != UIApplicationStateActive) {
-        [self douyindisc_restore];
-        return;
-    }
-    UIWindow *window = douyindisc_keyWindow(app);
-    UIControl *disc = window ? douyindisc_findDisc(window) : nil;
-    UIImageView *cover = douyindisc_findCover(disc);
-    if (self.douyindisc_cover != cover || !cover) [self douyindisc_restore];
+    if (app.applicationState != UIApplicationStateActive) return;
+
+    // Preserve the known renderer through temporary modal/key-window changes.
+    // Retention is not permission to acquire another renderer without a fresh match.
+    BOOL continuing = [self douyindisc_leaseValid];
+    UIWindow *window = continuing ? self.douyindisc_window : douyindisc_keyWindow(app);
+    UIControl *disc = continuing ? self.douyindisc_disc : (window ? douyindisc_findDisc(window) : nil);
+    UIImageView *cover = continuing ? self.douyindisc_cover : douyindisc_findCover(disc);
+    if (!continuing) [self douyindisc_restore];
     if (!cover) return;
+    self.douyindisc_disc = disc;
+    self.douyindisc_window = window;
+    [self douyindisc_updateTitles:disc window:window];
 
     CALayer *target = cover.layer;
     id clear = (__bridge id)self.douyindisc_clear.CGImage;
@@ -254,7 +304,8 @@ static UIWindow *douyindisc_keyWindow(UIApplication *app) {
     (void)notification;
     [self.douyindisc_timer invalidate];
     self.douyindisc_timer = nil;
-    [self douyindisc_restore];
+    // The compositor/switcher may snapshot this exact inactive view hierarchy.
+    // Keep its already-owned artwork and label suppression, without background work.
 }
 
 - (void)douyindisc_start {
