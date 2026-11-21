@@ -45,6 +45,7 @@ static void douyindisc_singleSongCases(DouyinDiscDisplay *driver,AWEMusicCoverBu
     [host->_playInteractionCircleMaskView addSubview:host->_playInteractionMaskView];
     [oldParent addSubview:host]; [host insertSubview:button atIndex:0]; button.frame=host.bounds;
     host->_playInteractionCircleMaskView.userInteractionEnabled=NO;[driver douyindisc_refresh:button];
+    surface=objc_getAssociatedObject(button,&douyindisc_leaseKey);
     DD_CHECK(host->_playInteractionMaskView.alpha==0 && host->_playInteractionMaskView.layer.mask, "restoring exact noninteractive SingleSong clip reinstates its owned lease");
     DD_CHECK(surface.douyindisc_overlay.opacity==.5f && surface.douyindisc_centerOverlay.opacity==.9f, "SingleSong style keeps outer half-opacity and inner ninety percent");
     DD_CHECK([button hitTest:CGPointMake(22,22) withEvent:nil]==button, "SingleSong visual-only repair retains exact original button hit testing");
