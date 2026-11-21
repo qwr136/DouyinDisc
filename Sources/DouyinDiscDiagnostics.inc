@@ -67,6 +67,8 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
 @property (nonatomic) CFTimeInterval douyindisc_started;
 @property (nonatomic) BOOL douyindisc_completed;
 @property (nonatomic) BOOL douyindisc_exported;
+@property (nonatomic, copy) ssize_t (^douyindisc_writeOverride)(const void *,NSUInteger);
+@property (nonatomic) BOOL douyindisc_wroteCaptureStart;
 - (void)douyindisc_attach;
 - (void)douyindisc_begin;
 - (void)douyindisc_stop:(NSString *)reason;
@@ -91,8 +93,13 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
     }
     return number ?: @0;
 }
+- (ssize_t)douyindisc_writeBytes:(const void *)bytes length:(NSUInteger)length {
+    if (self.douyindisc_writeOverride) return self.douyindisc_writeOverride(bytes,length);
+    return write(self.douyindisc_fd,bytes,length);
+}
 - (void)douyindisc_append:(NSDictionary *)event {
     if (!douyindisc_diag_enabled || self.douyindisc_fd<0) return;
+    BOOL startingRecord=[event[@"event"] isEqual:@"capture-start"];
     NSMutableDictionary *record=[event mutableCopy];
     record[@"t"]=douyindisc_diag_number(CACurrentMediaTime()-self.douyindisc_started);
     NSData *json=[NSJSONSerialization dataWithJSONObject:record options:0 error:NULL];
@@ -104,11 +111,21 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
     NSMutableData *line=[json mutableCopy]; [line appendBytes:"\n" length:1];
     const unsigned char *bytes=line.bytes; NSUInteger left=line.length;
     while (left) {
-        ssize_t count=write(self.douyindisc_fd,bytes,left);
-        if (count<=0) { [self douyindisc_stop:@"write-failed"]; return; }
+        ssize_t count=[self douyindisc_writeBytes:bytes length:left];
+        if (count<=0) {
+            if (startingRecord) {
+                douyindisc_diag_enabled=NO;
+                close(self.douyindisc_fd); self.douyindisc_fd=-1;
+                self.douyindisc_completed=NO; self.douyindisc_wroteCaptureStart=NO;
+                [self.douyindisc_button setTitle:@"取证写入失败·重试" forState:UIControlStateNormal];
+                return;
+            }
+            [self douyindisc_stop:@"write-failed"]; return;
+        }
         left-=(NSUInteger)count; bytes+=count;
     }
     self.douyindisc_bytes+=line.length; ++self.douyindisc_events;
+    if (startingRecord) self.douyindisc_wroteCaptureStart=YES;
 }
 - (void)douyindisc_state:(NSDictionary *)state kind:(NSString *)kind identity:(NSNumber *)identity {
     if (!douyindisc_diag_enabled) return;
@@ -120,6 +137,14 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
 }
 - (void)douyindisc_stop:(NSString *)reason {
     BOOL wasEnabled=douyindisc_diag_enabled;
+    if (!self.douyindisc_wroteCaptureStart) {
+        douyindisc_diag_enabled=NO;
+        [self.douyindisc_timer invalidate]; self.douyindisc_timer=nil;
+        if (self.douyindisc_fd>=0) { close(self.douyindisc_fd); self.douyindisc_fd=-1; }
+        self.douyindisc_completed=NO;
+        [self.douyindisc_button setTitle:@"取证写入失败·重试" forState:UIControlStateNormal];
+        return;
+    }
     douyindisc_diag_enabled=NO;
     [self.douyindisc_timer invalidate]; self.douyindisc_timer=nil;
     if (self.douyindisc_fd>=0) {
@@ -308,6 +333,7 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
     self.douyindisc_lastBefore=[NSMapTable weakToStrongObjectsMapTable];
     self.douyindisc_pending=[NSHashTable weakObjectsHashTable];
     self.douyindisc_started=CACurrentMediaTime(); self.douyindisc_deadline=self.douyindisc_started+20;
+    self.douyindisc_wroteCaptureStart=NO;
     douyindisc_diag_enabled=YES;
     [self douyindisc_append:@{@"event":@"capture-start",@"schema":@"douyindisc-visual-v1",@"plugin":@"1.20-diagnostic",
         @"bundle":@"com.ss.iphone.ugc.Aweme",@"pid":@(getpid()),@"dylibUUID":douyindisc_diag_imageUUID(),

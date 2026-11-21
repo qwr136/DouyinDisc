@@ -18,6 +18,17 @@ static void douyindisc_diagnosticCases(DouyinDiscDisplay *driver, AWEMusicCoverB
     DD_CHECK(diagnostics.douyindisc_button.superview==control.window, "visible opt-in button uses the existing window rather than a new window");
     [driver douyindisc_refresh:control];
     DD_CHECK(!diagnostics.douyindisc_ids && !diagnostics.douyindisc_file && diagnostics.douyindisc_events==0, "capture off does not prepare strings, object maps or a log file during refresh");
+    DouyinDiscDiagnostics *failedWriter=[DouyinDiscDiagnostics new];
+    failedWriter.douyindisc_driver=driver; failedWriter.douyindisc_button=diagnostics.douyindisc_button; failedWriter.douyindisc_window=diagnostics.douyindisc_window;
+    failedWriter.douyindisc_writeOverride=^ssize_t(const void *bytes,NSUInteger length) { (void)bytes; (void)length; return -1; };
+    douyindisc_diagnostics=failedWriter;
+    [failedWriter douyindisc_begin];
+    DD_CHECK(!douyindisc_diag_enabled && failedWriter.douyindisc_fd==-1 && !failedWriter.douyindisc_completed && !failedWriter.douyindisc_timer, "failed initial trace write leaves no empty export and no running timer");
+    failedWriter.douyindisc_writeOverride=nil;
+    [failedWriter douyindisc_begin];
+    DD_CHECK(douyindisc_diag_enabled && failedWriter.douyindisc_wroteCaptureStart && failedWriter.douyindisc_timer.isValid, "retry after initial write failure starts a complete trace");
+    [failedWriter douyindisc_stop:@"test-write-retry"];
+    douyindisc_diagnostics=diagnostics;
 
     DouyinDiscSurface *surface=objc_getAssociatedObject(control,&douyindisc_leaseKey);
     CAShapeLayer *plate=[CAShapeLayer layer];

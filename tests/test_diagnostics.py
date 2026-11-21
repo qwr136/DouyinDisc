@@ -74,6 +74,31 @@ class DiagnosticPolicyTests(unittest.TestCase):
                 for addition in ADDITIONS:
                     self.assertEqual(text.count(addition),1)
                     text=text.replace(addition,'')
+                block='''- (ssize_t)douyindisc_writeBytes:(const void *)bytes length:(NSUInteger)length {
+    if (self.douyindisc_writeOverride) return self.douyindisc_writeOverride(bytes,length);
+    return write(self.douyindisc_fd,bytes,length);
+}
+'''
+                self.assertEqual(text.count(block),1); text=text.replace(block,'')
+                text=text.replace('@property (nonatomic, copy) ssize_t (^douyindisc_writeOverride)(const void *,NSUInteger);\n','')
+                text=text.replace('@property (nonatomic) BOOL douyindisc_wroteCaptureStart;\n','')
+                text=text.replace('    BOOL startingRecord=[event[@"event"] isEqual:@"capture-start"];\n','')
+                text=text.replace('        ssize_t count=[self douyindisc_writeBytes:bytes length:left];\n','        ssize_t count=write(self.douyindisc_fd,bytes,left);\n')
+                block='''        if (count<=0) {
+            if (startingRecord) {
+                douyindisc_diag_enabled=NO;
+                close(self.douyindisc_fd); self.douyindisc_fd=-1;
+                self.douyindisc_completed=NO; self.douyindisc_wroteCaptureStart=NO;
+                [self.douyindisc_button setTitle:@"取证写入失败·重试" forState:UIControlStateNormal];
+                return;
+            }
+            [self douyindisc_stop:@"write-failed"]; return;
+        }
+'''
+                self.assertEqual(text.count(block),1); text=text.replace(block,'        if (count<=0) { [self douyindisc_stop:@"write-failed"]; return; }\n')
+                text=text.replace('    if (startingRecord) self.douyindisc_wroteCaptureStart=YES;\n','')
+                text=text.replace('    if (!self.douyindisc_wroteCaptureStart) {\n        douyindisc_diag_enabled=NO;\n        [self.douyindisc_timer invalidate]; self.douyindisc_timer=nil;\n        if (self.douyindisc_fd>=0) { close(self.douyindisc_fd); self.douyindisc_fd=-1; }\n        self.douyindisc_completed=NO;\n        [self.douyindisc_button setTitle:@"取证写入失败·重试" forState:UIControlStateNormal];\n        return;\n    }\n','')
+                text=text.replace('    self.douyindisc_wroteCaptureStart=NO;\n','')
                 content=text.encode()
             if relative=='Sources/DouyinDiscNative.h':
                 text=content.decode()
