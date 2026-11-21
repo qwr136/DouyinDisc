@@ -17,7 +17,7 @@ static UIImage *douyindisc_loadArtwork(void) {
 }
 
 static UIImage *douyindisc_loadCenterRing(void) {
-    NSData *data = [NSData dataWithBytesNoCopy:(void *)douyindisccenterring length:sizeof(douyindisccenterring) freeWhenDone:NO];
+    NSData *data = [NSData dataWithBytesNoCopy:(void *)douyindisc_center_ring length:sizeof(douyindisc_center_ring) freeWhenDone:NO];
     UIImage *image=[UIImage imageWithData:data];
     return image.CGImage && CGSizeEqualToSize(image.size, CGSizeMake(512,512)) ? image : nil;
 }

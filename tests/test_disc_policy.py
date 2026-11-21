@@ -165,6 +165,8 @@ class PolicyTests(unittest.TestCase):
         self.assertNotIn('control.hidden =', code)
         self.assertIn('UIImage *image = douyindisc_loadArtwork()', code)
         self.assertIn('#include "DouyinDiscCenterRing.inc"', code)
+        self.assertIn('douyindisc_center_ring length:sizeof(douyindisc_center_ring)',code)
+        self.assertNotIn('douyindisccenterring',code)
         self.assertIn('ring.opacity=0.7f', code)
         self.assertIn('overlay.opacity = 0.5f;', code)
         self.assertIn('[ring addAnimation:centerSpin forKey:douyindisc_spinKey]', code)
