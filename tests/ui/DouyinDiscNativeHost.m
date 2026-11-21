@@ -223,6 +223,17 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(reattached && reattached != a, "reattachment receives fresh strictly checked surface");
     CABasicAnimation *again = (CABasicAnimation *)[reattached.douyindisc_overlay animationForKey:douyindisc_spinKey];
     DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || fabs(again.beginTime-spinA.beginTime)<.001, "fresh surface after detach still preserves global phase");
+    UIView *originalParent = first.superview;
+    CGRect originalFrame = first.frame;
+    UIView *unpaired = [[UIView alloc] initWithFrame:window.bounds];
+    [window.rootViewController.view addSubview:unpaired];
+    first.frame = CGRectMake(window.bounds.size.width - 57, window.bounds.size.height * .6, 44, 44);
+    [unpaired addSubview:first]; [first layoutSubviews];
+    DD_CHECK(!objc_getAssociatedObject(first, &douyindisc_leaseKey), "same-window reparenting cannot inherit an old share authorization");
+    DD_CHECK(first->_imageContentView.alpha == 1, "unpaired new scope restores original native visuals");
+    first.frame = originalFrame; [originalParent addSubview:first]; [first layoutSubviews];
+    DD_CHECK(objc_getAssociatedObject(first, &douyindisc_leaseKey) != nil, "return to genuine paired scope authorizes a new surface");
+    [unpaired removeFromSuperview];
     AWEPlayInteractionListenFeedView *listen = [[AWEPlayInteractionListenFeedView alloc] initWithFrame:incoming.frame];
     listen->_musicButton = incoming;
     listen->_backgroundView = [[AWEGradientView alloc] initWithFrame:listen.bounds];

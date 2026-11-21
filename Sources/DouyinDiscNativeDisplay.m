@@ -84,6 +84,7 @@ static BOOL douyindisc_scopedShare(UIControl *control) {
 @interface DouyinDiscSurface : NSObject
 @property (nonatomic, weak) UIControl *douyindisc_control;
 @property (nonatomic, weak) UIWindow *douyindisc_window;
+@property (nonatomic, weak) UIView *douyindisc_scope;
 @property (nonatomic, strong) CALayer *douyindisc_overlay;
 @property (nonatomic, strong) NSArray<DouyinDiscVisual *> *douyindisc_visuals;
 - (void)douyindisc_restore;
@@ -128,8 +129,13 @@ static void douyindisc_changed(UIControl *control) {
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     self.douyindisc_refreshing = YES;
     DouyinDiscSurface *surface = objc_getAssociatedObject(control, &douyindisc_leaseKey);
-    BOOL sameWindow = surface && surface.douyindisc_window == control.window;
-    BOOL valid = douyindisc_preparedGeometry(control) && (sameWindow || douyindisc_scopedShare(control));
+    BOOL sameScope = surface && surface.douyindisc_window == control.window && surface.douyindisc_scope == control.superview;
+    if (surface && !sameScope) {
+        [surface douyindisc_restore];
+        objc_setAssociatedObject(control, &douyindisc_leaseKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        surface = nil;
+    }
+    BOOL valid = douyindisc_preparedGeometry(control) && (sameScope || douyindisc_scopedShare(control));
     NSArray<UIView *> *views = valid ? douyindisc_nativeVisuals(control) : @[];
     if (!views.count) {
         [surface douyindisc_restore];
@@ -141,6 +147,7 @@ static void douyindisc_changed(UIControl *control) {
         surface = [DouyinDiscSurface new];
         surface.douyindisc_control = control;
         surface.douyindisc_window = control.window;
+        surface.douyindisc_scope = control.superview;
         surface.douyindisc_overlay = [CALayer layer];
         surface.douyindisc_overlay.name = @"DouyinDiscContinuousArtwork";
         surface.douyindisc_overlay.contents = (__bridge id)self.douyindisc_image.CGImage;
