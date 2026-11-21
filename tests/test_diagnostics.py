@@ -51,3 +51,11 @@ class DiagnosticPolicyTests(unittest.TestCase):
         self.assertNotIn('containsString:',caption)
         self.assertIn('visited > 96',caption)
         self.assertIn('r.w <= disc.w*2.2',caption)
+
+    def test_capture_ids_are_weak_identity_and_monotonic(self):
+        code=(ROOT/'Sources/DouyinDiscDiagnostics.inc').read_text()
+        self.assertIn('NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPointerPersonality',code)
+        self.assertIn('number=@(++self.douyindisc_nextID)',code)
+        self.assertIn('self.douyindisc_nextID<2048',code)
+        self.assertNotIn('NSValue valueWithPointer:',code)
+        self.assertNotIn('douyindisc_id:layer.contents',code)

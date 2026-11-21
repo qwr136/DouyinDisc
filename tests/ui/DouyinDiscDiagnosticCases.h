@@ -31,6 +31,17 @@ static void douyindisc_diagnosticCases(DouyinDiscDisplay *driver, AWEMusicCoverB
     privateLabel.accessibilityIdentifier=@"PRIVATE_DIAG_SENTINEL_ID";
     [control addSubview:privateLabel];
     [diagnostics douyindisc_begin];
+    __weak CALayer *freedLayer;
+    NSNumber *oldID;
+    @autoreleasepool {
+        CALayer *temporary=[CALayer layer]; freedLayer=temporary;
+        oldID=[diagnostics douyindisc_id:temporary];
+        DD_CHECK([[diagnostics douyindisc_id:temporary] isEqual:oldID], "same live object keeps one anonymous ID");
+    }
+    DD_CHECK(freedLayer==nil, "diagnostic identity map does not retain view or layer owners");
+    CALayer *replacement=[CALayer layer];
+    DD_CHECK([[diagnostics douyindisc_id:replacement] unsignedIntegerValue]>oldID.unsignedIntegerValue, "replacement objects receive monotonically new IDs after deallocation");
+    DD_CHECK([[diagnostics douyindisc_id:(__bridge id)driver.douyindisc_image.CGImage] isEqual:@0], "diagnostic identity map never retains or weak-registers image resources");
     DD_CHECK(douyindisc_diag_enabled && diagnostics.douyindisc_timer.isValid, "user-started capture creates only its own bounded timer");
     DD_CHECK([diagnostics douyindisc_exportController]==nil, "active capture cannot export an unfinished open file");
     [driver douyindisc_refresh:control];

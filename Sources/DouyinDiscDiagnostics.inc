@@ -54,7 +54,8 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
 @property (nonatomic, weak) UIWindow *douyindisc_window;
 @property (nonatomic, strong) NSTimer *douyindisc_timer;
 @property (nonatomic, strong) NSURL *douyindisc_file;
-@property (nonatomic, strong) NSMutableDictionary<NSValue *,NSNumber *> *douyindisc_ids;
+@property (nonatomic, strong) NSMapTable<id,NSNumber *> *douyindisc_ids;
+@property (nonatomic) NSUInteger douyindisc_nextID;
 @property (nonatomic, strong) NSMutableDictionary<NSString *,NSDictionary *> *douyindisc_lastState;
 @property (nonatomic, strong) NSMapTable<UIControl *,NSNumber *> *douyindisc_lastBefore;
 @property (nonatomic, strong) NSHashTable<UIControl *> *douyindisc_pending;
@@ -80,12 +81,13 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
     return self;
 }
 - (NSNumber *)douyindisc_id:(id)object {
-    if (!object) return @0;
-    // IDs are per-capture sequential numbers; neither raw addresses nor descriptions are exported.
-    NSValue *key=[NSValue valueWithPointer:(__bridge const void *)object];
-    NSNumber *number=self.douyindisc_ids[key];
-    if (!number && self.douyindisc_ids.count<2048) {
-        number=@(self.douyindisc_ids.count+1); self.douyindisc_ids[key]=number;
+    if (!object || (![object isKindOfClass:UIView.class] && ![object isKindOfClass:CALayer.class])) return @0;
+    // Weak pointer-identity keys disappear with their owners. The monotonic counter
+    // never reuses IDs even when UIKit allocates a new object at an old address.
+    NSNumber *number=[self.douyindisc_ids objectForKey:object];
+    if (!number && self.douyindisc_nextID<2048) {
+        number=@(++self.douyindisc_nextID);
+        [self.douyindisc_ids setObject:number forKey:object];
     }
     return number ?: @0;
 }
@@ -147,7 +149,8 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
         @"cornerRadius":douyindisc_diag_number(layer.cornerRadius), @"clips":@(layer.masksToBounds),
         @"transform":douyindisc_diag_transform(layer.transform),
         @"sublayerTransform":douyindisc_diag_transform(layer.sublayerTransform),
-        @"mask":[self douyindisc_id:layer.mask], @"contents":[self douyindisc_id:layer.contents],
+        @"mask":[self douyindisc_id:layer.mask],
+        @"contentsIsCustom":@(layer.contents == (__bridge id)self.douyindisc_driver.douyindisc_image.CGImage),
         @"contentsPresent":@(layer.contents!=nil), @"shadowOpacity":douyindisc_diag_number(layer.shadowOpacity),
         @"shadowRadius":douyindisc_diag_number(layer.shadowRadius),
         @"shadowOffset":@[douyindisc_diag_number(layer.shadowOffset.width),douyindisc_diag_number(layer.shadowOffset.height)],
@@ -298,13 +301,15 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
     self.douyindisc_fd=descriptor;
     self.douyindisc_events=0; self.douyindisc_bytes=0;
     self.douyindisc_completed=NO; self.douyindisc_exported=NO;
-    self.douyindisc_ids=[NSMutableDictionary dictionary];
+    self.douyindisc_ids=[NSMapTable mapTableWithKeyOptions:NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPointerPersonality
+        valueOptions:NSPointerFunctionsStrongMemory];
+    self.douyindisc_nextID=0;
     self.douyindisc_lastState=[NSMutableDictionary dictionary];
     self.douyindisc_lastBefore=[NSMapTable weakToStrongObjectsMapTable];
     self.douyindisc_pending=[NSHashTable weakObjectsHashTable];
     self.douyindisc_started=CACurrentMediaTime(); self.douyindisc_deadline=self.douyindisc_started+20;
     douyindisc_diag_enabled=YES;
-    [self douyindisc_append:@{@"event":@"capture-start",@"schema":@"douyindisc-visual-v1",@"plugin":@"0.70-diagnostic",
+    [self douyindisc_append:@{@"event":@"capture-start",@"schema":@"douyindisc-visual-v1",@"plugin":@"0.80-diagnostic",
         @"bundle":@"com.ss.iphone.ugc.Aweme",@"pid":@(getpid()),@"dylibUUID":douyindisc_diag_imageUUID(),
         @"appVersion":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown",
         @"appBuild":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown",
