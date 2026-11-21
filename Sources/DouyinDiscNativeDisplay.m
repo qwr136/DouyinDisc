@@ -4,7 +4,16 @@
 #include <math.h>
 #include "DouyinDiscPolicy.h"
 #include "DouyinDiscArtwork.inc"
+#include "DouyinDiscClearArtwork.inc"
 #include "DouyinDiscLifecycle.inc"
+
+static UIImage *douyindisc_loadArtwork(void) {
+    NSData *original = [NSData dataWithBytesNoCopy:(void *)douyindisc_artwork length:sizeof(douyindisc_artwork) freeWhenDone:NO];
+    UIImage *fallback = [UIImage imageWithData:original];
+    NSData *clear = [NSData dataWithBytesNoCopy:(void *)douyindisc_clear_artwork length:sizeof(douyindisc_clear_artwork) freeWhenDone:NO];
+    UIImage *image = [UIImage imageWithData:clear];
+    return image.CGImage && CGSizeEqualToSize(image.size, fallback.size) ? image : fallback;
+}
 
 static NSString *const douyindisc_spinKey = @"com.minis.douyindisc.continuous";
 static char douyindisc_leaseKey;
@@ -35,7 +44,7 @@ static BOOL douyindisc_preparedGeometry(UIControl *control) {
     return douyindisc_disc_inside_rail(d, (DouyinDiscRect){b.origin.x,b.origin.y,b.size.width,b.size.height});
 }
 
-static BOOL douyindisc_scopedShare(UIControl *control) {
+static UIView *douyindisc_scopedShare(UIControl *control) {
     UIWindow *window = control.window;
     CGRect b = window.bounds;
     DouyinDiscRect original = douyindisc_rect(control, window), normalized = original;
@@ -44,7 +53,7 @@ static BOOL douyindisc_scopedShare(UIControl *control) {
         NSMutableArray<UIView *> *pending = [NSMutableArray arrayWithObject:scope];
         NSUInteger visited = 0, matches = 0;
         while (pending.count) {
-            if (++visited > 320) return NO;
+            if (++visited > 320) return nil;
             UIView *view = pending.lastObject; [pending removeLastObject];
             if (view.hidden || view.alpha <= .05 || view == control) continue;
             if ([view isKindOfClass:UIControl.class]) {
@@ -55,29 +64,42 @@ static BOOL douyindisc_scopedShare(UIControl *control) {
                     if (douyindisc_share_above(normalized, share, (DouyinDiscRect){b.origin.x,b.origin.y,b.size.width,b.size.height})) ++matches;
                 }
             }
-            if (pending.count + view.subviews.count > 320) return NO;
+            if (pending.count + view.subviews.count > 320) return nil;
             [pending addObjectsFromArray:view.subviews];
         }
-        if (matches) return matches == 1;
+        if (matches) return matches == 1 ? scope : nil;
     }
-    return NO;
+    return nil;
 }
+
+#include "DouyinDiscLocalCaption.inc"
 
 @interface DouyinDiscVisual : NSObject
 @property (nonatomic, weak) UIView *douyindisc_view;
 @property (nonatomic) CGFloat douyindisc_alpha;
+@property (nonatomic) BOOL douyindisc_preserveAlpha;
+@property (nonatomic, strong) CALayer *douyindisc_originalMask;
+@property (nonatomic, strong) CALayer *douyindisc_zeroMask;
 - (void)douyindisc_hide;
 - (void)douyindisc_restore;
 @end
 @implementation DouyinDiscVisual
 - (void)douyindisc_hide {
     UIView *view = self.douyindisc_view;
-    if (view.alpha != 0) self.douyindisc_alpha = view.alpha;
-    view.alpha = 0;
+    if (!view) return;
+    if (!self.douyindisc_preserveAlpha) {
+        if (view.alpha != 0) self.douyindisc_alpha = view.alpha;
+        view.alpha = 0;
+    }
+    if (!self.douyindisc_zeroMask) self.douyindisc_zeroMask = [CALayer layer];
+    if (view.layer.mask != self.douyindisc_zeroMask) self.douyindisc_originalMask = view.layer.mask;
+    self.douyindisc_zeroMask.frame = view.layer.bounds;
+    view.layer.mask = self.douyindisc_zeroMask;
 }
 - (void)douyindisc_restore {
     UIView *view = self.douyindisc_view;
-    if (view && view.alpha == 0) view.alpha = self.douyindisc_alpha;
+    if (view.layer.mask == self.douyindisc_zeroMask) view.layer.mask = self.douyindisc_originalMask;
+    if (view && !self.douyindisc_preserveAlpha && view.alpha == 0) view.alpha = self.douyindisc_alpha;
 }
 @end
 
@@ -85,6 +107,7 @@ static BOOL douyindisc_scopedShare(UIControl *control) {
 @property (nonatomic, weak) UIControl *douyindisc_control;
 @property (nonatomic, weak) UIWindow *douyindisc_window;
 @property (nonatomic, weak) UIView *douyindisc_scope;
+@property (nonatomic, weak) UIView *douyindisc_canvas;
 @property (nonatomic, strong) CALayer *douyindisc_overlay;
 @property (nonatomic, strong) NSArray<DouyinDiscVisual *> *douyindisc_visuals;
 - (void)douyindisc_restore;
@@ -129,14 +152,22 @@ static void douyindisc_changed(UIControl *control) {
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     self.douyindisc_refreshing = YES;
     DouyinDiscSurface *surface = objc_getAssociatedObject(control, &douyindisc_leaseKey);
-    BOOL sameScope = surface && surface.douyindisc_window == control.window && surface.douyindisc_scope == control.superview;
+    BOOL sameScope = surface && surface.douyindisc_window == control.window && surface.douyindisc_scope == control.superview &&
+        surface.douyindisc_canvas.window == control.window && [control isDescendantOfView:surface.douyindisc_canvas];
     if (surface && !sameScope) {
         [surface douyindisc_restore];
         objc_setAssociatedObject(control, &douyindisc_leaseKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         surface = nil;
     }
-    BOOL valid = douyindisc_preparedGeometry(control) && (sameScope || douyindisc_scopedShare(control));
-    NSArray<UIView *> *views = valid ? douyindisc_nativeVisuals(control) : @[];
+    UIView *canvas = sameScope ? surface.douyindisc_canvas : douyindisc_scopedShare(control);
+    BOOL valid = douyindisc_preparedGeometry(control) && canvas;
+    NSMutableArray<UIView *> *views = valid ? [douyindisc_nativeVisuals(control) mutableCopy] : [NSMutableArray array];
+    if (valid) {
+        for (UIView *label in douyindisc_localCaptions(control)) if (![views containsObject:label]) [views addObject:label];
+        // Mask the verified button's native pixels, never its UIView hit target.
+        // The custom artwork is rendered separately on the paired common canvas.
+        [views addObject:control];
+    }
     if (!views.count) {
         [surface douyindisc_restore];
         objc_setAssociatedObject(control, &douyindisc_leaseKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -148,6 +179,7 @@ static void douyindisc_changed(UIControl *control) {
         surface.douyindisc_control = control;
         surface.douyindisc_window = control.window;
         surface.douyindisc_scope = control.superview;
+        surface.douyindisc_canvas = canvas;
         surface.douyindisc_overlay = [CALayer layer];
         surface.douyindisc_overlay.name = @"DouyinDiscContinuousArtwork";
         surface.douyindisc_overlay.contents = (__bridge id)self.douyindisc_image.CGImage;
@@ -167,15 +199,20 @@ static void douyindisc_changed(UIControl *control) {
         }
         if (!visual) {
             visual = [DouyinDiscVisual new]; visual.douyindisc_view = view; visual.douyindisc_alpha = view.alpha;
+            visual.douyindisc_preserveAlpha = view == control;
         }
         [visual douyindisc_hide]; [next addObject:visual];
     }
     surface.douyindisc_visuals = next;
     CALayer *overlay = surface.douyindisc_overlay;
-    overlay.bounds = (CGRect){CGPointZero, control.bounds.size};
-    overlay.position = CGPointMake(CGRectGetMidX(control.bounds), CGRectGetMidY(control.bounds));
-    overlay.contentsScale = control.window.screen.scale;
-    if (overlay.superlayer != control.layer) [control.layer addSublayer:overlay];
+    CGRect frame = [control convertRect:control.bounds toView:canvas];
+    CGFloat scale = control.window.screen.scale;
+    overlay.bounds = (CGRect){CGPointZero, CGSizeMake(round(frame.size.width*scale)/scale, round(frame.size.height*scale)/scale)};
+    overlay.position = CGPointMake(round(CGRectGetMidX(frame)*scale)/scale, round(CGRectGetMidY(frame)*scale)/scale);
+    overlay.contentsScale = scale;
+    overlay.minificationFilter = kCAFilterTrilinear;
+    overlay.magnificationFilter = kCAFilterLinear;
+    if (overlay.superlayer != canvas.layer) [canvas.layer addSublayer:overlay];
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [overlay removeAnimationForKey:douyindisc_spinKey];
     } else if (![overlay animationForKey:douyindisc_spinKey]) {
@@ -250,8 +287,7 @@ void douyindisc_startDisplay(void) {
     if (douyindisc_driver || !NSThread.isMainThread) return;
     NSString *build = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
     if (![build isKindOfClass:NSString.class] || ![build isEqualToString:@"399017"]) return;
-    NSData *bytes = [NSData dataWithBytesNoCopy:(void *)douyindisc_artwork length:sizeof(douyindisc_artwork) freeWhenDone:NO];
-    UIImage *image = [UIImage imageWithData:bytes];
+    UIImage *image = douyindisc_loadArtwork();
     if (!image.CGImage) return;
     DouyinDiscDisplay *driver = [DouyinDiscDisplay new];
     driver.douyindisc_image = image;

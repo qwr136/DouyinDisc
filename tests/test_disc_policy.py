@@ -100,3 +100,62 @@ class PolicyTests(unittest.TestCase):
                 if relative == 'scripts/build_dylib.py':
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
                 self.assertEqual(hashlib.sha256(content).hexdigest(), expected)
+
+    def test_clarity_artwork_changes_only_alpha(self):
+        import struct
+        import zlib
+        def decode(relative):
+            text = (ROOT / relative).read_text()
+            png = bytes(int(x, 16) for x in re.findall(r'0x([0-9a-f]{2})', text))
+            width, height, depth, kind = struct.unpack('>IIBB', png[16:26])
+            self.assertEqual((width, height, depth, kind), (512, 512, 8, 6))
+            cursor, compressed = 8, b''
+            while cursor < len(png):
+                size = int.from_bytes(png[cursor:cursor+4], 'big')
+                if png[cursor+4:cursor+8] == b'IDAT':
+                    compressed += png[cursor+8:cursor+8+size]
+                cursor += 12+size
+            stream = zlib.decompress(compressed)
+            pixels, previous = bytearray(), bytearray(width*4)
+            for row in range(height):
+                start = row*(1+width*4)
+                mode, raw = stream[start], stream[start+1:start+1+width*4]
+                current = bytearray(width*4)
+                for i, value in enumerate(raw):
+                    a = current[i-4] if i >= 4 else 0
+                    b = previous[i]
+                    c = previous[i-4] if i >= 4 else 0
+                    if mode == 0: predictor = 0
+                    elif mode == 1: predictor = a
+                    elif mode == 2: predictor = b
+                    elif mode == 3: predictor = (a+b)//2
+                    else:
+                        self.assertEqual(mode, 4)
+                        p = a+b-c
+                        ds = (abs(p-a), abs(p-b), abs(p-c))
+                        predictor = a if ds[0] <= min(ds[1:]) else (b if ds[1] <= ds[2] else c)
+                    current[i] = (value+predictor)&255
+                pixels.extend(current)
+                previous = current
+            return png, pixels
+        original, before = decode('Sources/DouyinDiscArtwork.inc')
+        clear, after = decode('Sources/DouyinDiscClearArtwork.inc')
+        self.assertEqual(hashlib.sha256(clear).hexdigest(), '61024375a6c1382fec174bf82c238d96d9403a2fa31c06768a1005802f0ce3f9')
+        self.assertEqual(len(before), len(after))
+        for channel in (0, 1, 2):
+            self.assertEqual(before[channel::4], after[channel::4])
+        self.assertEqual(bytearray(min(255,a*2) for a in before[3::4]), after[3::4])
+        self.assertNotEqual(original, clear)
+
+    def test_native_visual_mask_is_owned_and_hit_alpha_unchanged(self):
+        code = (ROOT / 'Sources/DouyinDiscNativeDisplay.m').read_text()
+        self.assertIn('view.layer.mask == self.douyindisc_zeroMask', code)
+        self.assertIn('visual.douyindisc_preserveAlpha = view == control', code)
+        self.assertIn('canvas.layer addSublayer:overlay', code)
+        self.assertNotIn('control.alpha =', code)
+        self.assertNotIn('control.hidden =', code)
+        self.assertIn('UIImage *image = douyindisc_loadArtwork()', code)
+        caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()
+        self.assertIn('isEqualToString:@"拍同款"', caption)
+        self.assertIn('visited > 96', caption)
+        self.assertIn('r.w <= disc.w*2.2', caption)
