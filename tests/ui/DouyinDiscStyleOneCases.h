@@ -1,0 +1,68 @@
+// Device trace 0.80: host18 owns circle22 -> black UIImageView24, not button26.
+// Reproduce that distinction with real UIKit compositing, then run production code.
+static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button) {
+    UIView *oldParent=button.superview;
+    CGRect oldFrame=button.frame;
+    DouyinDiscSurface *previous=objc_getAssociatedObject(button,&douyindisc_leaseKey);
+    [previous douyindisc_restore];
+    objc_setAssociatedObject(button,&douyindisc_leaseKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    AWEPlayInteractionStyleOneMusicView *host=[[AWEPlayInteractionStyleOneMusicView alloc] initWithFrame:oldFrame];
+    host->_playInteractionCircleMaskView=[[UIView alloc] initWithFrame:CGRectMake(0,0,44,44)];
+    host->_playInteractionCircleMaskView.userInteractionEnabled=NO;
+    host->_playInteractionCircleMaskView.clipsToBounds=YES;
+    host->_playInteractionCircleMaskView.layer.cornerRadius=22;
+    host->_playInteractionMaskView=[[UIImageView alloc] initWithFrame:CGRectMake(0,29.6667,44,14.3333)];
+    host->_playInteractionMaskView.backgroundColor=[UIColor colorWithWhite:0 alpha:.6];
+    [host->_playInteractionCircleMaskView addSubview:host->_playInteractionMaskView];
+    host->_playInteractionLabel=[[UILabel alloc] initWithFrame:CGRectMake(7.6667,29.6667,29,14.3333)];
+    host->_playInteractionLabel.text=@"玩同款";
+    [host addSubview:host->_playInteractionCircleMaskView];
+    [oldParent addSubview:host];
+    button.frame=host.bounds; [host insertSubview:button atIndex:0];
+    [host addSubview:host->_playInteractionLabel];
+    // Missing host -> button identity must not authorize unrelated decoration.
+    [driver douyindisc_refresh:button];
+    DD_CHECK(douyindisc_darkPixels(host)>10, "device-shaped independent black half-plate survives a button-only mask before exact host authorization");
+    DD_CHECK(host->_playInteractionMaskView.alpha==1 && !host->_playInteractionMaskView.layer.mask, "unbound style host cannot expand existing button authorization");
+    host->_musicButton=button;
+    [driver douyindisc_refresh:button];
+    DouyinDiscSurface *surface=objc_getAssociatedObject(button,&douyindisc_leaseKey);
+    DD_CHECK(host->_playInteractionMaskView.alpha==0 && host->_playInteractionMaskView.layer.mask, "exact bound StyleOne bottom plate enters the owned visual lease");
+    DD_CHECK(douyindisc_darkPixels(host)==0, "actual UIKit raster removes the trace-shaped external black half-disc");
+    DD_CHECK(host.alpha==1 && host->_playInteractionCircleMaskView.alpha==1 && button.alpha==1, "native host, circle clip and button are not broadly hidden");
+    DD_CHECK(host->_playInteractionLabel.alpha==0 && [host->_playInteractionLabel.text isEqualToString:@"玩同款"], "existing exact caption suppression remains active without rewriting native text");
+    DD_CHECK(surface.douyindisc_overlay.opacity==.5f && surface.douyindisc_overlay.superlayer==surface.douyindisc_canvas.layer && surface.douyindisc_overlay.superlayer!=button.layer, "only the independently rendered replacement disc is set to fifty percent opacity");
+    DD_CHECK([button hitTest:CGPointMake(22,22) withEvent:nil]==button, "fifty percent custom image and plate suppression retain actual native hit testing");
+    CABasicAnimation *spin=(CABasicAnimation *)[surface.douyindisc_overlay animationForKey:douyindisc_spinKey];
+    DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || (spin && spin.duration==7 && fabs(spin.beginTime-[surface.douyindisc_overlay convertTime:driver.douyindisc_epoch fromLayer:nil])<.001), "plate repair and opacity adjustment do not reset the shared rotation epoch");
+    UILabel *outside=[[UILabel alloc] initWithFrame:CGRectMake(0,0,50,14)];
+    outside.text=@"其他按钮"; [oldParent addSubview:outside];
+    [driver douyindisc_refresh:button];
+    DD_CHECK(outside.alpha==1 && !outside.layer.mask, "other buttons and captions are untouched by the style-specific repair");
+    [outside removeFromSuperview];
+
+    [surface douyindisc_restore];
+    objc_setAssociatedObject(button,&douyindisc_leaseKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    host->_playInteractionMaskView.userInteractionEnabled=YES;
+    [driver douyindisc_refresh:button];
+    DD_CHECK(host->_playInteractionMaskView.alpha==1 && !host->_playInteractionMaskView.layer.mask, "unexpected interactive plate is not suppressed");
+    host->_playInteractionMaskView.userInteractionEnabled=NO;
+    UIImageView *plate=host->_playInteractionMaskView;
+    [oldParent addSubview:plate]; [driver douyindisc_refresh:button];
+    DD_CHECK(plate.alpha==1 && !plate.layer.mask, "style field with wrong actual parent fails closed");
+    [host->_playInteractionCircleMaskView addSubview:plate];
+    [driver douyindisc_refresh:button];
+    DD_CHECK(plate.alpha==0 && plate.layer.mask, "restored exact parent relationship permits the proven decoration repair");
+    plate.alpha=.7;
+    [driver douyindisc_refresh:button];
+    CALayer *nativeMask=[CALayer layer]; nativeMask.frame=plate.bounds; nativeMask.backgroundColor=UIColor.whiteColor.CGColor;
+    plate.layer.mask=nativeMask;
+    [driver douyindisc_refresh:button];
+    surface=objc_getAssociatedObject(button,&douyindisc_leaseKey);
+    [surface douyindisc_restore];
+    DD_CHECK(fabs(plate.alpha-.7)<.001 && plate.layer.mask==nativeMask, "style decoration cleanup preserves the latest native alpha and mask baseline");
+    objc_setAssociatedObject(button,&douyindisc_leaseKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [oldParent addSubview:button]; button.frame=oldFrame; [button layoutSubviews];
+    [host removeFromSuperview];
+    DD_CHECK(objc_getAssociatedObject(button,&douyindisc_leaseKey)!=nil, "returning to an ordinary item reacquires without a StyleOne dependency");
+}

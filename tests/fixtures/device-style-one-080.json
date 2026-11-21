@@ -1,0 +1,202 @@
+{
+  "source_sha256": "d67530c3dcb714cf3a8c1ac18a586cdd60ee7e2068def9ee1a9bf34c7ba403c2",
+  "plugin": "0.80",
+  "app_build": "399017",
+  "views": [
+    {
+      "id": 18,
+      "interactive": true,
+      "parent": 16,
+      "clips": false,
+      "windowRect": [
+        385,
+        826.6667,
+        32,
+        32
+      ],
+      "event": "view",
+      "alpha": 0.4436,
+      "layer": 17,
+      "hidden": false,
+      "class": "AWEPlayInteractionStyleOneMusicView"
+    },
+    {
+      "id": 22,
+      "interactive": false,
+      "parent": 18,
+      "clips": true,
+      "windowRect": [
+        385,
+        826.6667,
+        32,
+        32
+      ],
+      "event": "view",
+      "alpha": 1,
+      "layer": 21,
+      "hidden": false,
+      "class": "UIView"
+    },
+    {
+      "id": 24,
+      "interactive": false,
+      "parent": 22,
+      "clips": false,
+      "windowRect": [
+        385,
+        848.2424,
+        32,
+        10.4242
+      ],
+      "event": "view",
+      "alpha": 1,
+      "layer": 23,
+      "hidden": false,
+      "class": "UIImageView"
+    },
+    {
+      "id": 26,
+      "interactive": true,
+      "parent": 18,
+      "clips": false,
+      "windowRect": [
+        385,
+        826.6667,
+        32,
+        32
+      ],
+      "event": "view",
+      "alpha": 1,
+      "layer": 25,
+      "hidden": false,
+      "class": "AWEMusicCoverButton"
+    }
+  ],
+  "layers": [
+    {
+      "class": "CALayer",
+      "position": [
+        51,
+        30
+      ],
+      "contentsIsCustom": 0,
+      "hidden": false,
+      "background": [],
+      "mask": 0,
+      "cornerRadius": 0,
+      "parent": 15,
+      "bounds": [
+        0,
+        0,
+        44,
+        44
+      ],
+      "presentationOpacity": 0.4436,
+      "event": "layer",
+      "id": 17,
+      "clips": false,
+      "opacity": 0.4436
+    },
+    {
+      "class": "CALayer",
+      "position": [
+        51,
+        285.6667
+      ],
+      "contentsIsCustom": 1,
+      "hidden": false,
+      "background": [],
+      "mask": 0,
+      "cornerRadius": 0,
+      "parent": 3,
+      "bounds": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "presentationOpacity": 1,
+      "event": "layer",
+      "id": 52,
+      "clips": false,
+      "opacity": 1
+    },
+    {
+      "class": "CALayer",
+      "position": [
+        22,
+        22
+      ],
+      "contentsIsCustom": 0,
+      "hidden": false,
+      "background": [],
+      "mask": 0,
+      "cornerRadius": 22,
+      "parent": 17,
+      "bounds": [
+        0,
+        0,
+        44,
+        44
+      ],
+      "presentationOpacity": 1,
+      "event": "layer",
+      "id": 21,
+      "clips": true,
+      "opacity": 1
+    },
+    {
+      "class": "CALayer",
+      "position": [
+        22,
+        36.8333
+      ],
+      "contentsIsCustom": 0,
+      "hidden": false,
+      "background": [
+        0,
+        0,
+        0,
+        0.6
+      ],
+      "mask": 0,
+      "cornerRadius": 0,
+      "parent": 21,
+      "bounds": [
+        0,
+        0,
+        44,
+        14.3333
+      ],
+      "presentationOpacity": 1,
+      "event": "layer",
+      "id": 23,
+      "clips": false,
+      "opacity": 1
+    },
+    {
+      "mask": 50,
+      "class": "CALayer",
+      "id": 25,
+      "background": [],
+      "parent": 17,
+      "opacity": 1,
+      "hidden": false,
+      "bounds": [
+        0,
+        0,
+        44,
+        44
+      ],
+      "presentationOpacity": 1,
+      "clips": false,
+      "position": [
+        22,
+        22
+      ],
+      "cornerRadius": 0,
+      "event": "layer",
+      "contentsIsCustom": 0
+    }
+  ]
+}

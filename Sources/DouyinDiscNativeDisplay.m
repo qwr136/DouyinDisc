@@ -215,6 +215,7 @@ static void douyindisc_changed(UIControl *control) {
     overlay.bounds = (CGRect){CGPointZero, CGSizeMake(round(frame.size.width*scale)/scale, round(frame.size.height*scale)/scale)};
     overlay.position = CGPointMake(round(CGRectGetMidX(frame)*scale)/scale, round(CGRectGetMidY(frame)*scale)/scale);
     overlay.contentsScale = scale;
+    overlay.opacity = 0.5f;
     overlay.minificationFilter = kCAFilterTrilinear;
     overlay.magnificationFilter = kCAFilterLinear;
     if (overlay.superlayer != canvas.layer) [canvas.layer addSublayer:overlay];
@@ -302,5 +303,5 @@ void douyindisc_startDisplay(void) {
     douyindisc_driver = driver;
     if (!douyindisc_installLifecycle(douyindisc_changed)) { douyindisc_driver = nil; return; }
     [driver douyindisc_start];
-    douyindisc_diag_install(driver);
+    // Temporary diagnostic entry removed after the user's capture; no new log UI.
 }

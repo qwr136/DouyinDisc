@@ -42,6 +42,21 @@ static UIView *douyindisc_nativeListenHost(UIControl *control) {
     return nil;
 }
 
+// 0.80 device trace: StyleOne host view18 owns the clipped circle view22 and
+// bottom image view24 (black alpha .6), outside music button view26's mask.
+static NSArray<UIView *> *douyindisc_nativeStyleOneVisuals(UIControl *control) {
+    UIView *host = control.superview;
+    if (douyindisc_nativeObject(host, "AWEPlayInteractionStyleOneMusicView", "_musicButton", "@\"AWEMusicCoverButton\"") != control) return @[];
+    id circle = douyindisc_nativeObject(host, "AWEPlayInteractionStyleOneMusicView", "_playInteractionCircleMaskView", "@\"UIView\"");
+    id plate = douyindisc_nativeObject(host, "AWEPlayInteractionStyleOneMusicView", "_playInteractionMaskView", "@\"UIImageView\"");
+    if (![circle isKindOfClass:UIView.class] || [circle isKindOfClass:UIControl.class] ||
+        ![plate isKindOfClass:UIImageView.class] || [plate isKindOfClass:UIControl.class]) return @[];
+    UIView *container = circle, *view = plate;
+    if (container.superview != host || view.superview != container || view.userInteractionEnabled ||
+        [control isDescendantOfView:view] || [view isDescendantOfView:control]) return @[];
+    return @[view];
+}
+
 static NSArray<UIView *> *douyindisc_nativeVisuals(UIControl *control) {
     if (!douyindisc_nativeMusic(control)) return @[];
     NSMutableArray<UIView *> *views = [NSMutableArray array];
@@ -64,6 +79,7 @@ static NSArray<UIView *> *douyindisc_nativeVisuals(UIControl *control) {
                 ![views containsObject:value]) [views addObject:value];
         }
     }
+    [views addObjectsFromArray:douyindisc_nativeStyleOneVisuals(control)];
     return views;
 }
 #endif

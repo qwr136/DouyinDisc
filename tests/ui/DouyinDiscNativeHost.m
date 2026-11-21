@@ -32,6 +32,15 @@
 @end
 @implementation AWEPlayInteractionListenFeedView
 @end
+@interface AWEPlayInteractionStyleOneMusicView : UIView {
+@public AWEMusicCoverButton *_musicButton;
+    UIView *_playInteractionCircleMaskView;
+    UIImageView *_playInteractionMaskView;
+    UILabel *_playInteractionLabel;
+}
+@end
+@implementation AWEPlayInteractionStyleOneMusicView
+@end
 
 #import "../../Sources/DouyinDiscNativeDisplay.m"
 static NSUInteger douyindisc_checks;
@@ -48,6 +57,8 @@ static void douyindisc_writeProgress(void) {
 
 #include "DouyinDiscClarityCases.h"
 #include "DouyinDiscDiagnosticCases.h"
+
+static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button);
 
 static AWEMusicCoverButton *douyindisc_makeButton(UIImage *image) {
     AWEMusicCoverButton *button = [[AWEMusicCoverButton alloc] initWithFrame:CGRectMake(0, 0, 44, 44)];
@@ -83,6 +94,8 @@ static NSUInteger douyindisc_darkPixels(UIView *view) {
     }
     return dark;
 }
+
+#include "DouyinDiscStyleOneCases.h"
 
 static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y,
                               AWEMusicCoverButton *button, UIControl **outShare) {
@@ -149,6 +162,8 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(a.douyindisc_overlay.contents == (__bridge id)driver.douyindisc_image.CGImage, "overlay uses actual production clarity artwork");
     DD_CHECK(![douyindisc_nativeObject(first, "AWEMusicCoverButton", "_guidanceView", "@\"UIImageView\"") isKindOfClass:UIView.class], "mismatched field type rejected without private dispatch");
     douyindisc_clarityCases(driver, first, a, window);
+    a = objc_getAssociatedObject(first, &douyindisc_leaseKey);
+    douyindisc_styleOneCases(driver,first);
     a = objc_getAssociatedObject(first, &douyindisc_leaseKey);
     douyindisc_diagnosticCases(driver,first);
     AWEMusicCoverButton *incoming = douyindisc_makeButton(art);
