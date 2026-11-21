@@ -47,6 +47,7 @@ static void douyindisc_writeProgress(void) {
 } while (0)
 
 #include "DouyinDiscClarityCases.h"
+#include "DouyinDiscDiagnosticCases.h"
 
 static AWEMusicCoverButton *douyindisc_makeButton(UIImage *image) {
     AWEMusicCoverButton *button = [[AWEMusicCoverButton alloc] initWithFrame:CGRectMake(0, 0, 44, 44)];
@@ -149,6 +150,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(![douyindisc_nativeObject(first, "AWEMusicCoverButton", "_guidanceView", "@\"UIImageView\"") isKindOfClass:UIView.class], "mismatched field type rejected without private dispatch");
     douyindisc_clarityCases(driver, first, a, window);
     a = objc_getAssociatedObject(first, &douyindisc_leaseKey);
+    douyindisc_diagnosticCases(driver,first);
     AWEMusicCoverButton *incoming = douyindisc_makeButton(art);
     douyindisc_item(window, scroll, window.bounds.size.height, incoming, NULL);
     [incoming layoutSubviews];
@@ -279,7 +281,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(driver.douyindisc_controls.count < 64, "known-control registry remains bounded");
 
     NSLog(@"DD_PHASE share-init");
-    UIActivityViewController *sheet = [[UIActivityViewController alloc] initWithActivityItems:@[@"DouyinDisc UIKit regression"] applicationActivities:nil];
+    UIActivityViewController *sheet = [(DouyinDiscDiagnostics *)douyindisc_diagnostics douyindisc_exportController];
     sheet.popoverPresentationController.sourceView = incoming;
     [window.rootViewController presentViewController:sheet animated:NO completion:^{
         DD_CHECK(window.rootViewController.presentedViewController == sheet, "real UIKit share sheet presented");

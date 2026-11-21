@@ -15,7 +15,7 @@ static NSArray<UIView *> *douyindisc_localCaptions(UIControl *control) {
         if ([view isKindOfClass:UILabel.class] && !view.userInteractionEnabled && view.window == window) {
             UILabel *label = (UILabel *)view;
             NSString *text = label.attributedText.length ? label.attributedText.string : label.text;
-            if ([text isEqualToString:@"拍同款"]) {
+            if ([text isEqualToString:@"拍同款"] || [text isEqualToString:@"玩同款"]) {
                 DouyinDiscRect r = douyindisc_rect(label, window);
                 double dx = fabs((r.x+r.w*.5)-(disc.x+disc.w*.5));
                 double cy = r.y+r.h*.5;

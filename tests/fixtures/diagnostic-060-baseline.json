@@ -1,0 +1,12 @@
+{
+  "source_sha": "3cb7eea82a8df663d56d9353957968daa2a0647d",
+  "files": {
+    "Sources/DouyinDiscNativeDisplay.m": "ab8e927368b85fb36768f7c2ad8998d29ed469a94002b247634e47d22415e307",
+    "Sources/DouyinDiscNative.h": "39deff0a1b2e55a5140ad257386dc9342675615e71a1652ea535975df9c10915",
+    "Sources/DouyinDiscLifecycle.inc": "8fad78979e8e74410dfd5e591f309bf2bb36bfe4205a7f33d612dc43d485d3f7",
+    "Sources/DouyinDiscClearArtwork.inc": "a4ad3528bf2b009a34cdb5d218c4b2767710d96ef30864bc1773b4041953fcf4",
+    "Sources/DouyinDiscArtwork.inc": "f2c10c09432336d2be9b2cfa78119263312140d8087845ccc273f7e144a7d7f2",
+    "Sources/DouyinDiscPolicy.c": "1fb8b0756be7cfc0df0e4e8e16e0c8a52f76a4c4cf3cefc7176a417b3d0acff6",
+    "Sources/DouyinDiscPolicy.h": "465c53604f71a43dd06b01a942916c5518f7455da7ce3e701ed79842c0106a37"
+  }
+}

@@ -17,6 +17,10 @@ static UIImage *douyindisc_loadArtwork(void) {
 
 static NSString *const douyindisc_spinKey = @"com.minis.douyindisc.continuous";
 static char douyindisc_leaseKey;
+@class DouyinDiscSurface, DouyinDiscDisplay;
+static BOOL douyindisc_diag_enabled;
+static void douyindisc_diag_note(UIControl *control, DouyinDiscSurface *surface, const char *phase);
+static void douyindisc_diag_install(DouyinDiscDisplay *driver);
 
 static DouyinDiscRect douyindisc_rect(UIView *view, UIView *space) {
     CGRect bounds = view.bounds;
@@ -152,6 +156,7 @@ static void douyindisc_changed(UIControl *control) {
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     self.douyindisc_refreshing = YES;
     DouyinDiscSurface *surface = objc_getAssociatedObject(control, &douyindisc_leaseKey);
+    if (douyindisc_diag_enabled) douyindisc_diag_note(control, surface, "refresh-before");
     BOOL sameScope = surface && surface.douyindisc_window == control.window && surface.douyindisc_scope == control.superview &&
         surface.douyindisc_canvas.window == control.window && [control isDescendantOfView:surface.douyindisc_canvas];
     if (surface && !sameScope) {
@@ -223,6 +228,7 @@ static void douyindisc_changed(UIControl *control) {
         [overlay addAnimation:spin forKey:douyindisc_spinKey];
     }
     [CATransaction commit];
+    if (douyindisc_diag_enabled) douyindisc_diag_note(control, surface, "refresh-after");
     self.douyindisc_refreshing = NO;
 }
 
@@ -283,6 +289,8 @@ static void douyindisc_changed(UIControl *control) {
 }
 @end
 
+#include "DouyinDiscDiagnostics.inc"
+
 void douyindisc_startDisplay(void) {
     if (douyindisc_driver || !NSThread.isMainThread) return;
     NSString *build = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
@@ -294,4 +302,5 @@ void douyindisc_startDisplay(void) {
     douyindisc_driver = driver;
     if (!douyindisc_installLifecycle(douyindisc_changed)) { douyindisc_driver = nil; return; }
     [driver douyindisc_start];
+    douyindisc_diag_install(driver);
 }

@@ -66,7 +66,7 @@ def main():
             text = source.read_text()
             result.write_text(text)
             print(text)
-            if process.returncode or 'FAIL:' in text or '79 checks, 0 failures' not in text:
+            if process.returncode or 'FAIL:' in text or '101 checks, 0 failures' not in text:
                 raise RuntimeError('UIKit host checks failed or incomplete')
     finally:
         subprocess.run(['xcrun', 'simctl', 'shutdown', device], capture_output=True)
