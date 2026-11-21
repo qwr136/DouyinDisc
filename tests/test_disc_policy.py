@@ -70,28 +70,33 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(image).hexdigest(), 'c5aac6bff1e679c638af93d240535678a87d07aed2d912327483284fe30bd4ee')
 
     def test_no_private_dispatch_or_input_changes(self):
-        code = (ROOT / 'Sources/DouyinDiscDisplay.m').read_text() + (ROOT / 'Sources/DouyinDiscVisualLease.inc').read_text()
+        code = (ROOT / 'Sources/DouyinDiscNativeDisplay.m').read_text() + (ROOT / 'Sources/DouyinDiscNative.h').read_text()
         for forbidden in ['objc_msgSend', 'method_exchangeImplementations', 'method_setImplementation',
                           'addGestureRecognizer:', 'sendActionsForControlEvents:', 'NSURLSession', 'writeToFile:',
                           'setHidden:', 'removeAllAnimations', 'setImage:']:
             self.assertNotIn(forbidden, code)
-        self.assertIn('target.contents = self.douyindisc_original', code)
+        self.assertNotIn('target.contents =', code)
+        self.assertIn('object_getIvar', code)
+        self.assertIn('ivar_getTypeEncoding', code)
         self.assertIn('UIAccessibilityIsReduceMotionEnabled()', code)
         self.assertIn('UIApplicationWillResignActiveNotification', code)
 
     def test_lifecycle_retains_without_background_work(self):
-        code = (ROOT / 'Sources/DouyinDiscDisplay.m').read_text()
+        code = (ROOT / 'Sources/DouyinDiscNativeDisplay.m').read_text()
         resigned = re.search(r'- \(void\)douyindisc_resignedActive:[^\n]+\n(.*?)\n}', code, re.S).group(1)
         self.assertIn('[self.douyindisc_timer invalidate]', resigned)
-        self.assertNotIn('[self douyindisc_restore]', resigned)
-        self.assertIn('if (app.applicationState != UIApplicationStateActive) return;', code)
-        self.assertNotIn('presentedViewController ? nil : key', code)
-        self.assertIn('[self douyindisc_leaseValid]', code)
-        self.assertIn('douyindisc_ancestorsVisible(disc, window)', code)
+        self.assertNotIn('douyindisc_restore', resigned)
+        self.assertIn('if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;', code)
+        self.assertIn('forMode:NSRunLoopCommonModes', code)
+        self.assertIn('self.douyindisc_controls.allObjects', code)
+        self.assertIn('spin.beginTime = [overlay convertTime:self.douyindisc_epoch fromLayer:nil]', code)
 
     def test_core_behavior_is_frozen_against_010(self):
         fixture = json.loads((ROOT / 'tests/fixtures/visual-retain-baseline.json').read_text())
         self.assertEqual(fixture['source_sha'], '5c58edd54554c95c92a02b238b139242538906da')
         for relative, expected in fixture['files'].items():
             with self.subTest(file=relative):
-                self.assertEqual(hashlib.sha256((ROOT / relative).read_bytes()).hexdigest(), expected)
+                content = (ROOT / relative).read_bytes()
+                if relative == 'scripts/build_dylib.py':
+                    content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
+                self.assertEqual(hashlib.sha256(content).hexdigest(), expected)

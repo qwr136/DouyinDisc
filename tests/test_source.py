@@ -113,5 +113,5 @@ printf '%s\\n' "$stage" >> order
                               '-Wall', '-Wextra', '-install_name', '@loader_path/DouyinDisc.dylib',
                               '-framework', 'Foundation', '-framework', 'UIKit', '-framework', 'QuartzCore',
                               '-framework', 'CoreGraphics', str(SOURCE), 'Sources/DouyinDiscPolicy.c',
-                              'Sources/DouyinDiscDisplay.m', '-o'])
+                              'Sources/DouyinDiscNativeDisplay.m', '-o'])
             self.assertEqual(verify_dylib(artifact, project=root)['architecture'], 'arm64')

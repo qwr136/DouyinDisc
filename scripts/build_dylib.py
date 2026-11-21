@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NAME = 'DouyinDisc'
 IDENTIFIER = 'com.minis.douyindisc'
-SOURCE_FILES = ('Sources/DouyinDiscEntry.m', 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscDisplay.m')
+SOURCE_FILES = ('Sources/DouyinDiscEntry.m', 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m')
 SDK_DIR = 'iPhoneOS16.5.sdk'
 TARGET = 'arm64-apple-ios15.0'
 

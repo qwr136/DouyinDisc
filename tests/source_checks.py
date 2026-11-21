@@ -30,7 +30,7 @@ def check_builder(project, name, domain, minimum, sdk):
                        'SDK_DIR': 'iPhoneOS' + sdk + '.sdk'}.items():
         require(values.get(key) == value, 'builder %s differs from manifest' % key)
     inputs = values.get('SOURCE_FILES')
-    require(inputs == (entry, 'Sources/' + name + 'Policy.c', 'Sources/' + name + 'Display.m'),
+    require(inputs == (entry, 'Sources/' + name + 'Policy.c', 'Sources/' + name + 'NativeDisplay.m'),
             'builder must compile the entry, selection policy and display implementation')
     for path in inputs:
         require(isinstance(path, str) and re.fullmatch(r'Sources/' + re.escape(name) + r'[A-Za-z0-9]*\.(?:m|mm|c|cc|cpp)', path),
