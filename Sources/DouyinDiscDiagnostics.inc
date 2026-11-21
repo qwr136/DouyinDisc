@@ -116,6 +116,7 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
             if (startingRecord) {
                 douyindisc_diag_enabled=NO;
                 close(self.douyindisc_fd); self.douyindisc_fd=-1;
+                unlink(self.douyindisc_file.fileSystemRepresentation); self.douyindisc_file=nil;
                 self.douyindisc_completed=NO; self.douyindisc_wroteCaptureStart=NO;
                 [self.douyindisc_button setTitle:@"取证写入失败·重试" forState:UIControlStateNormal];
                 return;
@@ -342,6 +343,7 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
         @"os":NSProcessInfo.processInfo.operatingSystemVersionString,@"session":NSUUID.UUID.UUIDString,
         @"durationLimit":@20,@"eventLimit":@(douyindisc_diag_eventLimit),@"byteLimit":@(douyindisc_diag_byteLimit),
         @"privacy":@"geometry-and-render-state-only-no-content",@"objectIDs":@"per-capture-not-addresses"}];
+    if (!self.douyindisc_wroteCaptureStart || self.douyindisc_fd<0 || !douyindisc_diag_enabled) return;
     __weak DouyinDiscDiagnostics *weakSelf=self;
     self.douyindisc_timer=[NSTimer timerWithTimeInterval:.5 repeats:YES block:^(NSTimer *timer) {
         (void)timer; [weakSelf douyindisc_sample];

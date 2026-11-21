@@ -22,8 +22,9 @@ static void douyindisc_diagnosticCases(DouyinDiscDisplay *driver, AWEMusicCoverB
     failedWriter.douyindisc_driver=driver; failedWriter.douyindisc_button=diagnostics.douyindisc_button; failedWriter.douyindisc_window=diagnostics.douyindisc_window;
     failedWriter.douyindisc_writeOverride=^ssize_t(const void *bytes,NSUInteger length) { (void)bytes; (void)length; return -1; };
     douyindisc_diagnostics=failedWriter;
+    NSURL *failedFile=failedWriter.douyindisc_file;
     [failedWriter douyindisc_begin];
-    DD_CHECK(!douyindisc_diag_enabled && failedWriter.douyindisc_fd==-1 && !failedWriter.douyindisc_completed && !failedWriter.douyindisc_timer, "failed initial trace write leaves no empty export and no running timer");
+    DD_CHECK(!douyindisc_diag_enabled && failedWriter.douyindisc_fd==-1 && !failedWriter.douyindisc_completed && !failedWriter.douyindisc_timer && !failedWriter.douyindisc_file && ![NSFileManager.defaultManager fileExistsAtPath:failedFile.path], "failed initial trace write removes the empty file and starts no timer");
     failedWriter.douyindisc_writeOverride=nil;
     [failedWriter douyindisc_begin];
     DD_CHECK(douyindisc_diag_enabled && failedWriter.douyindisc_wroteCaptureStart && failedWriter.douyindisc_timer.isValid, "retry after initial write failure starts a complete trace");
