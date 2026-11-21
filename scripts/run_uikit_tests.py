@@ -42,8 +42,22 @@ def main():
             run('xcrun', 'simctl', 'boot', device)
             run('xcrun', 'simctl', 'bootstatus', device, '-b', timeout=300)
             run('xcrun', 'simctl', 'install', device, str(app))
-            process = subprocess.run(['xcrun', 'simctl', 'launch', '--terminate-running-process', '--console', device, bundle],
-                                     cwd=ROOT, capture_output=True, text=True, timeout=150)
+            try:
+                process = subprocess.run(['xcrun', 'simctl', 'launch', '--terminate-running-process', '--console', device, bundle],
+                                         cwd=ROOT, capture_output=True, text=True, timeout=150)
+            except subprocess.TimeoutExpired as error:
+                def text(value):
+                    return value.decode('utf-8', errors='replace') if isinstance(value, bytes) else (value or '')
+                (REPORTS / 'uikit-console.txt').write_text(text(error.stdout) + '\n' + text(error.stderr))
+                data = Path(run('xcrun', 'simctl', 'get_app_container', device, bundle, 'data'))
+                partial = data / 'Documents/uikit-report.txt'
+                if partial.is_file():
+                    (REPORTS / 'uikit-partial.txt').write_bytes(partial.read_bytes())
+                    print(partial.read_text(), flush=True)
+                subprocess.run(['xcrun', 'simctl', 'io', device, 'screenshot', str(REPORTS / 'uikit-timeout.png')],
+                               capture_output=True, timeout=25)
+                print((REPORTS / 'uikit-console.txt').read_text()[-24000:], flush=True)
+                raise RuntimeError('UIKit host timed out; partial report and console retained') from error
             (REPORTS / 'uikit-console.txt').write_text(process.stdout + '\n' + process.stderr)
             data = Path(run('xcrun', 'simctl', 'get_app_container', device, bundle, 'data'))
             source = data / 'Documents/uikit-report.txt'

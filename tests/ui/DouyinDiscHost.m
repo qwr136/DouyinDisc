@@ -3,9 +3,17 @@
 
 static NSUInteger douyindisc_checks;
 static NSMutableArray<NSString *> *douyindisc_results;
+static void douyindisc_writeProgress(void) {
+    NSString *report = [douyindisc_results componentsJoinedByString:@"\n"];
+    NSString *path = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"uikit-report.txt"];
+    [report writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
 #define DD_CHECK(condition, message) do { \
     ++douyindisc_checks; \
-    [douyindisc_results addObject:[NSString stringWithFormat:@"%@: %s", (condition) ? @"PASS" : @"FAIL", message]]; \
+    NSString *line = [NSString stringWithFormat:@"%@: %s", (condition) ? @"PASS" : @"FAIL", message]; \
+    [douyindisc_results addObject:line]; \
+    NSLog(@"DD_CHECK %@", line); \
+    douyindisc_writeProgress(); \
 } while (0)
 
 #include "DouyinDiscLeaseCases.h"
@@ -13,6 +21,7 @@ static NSMutableArray<NSString *> *douyindisc_results;
 @interface DouyinDiscTestApp : UIResponder <UIApplicationDelegate>
 @property (nonatomic, strong) UIWindow *window;
 @property (nonatomic) NSUInteger douyindisc_clicks;
+@property (nonatomic) BOOL douyindisc_running;
 @end
 
 @implementation DouyinDiscTestApp
@@ -27,6 +36,9 @@ static NSMutableArray<NSString *> *douyindisc_results;
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
     (void)application;
+    NSLog(@"DD_PHASE became-active started=%d", self.douyindisc_running);
+    if (self.douyindisc_running) return;
+    self.douyindisc_running = YES;
     dispatch_async(dispatch_get_main_queue(), ^{ [self douyindisc_run]; });
 }
 
@@ -128,7 +140,9 @@ static NSMutableArray<NSString *> *douyindisc_results;
     [driver douyindisc_restore];
     douyindisc_runLeaseCases(driver, window, disc, share, cover, title, siblingTitle);
     CALayer *retained = driver.douyindisc_overlay;
+    NSLog(@"DD_PHASE share-init appState=%ld windowKey=%d", (long)UIApplication.sharedApplication.applicationState, window.isKeyWindow);
     UIActivityViewController *sheet = [[UIActivityViewController alloc] initWithActivityItems:@[@"DouyinDisc UIKit regression"] applicationActivities:nil];
+    NSLog(@"DD_PHASE share-initialized");
     sheet.popoverPresentationController.sourceView = disc;
     [window.rootViewController presentViewController:sheet animated:NO completion:^{
         DD_CHECK(window.rootViewController.presentedViewController == sheet, "real UIKit share sheet presented");
