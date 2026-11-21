@@ -31,10 +31,12 @@ static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverBut
     DD_CHECK(douyindisc_darkPixels(host)==0, "actual UIKit raster removes the trace-shaped external black half-disc");
     DD_CHECK(host.alpha==1 && host->_playInteractionCircleMaskView.alpha==1 && button.alpha==1, "native host, circle clip and button are not broadly hidden");
     DD_CHECK(host->_playInteractionLabel.alpha==0 && [host->_playInteractionLabel.text isEqualToString:@"玩同款"], "existing exact caption suppression remains active without rewriting native text");
-    DD_CHECK(surface.douyindisc_overlay.opacity==.5f && surface.douyindisc_overlay.superlayer==surface.douyindisc_canvas.layer && surface.douyindisc_overlay.superlayer!=button.layer, "only the independently rendered replacement disc is set to fifty percent opacity");
+    DD_CHECK(surface.douyindisc_overlay.opacity==.5f && surface.douyindisc_centerOverlay.opacity==.7f && surface.douyindisc_overlay.superlayer==surface.douyindisc_canvas.layer && surface.douyindisc_overlay.superlayer!=button.layer, "only the outer disc stays fifty percent while the separate center ring is seventy percent");
     DD_CHECK([button hitTest:CGPointMake(22,22) withEvent:nil]==button, "fifty percent custom image and plate suppression retain actual native hit testing");
     CABasicAnimation *spin=(CABasicAnimation *)[surface.douyindisc_overlay animationForKey:douyindisc_spinKey];
-    DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || (spin && spin.duration==7 && fabs(spin.beginTime-[surface.douyindisc_overlay convertTime:driver.douyindisc_epoch fromLayer:nil])<.001), "plate repair and opacity adjustment do not reset the shared rotation epoch");
+    CABasicAnimation *ringSpin=(CABasicAnimation *)[surface.douyindisc_centerOverlay animationForKey:douyindisc_spinKey];
+    DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || (spin && spin.duration==7 && fabs(spin.beginTime-[surface.douyindisc_overlay convertTime:driver.douyindisc_epoch fromLayer:nil])<.001), "plate repair and opacity adjustment do not reset the shared outer rotation epoch");
+    DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || (ringSpin && fabs(ringSpin.beginTime-[surface.douyindisc_centerOverlay convertTime:driver.douyindisc_epoch fromLayer:nil])<.001 && fabs(ringSpin.beginTime-spin.beginTime)<.001), "independently brighter center ring rotates on the exact same global phase");
     UILabel *outside=[[UILabel alloc] initWithFrame:CGRectMake(0,0,50,14)];
     outside.text=@"其他按钮"; [oldParent addSubview:outside];
     [driver douyindisc_refresh:button];

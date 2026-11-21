@@ -14,6 +14,8 @@ static NSUInteger douyindisc_coverage(UIView *view) {
 static void douyindisc_clarityCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button,
                                    DouyinDiscSurface *surface, UIWindow *window) {
     DD_CHECK(CGImageGetWidth(driver.douyindisc_image.CGImage) == 512 && CGImageGetHeight(driver.douyindisc_image.CGImage) == 512, "clarity artwork preserves source resolution and shape");
+    DD_CHECK(surface.douyindisc_centerOverlay.contents && surface.douyindisc_centerOverlay.opacity==.7f, "isolated center ring alone is raised to seventy percent");
+    DD_CHECK(CGRectEqualToRect(surface.douyindisc_centerOverlay.bounds,surface.douyindisc_overlay.bounds) && surface.douyindisc_centerOverlay.superlayer==surface.douyindisc_canvas.layer, "both full-size layers use the same pixel-aligned local canvas");
     DD_CHECK(button.layer.mask != nil && surface.douyindisc_overlay.superlayer != button.layer, "native subtree masked while new artwork lives outside its compositing branch");
     CGPoint center = CGPointMake(CGRectGetMidX(button.bounds),CGRectGetMidY(button.bounds));
     DD_CHECK([button hitTest:center withEvent:nil] == button, "real UIKit hit test still resolves the visually masked native button");

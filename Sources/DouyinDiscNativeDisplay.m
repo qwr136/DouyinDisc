@@ -5,6 +5,7 @@
 #include "DouyinDiscPolicy.h"
 #include "DouyinDiscArtwork.inc"
 #include "DouyinDiscClearArtwork.inc"
+#include "DouyinDiscCenterRing.inc"
 #include "DouyinDiscLifecycle.inc"
 
 static UIImage *douyindisc_loadArtwork(void) {
@@ -13,6 +14,12 @@ static UIImage *douyindisc_loadArtwork(void) {
     NSData *clear = [NSData dataWithBytesNoCopy:(void *)douyindisc_clear_artwork length:sizeof(douyindisc_clear_artwork) freeWhenDone:NO];
     UIImage *image = [UIImage imageWithData:clear];
     return image.CGImage && CGSizeEqualToSize(image.size, fallback.size) ? image : fallback;
+}
+
+static UIImage *douyindisc_loadCenterRing(void) {
+    NSData *data = [NSData dataWithBytesNoCopy:(void *)douyindisccenterring length:sizeof(douyindisccenterring) freeWhenDone:NO];
+    UIImage *image=[UIImage imageWithData:data];
+    return image.CGImage && CGSizeEqualToSize(image.size, CGSizeMake(512,512)) ? image : nil;
 }
 
 static NSString *const douyindisc_spinKey = @"com.minis.douyindisc.continuous";
@@ -113,6 +120,7 @@ static UIView *douyindisc_scopedShare(UIControl *control) {
 @property (nonatomic, weak) UIView *douyindisc_scope;
 @property (nonatomic, weak) UIView *douyindisc_canvas;
 @property (nonatomic, strong) CALayer *douyindisc_overlay;
+@property (nonatomic, strong) CALayer *douyindisc_centerOverlay;
 @property (nonatomic, strong) NSArray<DouyinDiscVisual *> *douyindisc_visuals;
 - (void)douyindisc_restore;
 @end
@@ -120,6 +128,7 @@ static UIView *douyindisc_scopedShare(UIControl *control) {
 - (void)douyindisc_restore {
     [CATransaction begin]; [CATransaction setDisableActions:YES];
     [self.douyindisc_overlay removeFromSuperlayer];
+    [self.douyindisc_centerOverlay removeFromSuperlayer];
     for (DouyinDiscVisual *visual in self.douyindisc_visuals) [visual douyindisc_restore];
     [CATransaction commit];
     self.douyindisc_visuals = nil;
@@ -186,9 +195,16 @@ static void douyindisc_changed(UIControl *control) {
         surface.douyindisc_scope = control.superview;
         surface.douyindisc_canvas = canvas;
         surface.douyindisc_overlay = [CALayer layer];
-        surface.douyindisc_overlay.name = @"DouyinDiscContinuousArtwork";
+        surface.douyindisc_overlay.name = @"DouyinDiscOuterArtwork";
         surface.douyindisc_overlay.contents = (__bridge id)self.douyindisc_image.CGImage;
         surface.douyindisc_overlay.contentsGravity = kCAGravityResizeAspect;
+        UIImage *ring=douyindisc_loadCenterRing();
+        if (ring.CGImage) {
+            surface.douyindisc_centerOverlay=[CALayer layer];
+            surface.douyindisc_centerOverlay.name=@"DouyinDiscCenterRing";
+            surface.douyindisc_centerOverlay.contents=(__bridge id)ring.CGImage;
+            surface.douyindisc_centerOverlay.contentsGravity=kCAGravityResizeAspect;
+        }
         objc_setAssociatedObject(control, &douyindisc_leaseKey, surface, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     [CATransaction begin]; [CATransaction setDisableActions:YES];
@@ -219,14 +235,28 @@ static void douyindisc_changed(UIControl *control) {
     overlay.minificationFilter = kCAFilterTrilinear;
     overlay.magnificationFilter = kCAFilterLinear;
     if (overlay.superlayer != canvas.layer) [canvas.layer addSublayer:overlay];
+    CALayer *ring=surface.douyindisc_centerOverlay;
+    if (ring) {
+        ring.bounds=overlay.bounds; ring.position=overlay.position; ring.contentsScale=scale;
+        ring.opacity=0.7f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
+        if (ring.superlayer != canvas.layer) [canvas.layer addSublayer:ring];
+    }
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [overlay removeAnimationForKey:douyindisc_spinKey];
+        [ring removeAnimationForKey:douyindisc_spinKey];
     } else if (![overlay animationForKey:douyindisc_spinKey]) {
         CABasicAnimation *spin = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
         spin.fromValue = @0; spin.toValue = @(2 * M_PI); spin.duration = 7;
         spin.repeatCount = HUGE_VALF;
         spin.beginTime = [overlay convertTime:self.douyindisc_epoch fromLayer:nil];
         [overlay addAnimation:spin forKey:douyindisc_spinKey];
+        CABasicAnimation *centerSpin=[spin copy];
+        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];
+        if (ring) [ring addAnimation:centerSpin forKey:douyindisc_spinKey];
+    } else if (ring && ![ring animationForKey:douyindisc_spinKey]) {
+        CABasicAnimation *centerSpin=[overlay animationForKey:douyindisc_spinKey].copy;
+        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];
+        [ring addAnimation:centerSpin forKey:douyindisc_spinKey];
     }
     [CATransaction commit];
     if (douyindisc_diag_enabled) douyindisc_diag_note(control, surface, "refresh-after");

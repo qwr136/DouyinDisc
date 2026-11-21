@@ -139,13 +139,22 @@ class PolicyTests(unittest.TestCase):
                 previous = current
             return png, pixels
         original, before = decode('Sources/DouyinDiscArtwork.inc')
-        clear, after = decode('Sources/DouyinDiscClearArtwork.inc')
-        self.assertEqual(hashlib.sha256(clear).hexdigest(), '61024375a6c1382fec174bf82c238d96d9403a2fa31c06768a1005802f0ce3f9')
-        self.assertEqual(len(before), len(after))
-        for channel in (0, 1, 2):
-            self.assertEqual(before[channel::4], after[channel::4])
-        self.assertEqual(bytearray(min(255,a*2) for a in before[3::4]), after[3::4])
-        self.assertNotEqual(original, clear)
+        clear, outer = decode('Sources/DouyinDiscClearArtwork.inc')
+        ring_png, ring=decode('Sources/DouyinDiscCenterRing.inc')
+        self.assertEqual((len(clear),hashlib.sha256(clear).hexdigest()),(8327,'4e939abb82feb89df5d56d6405632448a4323f588b48f04ec5ca31b5ba4a9609'))
+        self.assertEqual((len(ring_png),hashlib.sha256(ring_png).hexdigest()),(5109,'dc8f0d996252c57e666932a6d5d98b9cad08ee9f9739f98132e14e033a0a30b8'))
+        self.assertEqual(len(before),len(outer)); self.assertEqual(len(before),len(ring))
+        for i in range(0,len(before),4):
+            source=before[i+3]; outer_alpha=outer[i+3]; ring_alpha=ring[i+3]
+            self.assertLessEqual(outer_alpha,min(255,source*2))
+            self.assertLessEqual(ring_alpha,min(255,source*2))
+            self.assertLessEqual(outer_alpha+ring_alpha,255)
+            if ring_alpha:
+                self.assertEqual(tuple(ring[i:i+3]),tuple(before[i:i+3]))
+            if outer_alpha:
+                self.assertEqual(tuple(outer[i:i+3]),tuple(before[i:i+3]))
+        self.assertEqual(sum(x>0 for x in ring[3::4]),9530)
+        self.assertEqual(sum(x>0 for x in outer[3::4]),27723)
 
     def test_native_visual_mask_is_owned_and_hit_alpha_unchanged(self):
         code = (ROOT / 'Sources/DouyinDiscNativeDisplay.m').read_text()
@@ -155,6 +164,11 @@ class PolicyTests(unittest.TestCase):
         self.assertNotIn('control.alpha =', code)
         self.assertNotIn('control.hidden =', code)
         self.assertIn('UIImage *image = douyindisc_loadArtwork()', code)
+        self.assertIn('#include "DouyinDiscCenterRing.inc"', code)
+        self.assertIn('ring.opacity=0.7f', code)
+        self.assertIn('overlay.opacity = 0.5f;', code)
+        self.assertIn('[ring addAnimation:centerSpin forKey:douyindisc_spinKey]', code)
+        self.assertIn('douyindisc_loadCenterRing()', code)
         caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()
         self.assertIn('isEqualToString:@"拍同款"', caption)
         self.assertIn('visited > 96', caption)

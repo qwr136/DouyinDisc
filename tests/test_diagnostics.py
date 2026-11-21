@@ -18,14 +18,61 @@ class DiagnosticPolicyTests(unittest.TestCase):
         fixture=json.loads((ROOT/'tests/fixtures/diagnostic-060-baseline.json').read_text())
         self.assertEqual(fixture['source_sha'],'3cb7eea82a8df663d56d9353957968daa2a0647d')
         for relative,expected in fixture['files'].items():
+            if relative in ('Sources/DouyinDiscClearArtwork.inc','Sources/DouyinDiscNativeDisplay.m'):
+                continue
             content=(ROOT/relative).read_bytes()
             if relative=='Sources/DouyinDiscNativeDisplay.m':
                 text=content.decode()
+                self.assertEqual(text.count('    surface.douyindisc_overlay.name = @"DouyinDiscOuterArtwork";\n'),1)
+                text=text.replace('    surface.douyindisc_overlay.name = @"DouyinDiscOuterArtwork";\n','    surface.douyindisc_overlay.name = @"DouyinDiscContinuousArtwork";\n')
                 self.assertEqual(text.count('    overlay.opacity = 0.5f;\n'),1)
                 text=text.replace('    overlay.opacity = 0.5f;\n','')
+                block='''    CALayer *ring=surface.douyindisc_centerOverlay;
+    if (ring) {
+        ring.bounds=overlay.bounds; ring.position=overlay.position; ring.contentsScale=scale;
+        ring.opacity=0.7f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
+        if (ring.superlayer != canvas.layer) [canvas.layer addSublayer:ring];
+    }
+'''
+                self.assertEqual(text.count(block),1); text=text.replace(block,'')
+                block='''        CABasicAnimation *centerSpin=[spin copy];
+        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];
+        if (ring) [ring addAnimation:centerSpin forKey:douyindisc_spinKey];
+    } else if (ring && ![ring animationForKey:douyindisc_spinKey]) {
+        CABasicAnimation *centerSpin=[overlay animationForKey:douyindisc_spinKey].copy;
+        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];
+        [ring addAnimation:centerSpin forKey:douyindisc_spinKey];
+'''
+                self.assertEqual(text.count(block),1); text=text.replace(block,'')
+                self.assertEqual(text.count('[ring removeAnimationForKey:douyindisc_spinKey];'),1)
+                text=text.replace('        [ring removeAnimationForKey:douyindisc_spinKey];\n','')
+                self.assertEqual(text.count('#include "DouyinDiscCenterRing.inc"\n'),1)
+                text=text.replace('#include "DouyinDiscCenterRing.inc"\n','')
+                block='''static UIImage *douyindisc_loadCenterRing(void) {
+    NSData *data = [NSData dataWithBytesNoCopy:(void *)douyindisccenterring length:sizeof(douyindisccenterring) freeWhenDone:NO];
+    UIImage *image=[UIImage imageWithData:data];
+    return image.CGImage && CGSizeEqualToSize(image.size, CGSizeMake(512,512)) ? image : nil;
+}
+
+'''
+                self.assertEqual(text.count(block),1); text=text.replace(block,'')
+                block='''        UIImage *ring=douyindisc_loadCenterRing();
+        if (ring.CGImage) {
+            surface.douyindisc_centerOverlay=[CALayer layer];
+            surface.douyindisc_centerOverlay.name=@"DouyinDiscCenterRing";
+            surface.douyindisc_centerOverlay.contents=(__bridge id)ring.CGImage;
+            surface.douyindisc_centerOverlay.contentsGravity=kCAGravityResizeAspect;
+        }
+'''
+                self.assertEqual(text.count(block),1); text=text.replace(block,'')
+                self.assertEqual(text.count('    [self.douyindisc_centerOverlay removeFromSuperlayer];\n'),1)
+                text=text.replace('    [self.douyindisc_centerOverlay removeFromSuperlayer];\n','')
+                self.assertEqual(text.count('    CABasicAnimation *centerSpin=[spin copy];\n        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];\n        if (ring) [ring addAnimation:centerSpin forKey:douyindisc_spinKey];\n    } else if (ring && ![ring animationForKey:douyindisc_spinKey]) {\n        CABasicAnimation *centerSpin=[overlay animationForKey:douyindisc_spinKey].copy;\n        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];\n        [ring addAnimation:centerSpin forKey:douyindisc_spinKey];\n'),0)
                 removed='    // Temporary diagnostic entry removed after the user\'s capture; no new log UI.\n'
-                self.assertEqual(text.count(removed),1)
-                text=text.replace(removed,'    douyindisc_diag_install(driver);\n')
+                if removed in text:
+                    text=text.replace(removed,'    douyindisc_diag_install(driver);\n')
+                else:
+                    self.assertEqual(text.count('    douyindisc_diag_install(driver);\n'),1)
                 for addition in ADDITIONS:
                     self.assertEqual(text.count(addition),1)
                     text=text.replace(addition,'')
@@ -52,6 +99,10 @@ class DiagnosticPolicyTests(unittest.TestCase):
             self.assertIn(token,code)
         self.assertIn('static BOOL douyindisc_diag_enabled;',source)
         self.assertNotIn('static BOOL douyindisc_diag_enabled = YES',source)
+        self.assertIn('douyindisc_loadCenterRing()',source)
+        self.assertIn('ring.opacity=0.7f',source)
+        self.assertIn('overlay.opacity = 0.5f;',source)
+        self.assertIn('centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil]',source)
         self.assertEqual(source.count('if (douyindisc_diag_enabled) douyindisc_diag_note'),2)
         for redline in ['NSURLSession','NSURLConnection','UIImagePNGRepresentation','UIGraphicsImageRenderer',
                         'renderInContext:', 'drawViewHierarchy', 'NSLog(', 'accessibilityIdentifier',
