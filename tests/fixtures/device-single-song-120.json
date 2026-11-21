@@ -1,0 +1,73 @@
+{
+  "capture_source_sha256": "4f717d04dfdca64d7ff1dd8dbba2ab7182c3602d2f0b75af25ec0435e35b116c",
+  "app_build": "399017",
+  "example_ids_are_ephemeral": true,
+  "host": {
+    "class": "AWEPlayInteractionSingleSongMusicStyleView",
+    "parent": 273,
+    "windowRect": [
+      385,
+      826.6667,
+      32,
+      32
+    ],
+    "alpha": 0.4436
+  },
+  "button": {
+    "class": "AWEMusicCoverButton",
+    "parent": 275,
+    "windowRect": [
+      385,
+      826.6667,
+      32,
+      32
+    ],
+    "alpha": 1
+  },
+  "circle": {
+    "class": "UIView",
+    "parent": 275,
+    "windowRect": [
+      385,
+      826.6667,
+      32,
+      32
+    ],
+    "clips": true
+  },
+  "plate": {
+    "class": "UIImageView",
+    "parent": 279,
+    "windowRect": [
+      385,
+      848.2424,
+      32,
+      10.4242
+    ],
+    "alpha": 1,
+    "layer": 280
+  },
+  "plate_layer": {
+    "background": [
+      0,
+      0,
+      0,
+      0.6
+    ],
+    "opacity": 1,
+    "mask": 0,
+    "contentsPresent": 0,
+    "shadowOpacity": 0,
+    "bounds": [
+      0,
+      0,
+      44,
+      14.3333
+    ],
+    "position": [
+      22,
+      36.8333
+    ]
+  },
+  "refresh_matched_plate": false
+}

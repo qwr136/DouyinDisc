@@ -41,6 +41,21 @@
 @end
 @implementation AWEPlayInteractionStyleOneMusicView
 @end
+@interface AWEPlayInteractionSingleSongMusicStyleView : UIView {
+@public AWEMusicCoverButton *_musicButton;
+    UILabel *_playInteractionLabel;
+    UIView *_playInteractionCircleMaskView;
+    UIImageView *_playInteractionMaskView;
+    UIView *_playInteractionColorMaskView;
+    UIImageView *_playInteractionIconView;
+}
+@end
+@implementation AWEPlayInteractionSingleSongMusicStyleView
+@end
+@interface DouyinDiscDerivedSingleSongMusicStyleView : AWEPlayInteractionSingleSongMusicStyleView
+@end
+@implementation DouyinDiscDerivedSingleSongMusicStyleView
+@end
 
 #import "../../Sources/DouyinDiscNativeDisplay.m"
 static NSUInteger douyindisc_checks;
@@ -96,6 +111,7 @@ static NSUInteger douyindisc_darkPixels(UIView *view) {
 }
 
 #include "DouyinDiscStyleOneCases.h"
+#include "DouyinDiscSingleSongCases.h"
 
 static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y,
                               AWEMusicCoverButton *button, UIControl **outShare) {
@@ -206,6 +222,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     [driver douyindisc_tick];
     DD_CHECK(unrelated.alpha == 1, "same text outside identified native fields untouched");
     share.hidden = YES;
+    [driver douyindisc_restore];
     [driver douyindisc_refresh:first];
     DD_CHECK(objc_getAssociatedObject(first, &douyindisc_leaseKey) == a, "temporary share disappearance does not revoke known surface");
     share.hidden = NO;
@@ -315,6 +332,22 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
             DD_CHECK(!objc_getAssociatedObject(incoming, &douyindisc_leaseKey), "listen renderer teardown revokes only its own surface");
             DD_CHECK(listen->_backgroundView.alpha == 1 && listen->_listenTitleLabel.alpha == 1 && listen->_listenIconView.alpha == 1, "listen siblings restored when its native owner is detached");
             DD_CHECK(incoming->_imageContentView.hidden && incoming->_imageBgView.hidden, "cleanup preserves native hidden flags");
+            [listen removeFromSuperview];
+            [driver douyindisc_resignedActive:nil];
+            AWEMusicCoverButton *singleButton=douyindisc_makeButton(art);
+            singleButton.accessibilityLabel=@"音乐详情";
+            UIControl *singleShare=[UIButton buttonWithType:UIButtonTypeSystem];
+            singleShare.accessibilityLabel=@"分享";
+            singleShare.frame=CGRectMake(0,0,44,44);
+            [singleButton.superview addSubview:singleShare];
+            UIView *singleRail=[[UIView alloc] initWithFrame:CGRectMake(window.bounds.size.width-60,window.bounds.size.height*.55,50,150)];
+            [window.rootViewController.view addSubview:singleRail];
+            singleShare.frame=CGRectMake(3,0,44,44);[singleRail addSubview:singleShare];
+            singleButton.frame=CGRectMake(3,72,44,44);[singleRail addSubview:singleButton];
+            [singleButton layoutSubviews];[singleShare layoutSubviews];
+            [driver douyindisc_refresh:singleButton];
+            douyindisc_singleSongCases(driver,singleButton);
+            [singleRail removeFromSuperview];
             [driver douyindisc_resignedActive:nil];
             [NSNotificationCenter.defaultCenter removeObserver:driver];
             [self douyindisc_finish];

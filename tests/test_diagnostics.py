@@ -105,9 +105,10 @@ class DiagnosticPolicyTests(unittest.TestCase):
                 start=text.index('// 0.80 device trace: StyleOne host view18')
                 stop=text.index('static NSArray<UIView *> *douyindisc_nativeVisuals(',start)
                 text=text[:start]+text[stop:]
-                addition='    [views addObjectsFromArray:douyindisc_nativeStyleOneVisuals(control)];\n'
-                self.assertEqual(text.count(addition),1)
-                content=text.replace(addition,'').encode()
+                for addition in ['    [views addObjectsFromArray:douyindisc_nativeStyleOneVisuals(control)];\n','    [views addObjectsFromArray:douyindisc_nativeSingleSongVisuals(control)];\n']:
+                    self.assertEqual(text.count(addition),1)
+                    text=text.replace(addition,'')
+                content=text.encode()
             with self.subTest(file=relative):
                 self.assertEqual(hashlib.sha256(content).hexdigest(),expected)
 
@@ -118,7 +119,7 @@ class DiagnosticPolicyTests(unittest.TestCase):
                       'self.douyindisc_started+20','if (!douyindisc_diag_enabled) return;',
                       'O_NOFOLLOW','0600','count>=3','recorded<24','count<64',
                       'NSMapTable weakToStrongObjectsMapTable','NSHashTable weakObjectsHashTable',
-                      '@"capture-end"','@"douyindisc-visual-v1"','@"dylibUUID"','@"1.20-diagnostic"']:
+                      '@"capture-end"','@"douyindisc-visual-v1"','@"dylibUUID"','@"1.40-diagnostic"']:
             self.assertIn(token,code)
         self.assertIn('static BOOL douyindisc_diag_enabled;',source)
         self.assertNotIn('static BOOL douyindisc_diag_enabled = YES',source)
@@ -162,15 +163,30 @@ class DiagnosticPolicyTests(unittest.TestCase):
         self.assertEqual(layers[21]['cornerRadius'],22)
         self.assertEqual(layers[52]['opacity'],1)
 
-    def test_precise_style_scope_opacity_and_diagnostic_entry_removed(self):
+    def test_new_single_song_trace_proves_second_presentation_style(self):
+        f=json.loads((ROOT/'tests/fixtures/device-single-song-120.json').read_text())
+        self.assertEqual(f['app_build'],'399017')
+        self.assertTrue(f['example_ids_are_ephemeral'])
+        self.assertEqual(f['host']['class'],'AWEPlayInteractionSingleSongMusicStyleView')
+        self.assertEqual(f['button']['parent'],275)
+        self.assertEqual(f['circle']['parent'],275)
+        self.assertEqual(f['plate']['parent'],279)
+        self.assertEqual(f['plate_layer']['background'],[0,0,0,.6])
+        self.assertFalse(f['refresh_matched_plate'])
+
+    def test_precise_style_scope_opacity_and_diagnostic_entry(self):
         native=(ROOT/'Sources/DouyinDiscNative.h').read_text()
-        block=native.split('static NSArray<UIView *> *douyindisc_nativeStyleOneVisuals(',1)[1].split('static NSArray<UIView *> *douyindisc_nativeVisuals(',1)[0]
-        for token in ['AWEPlayInteractionStyleOneMusicView','_musicButton','_playInteractionCircleMaskView',
-                      '_playInteractionMaskView','container.superview != host','view.superview != container','view.userInteractionEnabled']:
-            self.assertIn(token,block)
-        self.assertNotIn('setHidden:',block)
+        one=native.split('static NSArray<UIView *> *douyindisc_nativeStyleOneVisuals(',1)[1].split('static NSArray<UIView *> *douyindisc_nativeSingleSongVisuals(',1)[0]
+        single=native.split('static NSArray<UIView *> *douyindisc_nativeSingleSongVisuals(',1)[1].split('static NSArray<UIView *> *douyindisc_nativeVisuals(',1)[0]
+        self.assertIn('object_getClass(host)!=owner',single)
+        self.assertIn('container.userInteractionEnabled',single)
+        for block,name in [(one,'AWEPlayInteractionStyleOneMusicView'),(single,'AWEPlayInteractionSingleSongMusicStyleView')]:
+            for token in [name,'_musicButton','_playInteractionCircleMaskView','_playInteractionMaskView','view.userInteractionEnabled','return @[view]']:
+                self.assertIn(token,block)
+            self.assertNotIn('setHidden:',block)
         source=(ROOT/'Sources/DouyinDiscNativeDisplay.m').read_text()
         self.assertEqual(source.count('overlay.opacity = 0.5f;'),1)
+        self.assertIn('ring.opacity=0.9f',source)
         entry=source.split('void douyindisc_startDisplay(void) {',1)[1]
         self.assertIn('douyindisc_diag_install(driver)',entry)
         self.assertIn('Capture remains opt-in',entry)

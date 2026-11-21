@@ -57,6 +57,23 @@ static NSArray<UIView *> *douyindisc_nativeStyleOneVisuals(UIControl *control) {
     return @[view];
 }
 
+// 1.40 device trace: SingleSongStyle has the same clipped circle + UIImageView
+// plate, but a different exact host class and ivar owner than StyleOne.
+static NSArray<UIView *> *douyindisc_nativeSingleSongVisuals(UIControl *control) {
+    UIView *host=control.superview;
+    Class owner=NSClassFromString(@"AWEPlayInteractionSingleSongMusicStyleView");
+    if (!owner || object_getClass(host)!=owner ||
+        douyindisc_nativeObject(host,"AWEPlayInteractionSingleSongMusicStyleView","_musicButton","@\"AWEMusicCoverButton\"")!=control) return @[];
+    id circle=douyindisc_nativeObject(host,"AWEPlayInteractionSingleSongMusicStyleView","_playInteractionCircleMaskView","@\"UIView\"");
+    id plate=douyindisc_nativeObject(host,"AWEPlayInteractionSingleSongMusicStyleView","_playInteractionMaskView","@\"UIImageView\"");
+    if (![circle isKindOfClass:UIView.class] || [circle isKindOfClass:UIControl.class] ||
+        ![plate isKindOfClass:UIImageView.class] || [plate isKindOfClass:UIControl.class]) return @[];
+    UIView *container=circle,*view=plate;
+    if (container.superview!=host || container.userInteractionEnabled || view.superview!=container || view.userInteractionEnabled ||
+        [control isDescendantOfView:view] || [view isDescendantOfView:control]) return @[];
+    return @[view];
+}
+
 static NSArray<UIView *> *douyindisc_nativeVisuals(UIControl *control) {
     if (!douyindisc_nativeMusic(control)) return @[];
     NSMutableArray<UIView *> *views = [NSMutableArray array];
@@ -80,6 +97,7 @@ static NSArray<UIView *> *douyindisc_nativeVisuals(UIControl *control) {
         }
     }
     [views addObjectsFromArray:douyindisc_nativeStyleOneVisuals(control)];
+    [views addObjectsFromArray:douyindisc_nativeSingleSongVisuals(control)];
     return views;
 }
 #endif

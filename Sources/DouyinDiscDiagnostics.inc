@@ -336,7 +336,7 @@ static NSArray *douyindisc_diag_color(CGColorRef color) {
     self.douyindisc_started=CACurrentMediaTime(); self.douyindisc_deadline=self.douyindisc_started+20;
     self.douyindisc_wroteCaptureStart=NO;
     douyindisc_diag_enabled=YES;
-    [self douyindisc_append:@{@"event":@"capture-start",@"schema":@"douyindisc-visual-v1",@"plugin":@"1.20-diagnostic",
+    [self douyindisc_append:@{@"event":@"capture-start",@"schema":@"douyindisc-visual-v1",@"plugin":@"1.40-diagnostic",
         @"bundle":@"com.ss.iphone.ugc.Aweme",@"pid":@(getpid()),@"dylibUUID":douyindisc_diag_imageUUID(),
         @"appVersion":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown",
         @"appBuild":[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown",
