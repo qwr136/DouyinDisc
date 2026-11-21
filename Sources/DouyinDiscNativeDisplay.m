@@ -238,7 +238,7 @@ static void douyindisc_changed(UIControl *control) {
     CALayer *ring=surface.douyindisc_centerOverlay;
     if (ring) {
         ring.bounds=overlay.bounds; ring.position=overlay.position; ring.contentsScale=scale;
-        ring.opacity=0.7f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
+        ring.opacity=0.9f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
         if (ring.superlayer != canvas.layer) [canvas.layer addSublayer:ring];
     }
     if (UIAccessibilityIsReduceMotionEnabled()) {
@@ -333,5 +333,6 @@ void douyindisc_startDisplay(void) {
     douyindisc_driver = driver;
     if (!douyindisc_installLifecycle(douyindisc_changed)) { douyindisc_driver = nil; return; }
     [driver douyindisc_start];
-    // Temporary diagnostic entry removed after the user's capture; no new log UI.
+    // Capture remains opt-in; installation adds only the local button.
+    douyindisc_diag_install(driver);
 }

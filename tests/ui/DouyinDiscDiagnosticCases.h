@@ -30,6 +30,9 @@ static void douyindisc_diagnosticCases(DouyinDiscDisplay *driver, AWEMusicCoverB
     privateLabel.accessibilityLabel=@"PRIVATE_DIAG_SENTINEL_ACCESS";
     privateLabel.accessibilityIdentifier=@"PRIVATE_DIAG_SENTINEL_ID";
     [control addSubview:privateLabel];
+    [diagnostics douyindisc_active:nil];
+    [driver douyindisc_tick];
+    DD_CHECK(!douyindisc_diag_enabled && diagnostics.douyindisc_fd==-1, "diagnostic stays OFF after startup and automatic display refreshes");
     [diagnostics douyindisc_begin];
     __weak CALayer *freedLayer;
     NSNumber *oldID;

@@ -30,7 +30,7 @@ class DiagnosticPolicyTests(unittest.TestCase):
                 block='''    CALayer *ring=surface.douyindisc_centerOverlay;
     if (ring) {
         ring.bounds=overlay.bounds; ring.position=overlay.position; ring.contentsScale=scale;
-        ring.opacity=0.7f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
+        ring.opacity=0.9f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
         if (ring.superlayer != canvas.layer) [canvas.layer addSublayer:ring];
     }
 '''
@@ -68,11 +68,9 @@ class DiagnosticPolicyTests(unittest.TestCase):
                 self.assertEqual(text.count('    [self.douyindisc_centerOverlay removeFromSuperlayer];\n'),1)
                 text=text.replace('    [self.douyindisc_centerOverlay removeFromSuperlayer];\n','')
                 self.assertEqual(text.count('    CABasicAnimation *centerSpin=[spin copy];\n        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];\n        if (ring) [ring addAnimation:centerSpin forKey:douyindisc_spinKey];\n    } else if (ring && ![ring animationForKey:douyindisc_spinKey]) {\n        CABasicAnimation *centerSpin=[overlay animationForKey:douyindisc_spinKey].copy;\n        centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil];\n        [ring addAnimation:centerSpin forKey:douyindisc_spinKey];\n'),0)
-                removed='    // Temporary diagnostic entry removed after the user\'s capture; no new log UI.\n'
-                if removed in text:
-                    text=text.replace(removed,'    douyindisc_diag_install(driver);\n')
-                else:
-                    self.assertEqual(text.count('    douyindisc_diag_install(driver);\n'),1)
+                install='    douyindisc_diag_install(driver);\n'
+                self.assertEqual(text.count(install),1)
+                text=text.replace(install,'    // Capture remains opt-in; installation adds only the local button.\n')
                 for addition in ADDITIONS:
                     self.assertEqual(text.count(addition),1)
                     text=text.replace(addition,'')
@@ -95,12 +93,12 @@ class DiagnosticPolicyTests(unittest.TestCase):
                       'self.douyindisc_started+20','if (!douyindisc_diag_enabled) return;',
                       'O_NOFOLLOW','0600','count>=3','recorded<24','count<64',
                       'NSMapTable weakToStrongObjectsMapTable','NSHashTable weakObjectsHashTable',
-                      '@"capture-end"','@"douyindisc-visual-v1"','@"dylibUUID"']:
+                      '@"capture-end"','@"douyindisc-visual-v1"','@"dylibUUID"','@"1.20-diagnostic"']:
             self.assertIn(token,code)
         self.assertIn('static BOOL douyindisc_diag_enabled;',source)
         self.assertNotIn('static BOOL douyindisc_diag_enabled = YES',source)
         self.assertIn('douyindisc_loadCenterRing()',source)
-        self.assertIn('ring.opacity=0.7f',source)
+        self.assertIn('ring.opacity=0.9f',source)
         self.assertIn('overlay.opacity = 0.5f;',source)
         self.assertIn('centerSpin.beginTime=[ring convertTime:self.douyindisc_epoch fromLayer:nil]',source)
         self.assertEqual(source.count('if (douyindisc_diag_enabled) douyindisc_diag_note'),2)
@@ -149,5 +147,7 @@ class DiagnosticPolicyTests(unittest.TestCase):
         source=(ROOT/'Sources/DouyinDiscNativeDisplay.m').read_text()
         self.assertEqual(source.count('overlay.opacity = 0.5f;'),1)
         entry=source.split('void douyindisc_startDisplay(void) {',1)[1]
-        self.assertNotIn('douyindisc_diag_install(driver)',entry)
+        self.assertIn('douyindisc_diag_install(driver)',entry)
+        self.assertIn('Capture remains opt-in',entry)
+        self.assertNotIn('douyindisc_diag_begin()',entry)
         self.assertNotIn('control.alpha =',source)

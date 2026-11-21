@@ -31,7 +31,7 @@ static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverBut
     DD_CHECK(douyindisc_darkPixels(host)==0, "actual UIKit raster removes the trace-shaped external black half-disc");
     DD_CHECK(host.alpha==1 && host->_playInteractionCircleMaskView.alpha==1 && button.alpha==1, "native host, circle clip and button are not broadly hidden");
     DD_CHECK(host->_playInteractionLabel.alpha==0 && [host->_playInteractionLabel.text isEqualToString:@"玩同款"], "existing exact caption suppression remains active without rewriting native text");
-    DD_CHECK(surface.douyindisc_overlay.opacity==.5f && surface.douyindisc_centerOverlay.opacity==.7f && surface.douyindisc_overlay.superlayer==surface.douyindisc_canvas.layer && surface.douyindisc_overlay.superlayer!=button.layer, "only the outer disc stays fifty percent while the separate center ring is seventy percent");
+    DD_CHECK(surface.douyindisc_overlay.opacity==.5f && surface.douyindisc_centerOverlay.opacity==.9f && surface.douyindisc_overlay.superlayer==surface.douyindisc_canvas.layer && surface.douyindisc_overlay.superlayer!=button.layer, "only the outer disc stays fifty percent while the separate center ring is seventy percent");
     DD_CHECK([button hitTest:CGPointMake(22,22) withEvent:nil]==button, "fifty percent custom image and plate suppression retain actual native hit testing");
     CABasicAnimation *spin=(CABasicAnimation *)[surface.douyindisc_overlay animationForKey:douyindisc_spinKey];
     CABasicAnimation *ringSpin=(CABasicAnimation *)[surface.douyindisc_centerOverlay animationForKey:douyindisc_spinKey];
