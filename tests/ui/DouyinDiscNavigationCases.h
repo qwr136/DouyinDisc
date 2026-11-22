@@ -12,6 +12,7 @@ static NSUInteger douyindisc_navigationDarkPixels(UIView *view) {
 }
 
 extern BOOL douyindisc_uiTestPickerTitleStable(UIImage *image);
+extern void douyindisc_uiTestSetNavigationImage(NSString *identifier, UIImage *image, BOOL enabled);
 
 static void douyindisc_navigationCases(UIWindow *window) {
     NSArray<NSDictionary<NSString *,id> *> *items=douyindisc_navigationItems();
@@ -37,9 +38,10 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DD_CHECK(originalLabelAlpha>0 && topView->_titleLabel.alpha==1,"no imported image means original text remains visible");
     DD_CHECK(![textView isKindOfClass:UIControl.class] && ![topView isKindOfClass:UIControl.class],"overlays operate on verified text-render views only");
     UIImage *testIcon=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemBlueColor)];
+    douyindisc_uiTestSetNavigationImage(@"bottom_home",testIcon,YES);
+    douyindisc_apply(textView);
     NSUInteger darkBefore=douyindisc_navigationDarkPixels(textView);
-    DouyinDiscTextLease *textLease=douyindisc_installTextIcon(textView,textView->_label,@"bottom_home",testIcon,1);
-    NSLog(@"NAVDBG lease=%d alpha=%.3f darkBefore=%lu image=%d host=%d",textLease!=nil,textView->_label.alpha,(unsigned long)darkBefore,testIcon.CGImage!=NULL,textLease.douyindisc_overlay.superview==textView);
+    DouyinDiscTextLease *textLease=[douyindisc_leases objectForKey:textView->_label];
     NSUInteger darkAfter=douyindisc_navigationDarkPixels(textView);
     DD_CHECK(textLease!=nil,"navigation label receives an image lease");
     DD_CHECK(textView->_label.alpha==0,"native label alpha is hidden under the replacement image");
@@ -49,10 +51,10 @@ static void douyindisc_navigationCases(UIWindow *window) {
     CGPoint expectedCenter=[textView->_label convertPoint:CGPointMake(CGRectGetMidX(labelTextRect),CGRectGetMidY(labelTextRect)) toView:textView];
     CGRect overlayFrame=textLease.douyindisc_overlay.frame;
     CGPoint overlayCenter=CGPointMake(CGRectGetMidX(overlayFrame),CGRectGetMidY(overlayFrame));
-    DD_CHECK_NS(YES,[NSString stringWithFormat:@"NAVDBG textRect=%@ expected=(%.2f,%.2f) overlay=(%.2f,%.2f) alpha=%.2f dark=%lu/%lu",NSStringFromCGRect(labelTextRect),expectedCenter.x,expectedCenter.y,overlayCenter.x,overlayCenter.y,textView->_label.alpha,(unsigned long)darkAfter,(unsigned long)darkBefore]);
     DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<1.0,"replacement image follows the exact UIKit text-render coordinates");
     DD_CHECK(textLease.douyindisc_overlay.bounds.size.width<=textView->_label.bounds.size.width && textLease.douyindisc_overlay.bounds.size.height<=textView->_label.bounds.size.height,"replacement image fits inside the native label frame");
-    douyindisc_removeIcon(textView->_label);
+    douyindisc_uiTestSetNavigationImage(@"bottom_home",nil,NO);
+    douyindisc_apply(textView);
     NSUInteger darkRestored=douyindisc_navigationDarkPixels(textView);
     DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && darkRestored==darkBefore,"disabling image restores original label visibility and glyph pixels");
     [feed removeFromSuperview];

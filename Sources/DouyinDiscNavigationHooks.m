@@ -12,6 +12,8 @@
 @property(nonatomic,weak) UIView *douyindisc_textView;
 @property(nonatomic,copy) NSString *douyindisc_identifier;
 @property(nonatomic) CGFloat douyindisc_originalAlpha;
+@property(nonatomic,strong) CALayer *douyindisc_originalMask;
+@property(nonatomic,strong) CAShapeLayer *douyindisc_ownedMask;
 @property(nonatomic,weak) UIView *douyindisc_overlayHost;
 @property(nonatomic,strong) UIImageView *douyindisc_overlay;
 @end

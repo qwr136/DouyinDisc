@@ -358,6 +358,20 @@ DouyinDiscNavigationStore *douyindisc_uiTestCreateStore(NSURL *directory) {
     return [[DouyinDiscNavigationStore alloc] initWithDouyinDiscDirectory:directory];
 }
 
+void douyindisc_uiTestSetNavigationImage(NSString *identifier, UIImage *image, BOOL enabled) {
+    if (!NSThread.isMainThread || !douyindisc_validIdentifier(identifier)) return;
+    DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];
+    NSMutableDictionary *config=[store.douyindisc_config mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSMutableDictionary *entry=[config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
+    entry[@"enabled"]=@(enabled);
+    entry[@"opacity"]=@1;
+    if(image){entry[@"image"]=@"fixture.png";store.douyindisc_images[identifier]=image;}
+    else { [entry removeObjectForKey:@"image"];[store.douyindisc_images removeObjectForKey:identifier]; }
+    config[identifier]=entry;
+    store.douyindisc_config=[config copy];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
+}
+
 BOOL douyindisc_uiTestCanDecodeImageData(NSData *data) {
     return douyindisc_decodeImage(data, NO, NULL).CGImage != NULL;
 }
