@@ -375,7 +375,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             }
             if ([self.douyindisc_imageGeneration[key] unsignedIntegerValue] != generation) {
                 [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
-                if([self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)])[self.douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
+                if([self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)])[self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
                 if (completion) completion(douyindisc_error(5, @"该图片导入已被更新操作取消。"));
                 return;
             }
