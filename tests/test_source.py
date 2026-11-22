@@ -17,6 +17,23 @@ SOURCE = Path('Sources/DouyinDiscEntry.m')
 
 
 class SourceContractTests(unittest.TestCase):
+    def test_navigation_replacement_and_import_contracts(self):
+        hooks=(ROOT/'Sources/DouyinDiscNavigationHooks.m').read_text(encoding='utf-8')
+        panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text(encoding='utf-8')
+        store=(ROOT/'Sources/DouyinDiscNavigationStore.m').read_text(encoding='utf-8')
+        host=(ROOT/'tests/ui/DouyinDiscNavigationCases.h').read_text(encoding='utf-8')
+        self.assertIn('[l convertRect:icon toView:host]',hooks)
+        self.assertIn('lease.douyindisc_ownedMask.path=empty',hooks)
+        self.assertIn('douyindisc_originalMask',hooks)
+        self.assertIn('[row douyindisc_setHasImage:YES]',panel)
+        self.assertIn('[self.douyindisc_imageButton setImage:nil forState:UIControlStateNormal]',panel)
+        self.assertIn('douyindisc_decodeImageData:data',panel)
+        self.assertIn('NSFileCoordinator',panel)
+        self.assertIn('!hasSize||!size||!size.unsignedLongLongValue',panel)
+        self.assertIn('douyindisc_uiTestPickerTitleStable',host)
+        self.assertIn('original glyph pixels',host)
+        self.assertIn('CGImageSourceCreateWithData',store)
+
     def test_static_policy_on_generated_project(self):
         meta = json.loads((ROOT / 'tweak.json').read_text(encoding='utf-8'))
         self.assertEqual(check_project(ROOT, meta), [])

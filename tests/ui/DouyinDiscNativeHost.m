@@ -118,6 +118,7 @@
 #import "../../Sources/DouyinDiscNativeDisplay.m"
 static NSUInteger douyindisc_checks;
 static NSMutableArray<NSString *> *douyindisc_results;
+static BOOL douyindisc_storeTestsStarted;
 static void douyindisc_writeProgress(void) {
     NSString *path = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"uikit-report.txt"];
     [[douyindisc_results componentsJoinedByString:@"\n"] writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
@@ -131,6 +132,9 @@ static void douyindisc_writeProgress(void) {
 #import "../../Sources/DouyinDiscNavigationHooks.m"
 #include "DouyinDiscClarityCases.h"
 #include "DouyinDiscCaptionCases.h"
+#if defined(DOUYINDISC_UI_TEST)
+#include "DouyinDiscNavigationStoreCases.h"
+#endif
 #include "DouyinDiscNavigationCases.h"
 
 static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button);
@@ -417,12 +421,14 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     }];
 }
 - (void)douyindisc_finish {
-    NSUInteger failures = 0;
-    for (NSString *line in douyindisc_results) if ([line hasPrefix:@"FAIL"]) ++failures;
-    [douyindisc_results addObject:[NSString stringWithFormat:@"UIKit host: %lu checks, %lu failures", (unsigned long)douyindisc_checks, (unsigned long)failures]];
-    douyindisc_writeProgress();
-    NSLog(@"%@", douyindisc_results.lastObject);
-    exit(failures ? 1 : 0);
+    if(douyindisc_storeTestsStarted)return;
+    douyindisc_storeTestsStarted=YES;
+    douyindisc_navigationStoreCases(^{
+        NSUInteger failures=0;
+        for(NSString *line in douyindisc_results)if([line hasPrefix:@"FAIL"])++failures;
+        [douyindisc_results addObject:[NSString stringWithFormat:@"UIKit host: %lu checks, %lu failures",(unsigned long)douyindisc_checks,(unsigned long)failures]];
+        douyindisc_writeProgress();NSLog(@"%@",douyindisc_results.lastObject);exit(failures?1:0);
+    });
 }
 @end
 int main(int argc, char **argv) {

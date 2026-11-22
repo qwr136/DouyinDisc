@@ -35,7 +35,7 @@ def main():
             (app / 'Info.plist').write_bytes(plistlib.dumps(meta))
             sdk = run('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path')
             run('xcrun', '--sdk', 'iphonesimulator', 'clang', '-target', 'arm64-apple-ios15.0-simulator',
-                '-isysroot', sdk, '-fobjc-arc', '-Wall', '-Wextra', '-framework', 'Foundation',
+                '-isysroot', sdk, '-fobjc-arc', '-DDOUYINDISC_UI_TEST=1', '-Wall', '-Wextra', '-framework', 'Foundation',
                 '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',
                 '-framework', 'ImageIO', '-framework', 'PhotosUI', '-framework', 'UniformTypeIdentifiers',
                 'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c',
@@ -69,7 +69,8 @@ def main():
             text = source.read_text()
             result.write_text(text)
             print(text)
-            if process.returncode or 'FAIL:' in text or '133 checks, 0 failures' not in text:
+            lines=[line for line in text.splitlines() if line.startswith('UIKit host: ')]
+            if process.returncode or 'FAIL:' in text or len(lines)!=1 or not __import__('re').fullmatch(r'UIKit host: [1-9][0-9]* checks, 0 failures',lines[0]):
                 raise RuntimeError('UIKit host checks failed or incomplete')
     finally:
         subprocess.run(['xcrun', 'simctl', 'shutdown', device], capture_output=True)

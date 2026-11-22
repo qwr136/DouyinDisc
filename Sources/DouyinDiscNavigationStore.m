@@ -70,24 +70,21 @@ static BOOL douyindisc_validConfig(id value) {
 }
 
 static UIImage *douyindisc_decodeImage(NSData *data, BOOL requirePNG, NSError **error) {
-    if (!data.length || data.length > 12 * 1024 * 1024) {
-        if (error) *error = douyindisc_error(2, @"图片必须大于 0 字节且不超过 12 MiB。");
+    if (!data.length || data.length > 64 * 1024 * 1024) {
+        if (error) *error = douyindisc_error(2, @"图片必须大于 0 字节且不超过 64 MiB。");
         return nil;
     }
     CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
-    if (!source || CGImageSourceGetCount(source) != 1) {
+    if (!source || CGImageSourceGetCount(source) == 0) {
         if (source) CFRelease(source);
-        if (error) *error = douyindisc_error(2, @"图片无法读取；仅支持单帧 PNG、JPEG 或 HEIC。");
+        if (error) *error = douyindisc_error(2, @"系统无法解码该图片文件。");
         return nil;
     }
     CFStringRef type = CGImageSourceGetType(source);
     NSString *typeName = type ? (__bridge NSString *)type : @"";
-    BOOL accepted = requirePNG ? [typeName isEqualToString:douyindisc_utiPNG] :
-        ([typeName isEqualToString:douyindisc_utiPNG] || [typeName isEqualToString:douyindisc_utiJPEG] ||
-         [typeName isEqualToString:douyindisc_utiHEIC] || [typeName isEqualToString:douyindisc_utiHEIF]);
-    if (!accepted) {
+    if (requirePNG && ![typeName isEqualToString:douyindisc_utiPNG]) {
         CFRelease(source);
-        if (error) *error = douyindisc_error(2, @"仅支持单帧 PNG、JPEG 或 HEIC 图片。");
+        if (error) *error = douyindisc_error(2, @"缓存图片格式无效。");
         return nil;
     }
     NSDictionary *options = @{
@@ -182,6 +179,11 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSDictionary *stored = self.douyindisc_config[identifier];
     NSNumber *opacity = self.douyindisc_previewOpacity[identifier] ?: stored[@"opacity"] ?: @1;
     return @{@"enabled":stored[@"enabled"] ?: @NO, @"opacity":opacity, @"hasImage":@(stored[@"image"] != nil)};
+}
+
+- (UIImage *)douyindisc_decodeImageData:(NSData *)data {
+    NSError *error=nil;
+    return douyindisc_decodeImage(data,NO,&error);
 }
 
 - (UIImage *)douyindisc_imageForIdentifier:(NSString *)identifier {
@@ -354,6 +356,10 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 DouyinDiscNavigationStore *douyindisc_uiTestCreateStore(NSURL *directory) {
     NSAssert(NSThread.isMainThread && directory.isFileURL, @"UI_TEST store requires a local directory on main thread");
     return [[DouyinDiscNavigationStore alloc] initWithDouyinDiscDirectory:directory];
+}
+
+BOOL douyindisc_uiTestCanDecodeImageData(NSData *data) {
+    return douyindisc_decodeImage(data, NO, NULL).CGImage != NULL;
 }
 
 void douyindisc_uiTestFailNextCommit(DouyinDiscNavigationStore *store) {
