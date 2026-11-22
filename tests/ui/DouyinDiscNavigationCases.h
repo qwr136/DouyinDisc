@@ -39,6 +39,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     UIImage *testIcon=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemBlueColor)];
     NSUInteger darkBefore=douyindisc_navigationDarkPixels(textView);
     DouyinDiscTextLease *textLease=douyindisc_installTextIcon(textView,textView->_label,@"bottom_home",testIcon,1);
+    NSLog(@"NAVDBG lease=%d alpha=%.3f darkBefore=%lu image=%d host=%d",textLease!=nil,textView->_label.alpha,(unsigned long)darkBefore,testIcon.CGImage!=NULL,textLease.douyindisc_overlay.superview==textView);
     NSUInteger darkAfter=douyindisc_navigationDarkPixels(textView);
     DD_CHECK(textLease && textView->_label.alpha==0 && darkBefore>0,"custom icon hides all original label glyphs");
     DD_CHECK(darkAfter==0,"custom icon fully replaces original dark glyph pixels");
