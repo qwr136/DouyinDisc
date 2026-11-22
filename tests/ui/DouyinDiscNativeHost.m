@@ -71,7 +71,7 @@ static void douyindisc_writeProgress(void) {
 } while (0)
 
 #include "DouyinDiscClarityCases.h"
-#include "DouyinDiscDiagnosticCases.h"
+#include "DouyinDiscCaptionCases.h"
 
 static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button);
 
@@ -181,7 +181,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     a = objc_getAssociatedObject(first, &douyindisc_leaseKey);
     douyindisc_styleOneCases(driver,first);
     a = objc_getAssociatedObject(first, &douyindisc_leaseKey);
-    douyindisc_diagnosticCases(driver,first);
+    douyindisc_captionCases(driver,first);
     AWEMusicCoverButton *incoming = douyindisc_makeButton(art);
     douyindisc_item(window, scroll, window.bounds.size.height, incoming, NULL);
     [incoming layoutSubviews];
@@ -313,7 +313,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(driver.douyindisc_controls.count < 64, "known-control registry remains bounded");
 
     NSLog(@"DD_PHASE share-init");
-    UIActivityViewController *sheet = [(DouyinDiscDiagnostics *)douyindisc_diagnostics douyindisc_exportController];
+    UIActivityViewController *sheet = [[UIActivityViewController alloc] initWithActivityItems:@[@"share-sheet-regression"] applicationActivities:nil];
     sheet.popoverPresentationController.sourceView = incoming;
     [window.rootViewController presentViewController:sheet animated:NO completion:^{
         DD_CHECK(window.rootViewController.presentedViewController == sheet, "real UIKit share sheet presented");

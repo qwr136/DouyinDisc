@@ -172,10 +172,9 @@ class PolicyTests(unittest.TestCase):
         self.assertIn('[ring addAnimation:centerSpin forKey:douyindisc_spinKey]', code)
         self.assertIn('douyindisc_loadCenterRing()', code)
         startup=code.split('void douyindisc_startDisplay(void) {',1)[1]
-        self.assertIn('douyindisc_diag_install(driver);',startup)
-        self.assertIn('Capture remains opt-in',startup)
-        self.assertNotIn('douyindisc_diag_begin()',startup)
-        caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()
+        self.assertNotIn('douyindisc_diag_install(driver);',startup)
+        self.assertNotIn('douyindisc_diag_',code)
+        self.assertIn('[driver douyindisc_start];',startup)
         caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()
         self.assertIn('isEqualToString:@"拍同款"', caption)
         self.assertIn('visited > 96', caption)
