@@ -61,6 +61,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DouyinDiscTextLease *topLease=[douyindisc_leases objectForKey:topView->_titleLabel];
     CGRect topItemRect=[itemView convertRect:itemView.bounds toView:topView];
     DD_CHECK(topLease && fabs(CGRectGetMidX(topLease.douyindisc_overlay.frame)-CGRectGetMidX(topItemRect))<.5 && fabs(CGRectGetMidY(topLease.douyindisc_overlay.frame)-CGRectGetMidY(topItemRect))<.5,"top replacement aligns to the native tab item center not its offset text child");
+    DD_CHECK(topLease.douyindisc_overlay.bounds.size.width<=topView->_titleLabel.bounds.size.width && topLease.douyindisc_overlay.bounds.size.height<=topView->_titleLabel.bounds.size.height,"top replacement scales within the original title text slot");
     douyindisc_uiTestSetNavigationImage(@"bottom_home",nil,NO);
     douyindisc_apply(textView);
     DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && [textView->_label.text isEqualToString:@"首页"],"disabling image restores original label visibility and glyph content");
