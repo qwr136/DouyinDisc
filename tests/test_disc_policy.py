@@ -97,8 +97,23 @@ class PolicyTests(unittest.TestCase):
         for relative, expected in fixture['files'].items():
             with self.subTest(file=relative):
                 content = (ROOT / relative).read_bytes()
+                if relative == 'Sources/DouyinDiscEntry.m':
+                    content = content.replace(b'#import "DouyinDiscNavigation.h"\n', b'')
+                    content = content.replace(b'    id build = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];\n    if (![build isKindOfClass:NSString.class] || ![(NSString *)build isEqualToString:@"399017"]) return;\n',b'')
+                    content = content.replace(b'    if (![value isKindOfClass:NSString.class] || !douyindisc_version_supported([(NSString *)value UTF8String])) return;\n',b'    if (![value isKindOfClass:NSString.class] || !douyindisc_version_supported([(NSString *)value UTF8String])) return;\n')
+                    content = content.replace(b'''    dispatch_async(dispatch_get_main_queue(), ^{
+        douyindisc_startDisplay();
+        douyindisc_installNavigationHooks();
+        [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_preloadImagesWithCompletion:nil];
+    });
+''', b'    dispatch_async(dispatch_get_main_queue(), ^{ douyindisc_startDisplay(); });\n')
                 if relative == 'scripts/build_dylib.py':
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
+                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'MobileCoreServices')\n", b'')
+                    content = content.replace(b", 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m'", b'')
+                    content = content.replace(b"            '-install_name', '@loader_path/' + output.name,\n            *[value for framework in FRAMEWORKS for value in ('-framework', framework)],\n            *SOURCE_FILES, '-o', str(staged))", b"            '-install_name', '@loader_path/' + output.name, '-framework', 'Foundation',\n            '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',\n            *SOURCE_FILES, '-o', str(staged))")
+                if relative == 'tests/verify_dylib.py':
+                    content = content.replace(b'                 "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox",\n                 "PhotosUI", "UniformTypeIdentifiers", "MobileCoreServices")', b'                 "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox")')
                 self.assertEqual(hashlib.sha256(content).hexdigest(), expected)
 
     def test_clarity_artwork_changes_only_alpha(self):

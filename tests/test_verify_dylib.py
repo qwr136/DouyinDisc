@@ -158,6 +158,17 @@ class VerifyDylibTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'special-slot hash mismatch'):
             self.verify(patch(req, len(req) - 9, 'B', 1))
 
+    def test_approved_navigation_system_dependencies(self):
+        from verify_dylib import inspect_dylib
+        approved=("/System/Library/Frameworks/ImageIO.framework/ImageIO",
+                 "/System/Library/Frameworks/PhotosUI.framework/PhotosUI",
+                 "/System/Library/Frameworks/MobileCoreServices.framework/MobileCoreServices")
+        for name in approved:
+            with self.subTest(name=name):
+                data=specimen(deps=((0xC,LIB_SYSTEM),(0xC,FOUNDATION),(0xC,name)))
+                self.artifact.write_bytes(data)
+                self.assertIn(name,inspect_dylib(self.artifact)['dependencies'])
+
     def test_manifest_matching_and_cli_failure(self):
         path = self.project / 'tweak.json'
         path.write_text(json.dumps(dict(target_type='dylib', scheme='trollfools', name='DouyinDisc',

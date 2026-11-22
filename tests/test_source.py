@@ -29,11 +29,13 @@ class SourceContractTests(unittest.TestCase):
             for relative, edit, message in (
                 (SOURCE, lambda src: '/*' + src + '*/', 'contains comments'),
                 (SOURCE, lambda src: src.replace('return;', ''), 'hard-guarded'),
+                (SOURCE, lambda src: src.replace('isEqualToString:@"399017"', 'isEqualToString:@"999999"'), 'documented target build'),
                 (SOURCE, lambda src: src.replace('douyindisc_entry', 'other_entry'), 'hard-guarded'),
                 (SOURCE, lambda src: src.replace('@"com.ss.iphone.ugc.Aweme"', '@"com.example.other"'), 'hard-guarded'),
                 (SOURCE, lambda src: '#import <substrate.h>\n' + src, 'jailbreak header'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace('arm64-apple-ios', 'arm64e-apple-ios'), 'TARGET differs'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace("*SOURCE_FILES, '-o'", "*SOURCE_FILES, '-lsubstrate', '-o'"), 'Apple-only'),
+                (Path('scripts/build_dylib.py'), lambda src: src.replace("'PhotosUI'", "'Substrate'"), 'framework list'),
                 (Path('build.sh'), lambda src: src.replace('\npython3 scripts/toolchain.py', '\n# python3 scripts/toolchain.py'), 'verify before'),
             ):
                 with self.subTest(file=relative, message=message):
@@ -107,11 +109,13 @@ printf '%s\\n' "$stage" >> order
                     self.assertFalse(list(artifact.parent.glob('.build.*')))
                     if phase == 'offline':
                         self.assertIn('truncated Mach-O header', proc.stderr)
+            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO','PhotosUI','MobileCoreServices') for value in ('-framework',framework)]
+            expected_sources = [str(SOURCE), 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m',
+                                'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
+                                'Sources/DouyinDiscNavigationHooks.m']
             self.assertEqual((root / 'compile.args').read_text().splitlines()[:-1],
                              ['--sdk', 'iphoneos', 'clang', '-target', 'arm64-apple-ios15.0',
                               '-isysroot', str(sdk), '-dynamiclib', '-fobjc-arc', '-fvisibility=hidden',
                               '-Wall', '-Wextra', '-install_name', '@loader_path/DouyinDisc.dylib',
-                              '-framework', 'Foundation', '-framework', 'UIKit', '-framework', 'QuartzCore',
-                              '-framework', 'CoreGraphics', str(SOURCE), 'Sources/DouyinDiscPolicy.c',
-                              'Sources/DouyinDiscNativeDisplay.m', '-o'])
+                              *expected_frameworks, *expected_sources, '-o'])
             self.assertEqual(verify_dylib(artifact, project=root)['architecture'], 'arm64')

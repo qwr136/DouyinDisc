@@ -37,7 +37,10 @@ def main():
             run('xcrun', '--sdk', 'iphonesimulator', 'clang', '-target', 'arm64-apple-ios15.0-simulator',
                 '-isysroot', sdk, '-fobjc-arc', '-Wall', '-Wextra', '-framework', 'Foundation',
                 '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',
-                'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c', '-o', str(app / 'DouyinDiscHost'))
+                '-framework', 'ImageIO', '-framework', 'PhotosUI', '-framework', 'MobileCoreServices',
+                'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c',
+                'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
+                'Sources/DouyinDiscNavigationHooks.m', '-o', str(app / 'DouyinDiscHost'))
             run('/usr/bin/codesign', '--force', '--sign', '-', str(app))
             run('xcrun', 'simctl', 'boot', device)
             run('xcrun', 'simctl', 'bootstatus', device, '-b', timeout=300)
@@ -66,7 +69,7 @@ def main():
             text = source.read_text()
             result.write_text(text)
             print(text)
-            if process.returncode or 'FAIL:' in text or '114 checks, 0 failures' not in text:
+            if process.returncode or 'FAIL:' in text or '139 checks, 0 failures' not in text:
                 raise RuntimeError('UIKit host checks failed or incomplete')
     finally:
         subprocess.run(['xcrun', 'simctl', 'shutdown', device], capture_output=True)

@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NAME = 'DouyinDisc'
 IDENTIFIER = 'com.minis.douyindisc'
-SOURCE_FILES = ('Sources/DouyinDiscEntry.m', 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m')
+FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'MobileCoreServices')
+SOURCE_FILES = ('Sources/DouyinDiscEntry.m', 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m', 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m')
 SDK_DIR = 'iPhoneOS16.5.sdk'
 TARGET = 'arm64-apple-ios15.0'
 
@@ -46,8 +47,8 @@ def build():
         run('/usr/bin/xcrun', '--sdk', 'iphoneos', 'clang',
             '-target', TARGET, '-isysroot', str(sdk), '-dynamiclib', '-fobjc-arc',
             '-fvisibility=hidden', '-Wall', '-Wextra',
-            '-install_name', '@loader_path/' + output.name, '-framework', 'Foundation',
-            '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',
+            '-install_name', '@loader_path/' + output.name,
+            *[value for framework in FRAMEWORKS for value in ('-framework', framework)],
             *SOURCE_FILES, '-o', str(staged))
         run('/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', '--identifier', IDENTIFIER, str(staged))
         run('/usr/bin/codesign', '--verify', '--strict', str(staged))

@@ -1,6 +1,62 @@
 #import <UIKit/UIKit.h>
+#import "../../Sources/DouyinDiscNavigation.h"
 
-// These runtime doubles retain the independently extracted 399017 ivar types.
+@protocol AWENormalModeTabBarInnerView @end
+@interface AWENormalModeTabBar : UIView
+@end
+@implementation AWENormalModeTabBar
+@end
+@interface AWENormalModeTabBarGeneralButton : UIButton { @public UIView<AWENormalModeTabBarInnerView> *_innerView; }
+@end
+@implementation AWENormalModeTabBarGeneralButton
+- (void)layoutSubviews { [super layoutSubviews]; }
+@end
+@interface AWENormalModeTabBarTextView : UIView<AWENormalModeTabBarInnerView> { @public UILabel *_label; }
+@end
+@implementation AWENormalModeTabBarTextView
+- (void)layoutSubviews { [super layoutSubviews]; }
+- (void)updateTitle:(NSString *)title { _label.text=title; }
+- (void)updateTitle:(NSString *)title animated:(BOOL)animated { (void)animated; _label.text=title; }
+- (void)tabbarStatusDidChanged:(NSInteger)status animated:(BOOL)animated { (void)status; (void)animated; }
+@end
+@interface AWENormalModeTabBarIconTextView : UIView<AWENormalModeTabBarInnerView> { @public UILabel *_textLabel; }
+@end
+@implementation AWENormalModeTabBarIconTextView
+- (void)layoutSubviews { [super layoutSubviews]; }
+- (void)updateTitle:(NSString *)title { _textLabel.text=title; }
+- (void)tabbarStatusDidChanged:(NSInteger)status animated:(BOOL)animated { (void)status; (void)animated; }
+@end
+@class AWEHPTopTabItemTextContentView;
+@interface AWEHPTopTabItemUIModel : NSObject { @public NSString *_title; }
+@end
+@implementation AWEHPTopTabItemUIModel
+@end
+@interface AWEHPTopTabItemView : UIView { @public AWEHPTopTabItemTextContentView *_textContentView; AWEHPTopTabItemUIModel *_item; }
+@end
+@implementation AWEHPTopTabItemView
+- (void)updateSelected:(BOOL)selected animated:(BOOL)animated { (void)selected; (void)animated; }
+@end
+@interface AWEHPTopTabItemTextContentView : UIView { @public UILabel *_titleLabel; }
+@end
+@implementation AWEHPTopTabItemTextContentView
+- (void)layoutSubviews { [super layoutSubviews]; }
+- (void)setContentText:(NSString *)text { _titleLabel.text=text; }
+@end
+@interface AWEFeedTopBarContainer : UIView { @public UIView *_segmentControlView; }
+@end
+@implementation AWEFeedTopBarContainer
+@end
+@interface AWESettingsTableViewController : UIViewController
+@property (nonatomic) BOOL onSearchStatus;
+@property (nonatomic, strong) UITableView *douyindisc_table;
+- (UITableView *)tableView;
+- (void)viewDidAppear:(BOOL)animated;
+@end
+@implementation AWESettingsTableViewController
+- (UITableView *)tableView { return self.douyindisc_table; }
+- (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; }
+@end
+
 @interface AWEButton : UIButton { @public UIImageView *_imageContentView; }
 @property (nonatomic) NSUInteger douyindisc_layoutCalls;
 @property (nonatomic) NSUInteger douyindisc_moveCalls;
@@ -70,8 +126,10 @@ static void douyindisc_writeProgress(void) {
     [douyindisc_results addObject:line]; NSLog(@"DD_CHECK %@", line); douyindisc_writeProgress(); \
 } while (0)
 
+#import "../../Sources/DouyinDiscNavigationHooks.m"
 #include "DouyinDiscClarityCases.h"
 #include "DouyinDiscCaptionCases.h"
+#include "DouyinDiscNavigationCases.h"
 
 static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button);
 
@@ -149,6 +207,8 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     douyindisc_results = [NSMutableArray array];
     UIImage *art = [UIImage imageWithData:[NSData dataWithBytes:douyindisc_artwork length:sizeof(douyindisc_artwork)]];
     DD_CHECK(art.CGImage != NULL, "embedded original PNG decodes");
+    douyindisc_installNavigationHooks();
+    douyindisc_navigationCases(self.window);
     UIWindow *window = self.window;
     UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:window.bounds];
     scroll.contentSize = CGSizeMake(window.bounds.size.width, window.bounds.size.height*3);
