@@ -314,7 +314,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             NSMutableDictionary *entry = [config[key] mutableCopy] ?: [NSMutableDictionary dictionary];
             entry[@"image"] = name;
             config[key] = entry;
-            BOOL saved = [self douyindisc_commitLatestConfig:config beforeNotify:^{ self.douyindisc_images[key] = image; } error:&error];
+            __block NSError *commitError = nil;
+            BOOL saved = [self douyindisc_commitLatestConfig:config beforeNotify:^{ self.douyindisc_images[key] = image; } error:&commitError];
             if (!saved) [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
             else {
                 if (douyindisc_validImageName(oldName) && ![oldName isEqualToString:name])

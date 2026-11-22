@@ -203,7 +203,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_activeRow = row;
     UIAlertController *choice = [UIAlertController alertControllerWithTitle:@"选择自定义图标" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     [choice addAction:[UIAlertAction actionWithTitle:@"照片" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        (void)action; PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = PHPickerFilter.images; config.selectionLimit = 1;
+        (void)action; PHPickerConfiguration *config = [PHPickerConfiguration new]; config.filter = [PHPickerFilter imagesFilter]; config.selectionLimit = 1;
         PHPickerViewController *picker = [[PHPickerViewController alloc] initWithConfiguration:config]; picker.delegate = self;
         [self presentViewController:picker animated:YES completion:nil];
     }]];
@@ -232,15 +232,16 @@ static UIColor *douyindisc_color(NSString *hex) {
     [picker dismissViewControllerAnimated:YES completion:nil];
     NSItemProvider *provider = results.firstObject.itemProvider;
     if(!provider)return;
-    NSArray<NSString *> *types=@[(NSString *)kUTTypePNG,(NSString *)kUTTypeJPEG,(NSString *)kUTTypeHEIC,(NSString *)kUTTypeImage];
+    NSArray<NSString *> *types=@[(NSString *)kUTTypePNG,(NSString *)kUTTypeJPEG,@"public.heic",(NSString *)kUTTypeImage];
     __block void (^tryType)(NSUInteger,NSError *);
-    tryType=^(NSUInteger index,NSError *lastError){
+    __weak __block void (^weakTryType)(NSUInteger,NSError *);
+    weakTryType=tryType=^(NSUInteger index,NSError *lastError){
         if(index>=types.count){dispatch_async(dispatch_get_main_queue(),^{[self douyindisc_showError:lastError];});return;}
         NSString *type=types[index];
-        if(![provider hasItemConformingToTypeIdentifier:type]){tryType(index+1,lastError);return;}
+        if(![provider hasItemConformingToTypeIdentifier:type]){weakTryType(index+1,lastError);return;}
         [provider loadDataRepresentationForTypeIdentifier:type completionHandler:^(NSData *data,NSError *error){
             if(data.length){dispatch_async(dispatch_get_main_queue(),^{[self douyindisc_commitImageData:data];});}
-            else tryType(index+1,error?:lastError);
+            else weakTryType(index+1,error?:lastError);
         }];
     };
     tryType(0,nil);
