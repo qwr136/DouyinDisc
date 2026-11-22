@@ -11,8 +11,7 @@
 @property(nonatomic,weak) UILabel *douyindisc_label;
 @property(nonatomic,weak) UIView *douyindisc_textView;
 @property(nonatomic,copy) NSString *douyindisc_identifier;
-@property(nonatomic,strong) CALayer *douyindisc_originalMask;
-@property(nonatomic,strong) CAShapeLayer *douyindisc_ownedMask;
+@property(nonatomic) CGFloat douyindisc_originalAlpha;
 @property(nonatomic,weak) UIView *douyindisc_overlayHost;
 @property(nonatomic,strong) UIImageView *douyindisc_overlay;
 @end
@@ -48,12 +47,11 @@ static NSString *douyindisc_identifier(UIView *v,UILabel *l){
  if([v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarTextView")]||[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarIconTextView")])for(UIView *b=v.superview;b;b=b.superview)if([b isKindOfClass:NSClassFromString(@"AWENormalModeTabBarGeneralButton")])return douyindisc_ivar(b,"AWENormalModeTabBarGeneralButton","_innerView","@\"UIView<AWENormalModeTabBarInnerView>\"")==v?douyindisc_bottomIdentifier(l.text):nil;
  return nil;
 }
-static void douyindisc_removeIcon(UILabel *l){DouyinDiscTextLease *x=[douyindisc_leases objectForKey:l];[x.douyindisc_overlay removeFromSuperview];if(x&&l.layer.mask==x.douyindisc_ownedMask)l.layer.mask=x.douyindisc_originalMask;[douyindisc_leases removeObjectForKey:l];}
+static void douyindisc_removeIcon(UILabel *l){DouyinDiscTextLease *x=[douyindisc_leases objectForKey:l];[x.douyindisc_overlay removeFromSuperview];if(x&&l.alpha==0)l.alpha=x.douyindisc_originalAlpha;[douyindisc_leases removeObjectForKey:l];}
 static DouyinDiscTextLease *douyindisc_installTextIcon(UIView *v,UILabel *l,NSString *identifier,UIImage *image,CGFloat opacity){
  UIView *host=l.superview;if(!v||!l||!host||!image.CGImage||![l isDescendantOfView:v])return nil;DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:l];
- if(!lease){lease=[DouyinDiscTextLease new];lease.douyindisc_label=l;lease.douyindisc_textView=v;lease.douyindisc_identifier=identifier;lease.douyindisc_originalMask=l.layer.mask;lease.douyindisc_ownedMask=[CAShapeLayer layer];lease.douyindisc_ownedMask.name=@"com.minis.douyindisc.navigation.mask";lease.douyindisc_overlay=[UIImageView new];lease.douyindisc_overlay.userInteractionEnabled=NO;lease.douyindisc_overlay.isAccessibilityElement=NO;lease.douyindisc_overlay.contentMode=UIViewContentModeScaleAspectFit;[douyindisc_leases setObject:lease forKey:l];}else if(l.layer.mask!=lease.douyindisc_ownedMask)lease.douyindisc_originalMask=l.layer.mask;
- UIImageView *overlay=lease.douyindisc_overlay;if(overlay.superview!=host){[overlay removeFromSuperview];[host addSubview:overlay];}lease.douyindisc_overlayHost=host;overlay.image=image;CGRect textRect=[l textRectForBounds:l.bounds limitedToNumberOfLines:l.numberOfLines];if(CGRectIsEmpty(textRect))textRect=l.bounds;CGFloat width=MIN(textRect.size.width,textRect.size.height*image.size.width/MAX(image.size.height,1));CGFloat height=MIN(textRect.size.height,textRect.size.width*image.size.height/MAX(image.size.width,1));CGRect icon=CGRectMake(CGRectGetMidX(textRect)-width*.5,CGRectGetMidY(textRect)-height*.5,width,height);overlay.frame=[l convertRect:icon toView:host];overlay.alpha=fmin(1,fmax(0,opacity));
- CGMutablePathRef empty=CGPathCreateMutable();[CATransaction begin];[CATransaction setDisableActions:YES];lease.douyindisc_ownedMask.frame=l.bounds;lease.douyindisc_ownedMask.path=empty;l.layer.mask=lease.douyindisc_ownedMask;[CATransaction commit];CGPathRelease(empty);return lease;
+ if(!lease){lease=[DouyinDiscTextLease new];lease.douyindisc_label=l;lease.douyindisc_textView=v;lease.douyindisc_identifier=identifier;lease.douyindisc_originalAlpha=l.alpha;lease.douyindisc_overlay=[UIImageView new];lease.douyindisc_overlay.userInteractionEnabled=NO;lease.douyindisc_overlay.isAccessibilityElement=NO;lease.douyindisc_overlay.contentMode=UIViewContentModeScaleAspectFit;[douyindisc_leases setObject:lease forKey:l];}else if(l.alpha!=0)lease.douyindisc_originalAlpha=l.alpha;
+ UIImageView *overlay=lease.douyindisc_overlay;if(overlay.superview!=host){[overlay removeFromSuperview];[host addSubview:overlay];}lease.douyindisc_overlayHost=host;overlay.image=image;CGRect textRect=[l textRectForBounds:l.bounds limitedToNumberOfLines:l.numberOfLines];if(CGRectIsEmpty(textRect))textRect=l.bounds;CGFloat width=MIN(textRect.size.width,textRect.size.height*image.size.width/MAX(image.size.height,1));CGFloat height=MIN(textRect.size.height,textRect.size.width*image.size.height/MAX(image.size.width,1));CGRect icon=CGRectMake(CGRectGetMidX(textRect)-width*.5,CGRectGetMidY(textRect)-height*.5,width,height);overlay.frame=[l convertRect:icon toView:host];overlay.alpha=fmin(1,fmax(0,opacity));if(l.alpha!=0)l.alpha=0;return lease;
 }
 static void douyindisc_apply(UIView *v){
  if(!NSThread.isMainThread||!v)return;UILabel *l=douyindisc_label(v);if(!l)return;NSString *identifier=douyindisc_identifier(v,l);DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:l];if(!identifier){if(lease)douyindisc_removeIcon(l);return;}

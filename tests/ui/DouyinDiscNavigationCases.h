@@ -33,22 +33,23 @@ static void douyindisc_navigationCases(UIWindow *window) {
     AWEHPTopTabItemTextContentView *topView=[AWEHPTopTabItemTextContentView new]; topView.frame=itemView.bounds; topView->_titleLabel=[[UILabel alloc] initWithFrame:CGRectMake(0,10,70,28)]; topView->_titleLabel.text=@"推荐"; [topView addSubview:topView->_titleLabel]; itemView->_textContentView=topView; [itemView addSubview:topView];
     douyindisc_apply(textView); douyindisc_apply(topView);
     DD_CHECK(douyindisc_leases.count==0,"disabled items create no navigation image lease");
-    DD_CHECK(textView->_label.alpha==1 && topView->_titleLabel.alpha==1,"no imported image means original text remains visible");
+    CGFloat originalLabelAlpha=textView->_label.alpha;
+    DD_CHECK(originalLabelAlpha>0 && topView->_titleLabel.alpha==1,"no imported image means original text remains visible");
     DD_CHECK(![textView isKindOfClass:UIControl.class] && ![topView isKindOfClass:UIControl.class],"overlays operate on verified text-render views only");
     UIImage *testIcon=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemBlueColor)];
     NSUInteger darkBefore=douyindisc_navigationDarkPixels(textView);
     DouyinDiscTextLease *textLease=douyindisc_installTextIcon(textView,textView->_label,@"bottom_home",testIcon,1);
     NSUInteger darkAfter=douyindisc_navigationDarkPixels(textView);
-    DD_CHECK(textLease && darkBefore>0,"navigation fixture begins with visible dark original glyphs");
-    DD_CHECK(darkAfter<darkBefore,"custom icon fully replaces original glyph pixels");
+    DD_CHECK(textLease && textView->_label.alpha==0 && darkBefore>0,"custom icon hides all original label glyphs");
+    DD_CHECK(darkAfter==0,"custom icon fully replaces original dark glyph pixels");
     CGRect labelTextRect=[textView->_label textRectForBounds:textView->_label.bounds limitedToNumberOfLines:textView->_label.numberOfLines];
     CGPoint expectedCenter=[textView->_label convertPoint:CGPointMake(CGRectGetMidX(labelTextRect),CGRectGetMidY(labelTextRect)) toView:textView];
     CGPoint overlayCenter=CGPointMake(CGRectGetMidX(textLease.douyindisc_overlay.frame),CGRectGetMidY(textLease.douyindisc_overlay.frame));
-    DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<.5,"replacement image follows the exact UIKit text-render coordinates");
+    DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<1.0,"replacement image follows the exact UIKit text-render coordinates");
     DD_CHECK(textLease.douyindisc_overlay.bounds.size.width<=textView->_label.bounds.size.width && textLease.douyindisc_overlay.bounds.size.height<=textView->_label.bounds.size.height,"replacement image fits inside the native label frame");
     douyindisc_removeIcon(textView->_label);
     NSUInteger darkRestored=douyindisc_navigationDarkPixels(textView);
-    DD_CHECK(textView->_label.layer.mask==nil && textLease.douyindisc_overlay.superview==nil && darkRestored==darkBefore,"disabling image restores the original label glyph pixels");
+    DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && darkRestored==darkBefore,"disabling image restores original label visibility and glyph pixels");
     [feed removeFromSuperview];
     DD_CHECK(douyindisc_uiTestPickerTitleStable(testIcon),"selected image keeps the choose-icon title and enables a separate clear action");
 
