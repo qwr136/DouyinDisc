@@ -26,6 +26,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     AWESettingsTableViewController *settings=[AWESettingsTableViewController new]; settings.douyindisc_table=[[UITableView alloc] initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];
     UIView *root=[[UIView alloc] initWithFrame:window.bounds]; UIViewController *host=[UIViewController new]; host.view=root;
     navigation.viewControllers=@[settings]; [host addChildViewController:navigation]; navigation.view.frame=root.bounds; [root addSubview:navigation.view];
+    (void)settings.view;
     douyindisc_settingsAppeared(settings,@selector(viewDidAppear:),NO);
     UIView *header=settings.douyindisc_table.tableHeaderView; UIButton *entry=nil;
     for(UIView *child in header.subviews) if([child isKindOfClass:UIButton.class]) entry=(UIButton *)child;
