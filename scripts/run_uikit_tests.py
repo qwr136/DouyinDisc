@@ -37,7 +37,7 @@ def main():
             run('xcrun', '--sdk', 'iphonesimulator', 'clang', '-target', 'arm64-apple-ios15.0-simulator',
                 '-isysroot', sdk, '-fobjc-arc', '-Wall', '-Wextra', '-framework', 'Foundation',
                 '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',
-                '-framework', 'ImageIO', '-framework', 'PhotosUI', '-framework', 'MobileCoreServices',
+                '-framework', 'ImageIO', '-framework', 'PhotosUI', '-framework', 'UniformTypeIdentifiers',
                 'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c',
                 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
                 'Sources/DouyinDiscNavigationHooks.m', '-o', str(app / 'DouyinDiscHost'))

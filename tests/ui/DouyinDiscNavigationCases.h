@@ -1,9 +1,9 @@
 static void douyindisc_navigationCases(UIWindow *window) {
     NSArray<NSDictionary<NSString *,id> *> *items=douyindisc_navigationItems();
     DD_CHECK(items.count==13,"the settings model has exactly thirteen requested text slots");
-    NSArray *top=@[@"推荐",@"关注",@"同城",@"精选",@"商城",@"团购",@"直播",@"热点",@"经验"];
+    NSArray *topTitles=@[@"推荐",@"关注",@"同城",@"精选",@"商城",@"团购",@"直播",@"热点",@"经验"];
     NSArray *bottom=@[@"首页",@"朋友",@"消息",@"我"];
-    for(NSUInteger i=0;i<9;i++) DD_CHECK([items[i][@"title"] isEqual:top[i]],"top-channel order matches the screenshot");
+    for(NSUInteger i=0;i<9;i++) DD_CHECK([items[i][@"title"] isEqual:topTitles[i]],"top-channel order matches the screenshot");
     for(NSUInteger i=0;i<4;i++) DD_CHECK([items[i+9][@"title"] isEqual:bottom[i]],"bottom-tab order excludes plus");
 
     UIView *feed=[UIView new]; feed.frame=CGRectMake(0,0,390,220); [window.rootViewController.view addSubview:feed];
@@ -15,11 +15,11 @@ static void douyindisc_navigationCases(UIWindow *window) {
     AWEFeedTopBarContainer *container=[AWEFeedTopBarContainer new]; container.frame=CGRectMake(0,0,390,48); [feed addSubview:container];
     UIView *segment=[[UIView alloc] initWithFrame:container.bounds]; [container addSubview:segment]; container->_segmentControlView=segment;
     AWEHPTopTabItemView *itemView=[AWEHPTopTabItemView new]; itemView.frame=CGRectMake(180,0,70,48); itemView->_item=[AWEHPTopTabItemUIModel new]; itemView->_item->_title=@"推荐"; [segment addSubview:itemView];
-    AWEHPTopTabItemTextContentView *top=[AWEHPTopTabItemTextContentView new]; top.frame=itemView.bounds; top->_titleLabel=[[UILabel alloc] initWithFrame:CGRectMake(0,10,70,28)]; top->_titleLabel.text=@"推荐"; [top addSubview:top->_titleLabel]; itemView->_textContentView=top; [itemView addSubview:top];
-    douyindisc_applyToTextView(textView); douyindisc_applyToTextView(top);
+    AWEHPTopTabItemTextContentView *topView=[AWEHPTopTabItemTextContentView new]; topView.frame=itemView.bounds; topView->_titleLabel=[[UILabel alloc] initWithFrame:CGRectMake(0,10,70,28)]; topView->_titleLabel.text=@"推荐"; [topView addSubview:topView->_titleLabel]; itemView->_textContentView=topView; [itemView addSubview:topView];
+    douyindisc_applyToTextView(textView); douyindisc_applyToTextView(topView);
     DD_CHECK(!objc_getAssociatedObject(tab,&douyindisc_leaseKey),"tab button does not receive disc-replacement state");
-    DD_CHECK(textView->_label.layer.opacity==1 && top->_titleLabel.layer.opacity==1,"no imported image means original text remains visible");
-    DD_CHECK(![textView isKindOfClass:UIControl.class] && ![top isKindOfClass:UIControl.class],"overlays operate on verified text-render views only");
+    DD_CHECK(textView->_label.layer.opacity==1 && topView->_titleLabel.layer.opacity==1,"no imported image means original text remains visible");
+    DD_CHECK(![textView isKindOfClass:UIControl.class] && ![topView isKindOfClass:UIControl.class],"overlays operate on verified text-render views only");
     [feed removeFromSuperview];
 
     UINavigationController *navigation=[UINavigationController new];
