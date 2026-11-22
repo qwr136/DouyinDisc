@@ -3,6 +3,10 @@
 #import <objc/runtime.h>
 #import <math.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+static NSString * const douyindisc_utiPNG = @"public.png";
+static NSString * const douyindisc_utiJPEG = @"public.jpeg";
+static NSString * const douyindisc_utiHEIC = @"public.heic";
+static NSString * const douyindisc_utiImage = @"public.image";
 
 static UIColor *douyindisc_color(NSString *hex) {
     unsigned value = 0;
@@ -208,7 +212,7 @@ static UIColor *douyindisc_color(NSString *hex) {
         [self presentViewController:picker animated:YES completion:nil];
     }]];
     [choice addAction:[UIAlertAction actionWithTitle:@"文件" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-        (void)action; UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTType.image] asCopy:YES];
+        (void)action; UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[[UTType typeWithIdentifier:douyindisc_utiImage]] asCopy:YES];
         picker.delegate = self; [self presentViewController:picker animated:YES completion:nil];
     }]];
     [choice addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
@@ -232,7 +236,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     [picker dismissViewControllerAnimated:YES completion:nil];
     NSItemProvider *provider = results.firstObject.itemProvider;
     if(!provider)return;
-    NSArray<NSString *> *types=@[UTType.png.identifier,UTType.jpeg.identifier,UTType.heic.identifier,UTType.image.identifier];
+    NSArray<NSString *> *types=@[douyindisc_utiPNG,douyindisc_utiJPEG,douyindisc_utiHEIC,douyindisc_utiImage];
     __block void (^tryType)(NSUInteger,NSError *);
     __weak __block void (^weakTryType)(NSUInteger,NSError *);
     weakTryType=tryType=^(NSUInteger index,NSError *lastError){

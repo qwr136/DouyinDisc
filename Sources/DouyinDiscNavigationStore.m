@@ -3,6 +3,11 @@
 #import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
+static NSString * const douyindisc_utiPNG = @"public.png";
+static NSString * const douyindisc_utiJPEG = @"public.jpeg";
+static NSString * const douyindisc_utiHEIC = @"public.heic";
+static NSString * const douyindisc_utiHEIF = @"public.heif";
+
 static NSArray<NSDictionary<NSString *, id> *> *douyindisc_itemTable(void) {
     static NSArray *items;
     static dispatch_once_t once;
@@ -77,10 +82,9 @@ static UIImage *douyindisc_decodeImage(NSData *data, BOOL requirePNG, NSError **
     }
     CFStringRef type = CGImageSourceGetType(source);
     NSString *typeName = type ? (__bridge NSString *)type : @"";
-    BOOL accepted = requirePNG ? [typeName isEqualToString:UTType.png.identifier] :
-        ([UTType.image conformsToType:UTType.image] &&
-         ([typeName isEqualToString:UTType.png.identifier] || [typeName isEqualToString:UTType.jpeg.identifier] ||
-          [typeName isEqualToString:UTType.heic.identifier] || [typeName isEqualToString:@"public.heif"]));
+    BOOL accepted = requirePNG ? [typeName isEqualToString:douyindisc_utiPNG] :
+        ([typeName isEqualToString:douyindisc_utiPNG] || [typeName isEqualToString:douyindisc_utiJPEG] ||
+         [typeName isEqualToString:douyindisc_utiHEIC] || [typeName isEqualToString:douyindisc_utiHEIF]);
     if (!accepted) {
         CFRelease(source);
         if (error) *error = douyindisc_error(2, @"仅支持单帧 PNG、JPEG 或 HEIC 图片。");
@@ -103,7 +107,7 @@ static UIImage *douyindisc_decodeImage(NSData *data, BOOL requirePNG, NSError **
 static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     if (!image) return nil;
     NSMutableData *data = [NSMutableData data];
-    CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)data, (__bridge CFStringRef)UTType.png.identifier, 1, NULL);
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)data, (__bridge CFStringRef)douyindisc_utiPNG, 1, NULL);
     if (destination) {
         CGImageDestinationAddImage(destination, image, NULL);
         BOOL done = CGImageDestinationFinalize(destination);
