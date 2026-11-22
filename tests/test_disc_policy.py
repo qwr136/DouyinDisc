@@ -109,11 +109,11 @@ class PolicyTests(unittest.TestCase):
 ''', b'    dispatch_async(dispatch_get_main_queue(), ^{ douyindisc_startDisplay(); });\n')
                 if relative == 'scripts/build_dylib.py':
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
-                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'MobileCoreServices')\n", b'')
+                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'UniformTypeIdentifiers')\n", b'')
                     content = content.replace(b", 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m'", b'')
                     content = content.replace(b"            '-install_name', '@loader_path/' + output.name,\n            *[value for framework in FRAMEWORKS for value in ('-framework', framework)],\n            *SOURCE_FILES, '-o', str(staged))", b"            '-install_name', '@loader_path/' + output.name, '-framework', 'Foundation',\n            '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',\n            *SOURCE_FILES, '-o', str(staged))")
                 if relative == 'tests/verify_dylib.py':
-                    content = content.replace(b'                 "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox",\n                 "PhotosUI", "UniformTypeIdentifiers", "MobileCoreServices")', b'                 "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox")')
+                    content = content.replace(b'                 "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox",\n                 "PhotosUI", "UniformTypeIdentifiers")', b'                 "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox")')
                 self.assertEqual(hashlib.sha256(content).hexdigest(), expected)
 
     def test_clarity_artwork_changes_only_alpha(self):

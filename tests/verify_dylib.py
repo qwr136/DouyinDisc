@@ -27,7 +27,7 @@ APPLE_DEPENDENCIES = {"/usr/lib/libSystem.B.dylib", "/usr/lib/libobjc.A.dylib"} 
     for name in ("Foundation", "CoreFoundation", "UIKit", "CoreGraphics", "QuartzCore",
                  "Security", "CoreText", "ImageIO", "Accelerate", "AudioToolbox",
                  "AVFoundation", "CFNetwork", "CoreMedia", "CoreVideo", "Metal", "VideoToolbox",
-                 "PhotosUI", "UniformTypeIdentifiers", "MobileCoreServices")
+                 "PhotosUI", "UniformTypeIdentifiers")
 }
 
 

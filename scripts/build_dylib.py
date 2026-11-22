@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NAME = 'DouyinDisc'
 IDENTIFIER = 'com.minis.douyindisc'
-FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'MobileCoreServices')
+FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'UniformTypeIdentifiers')
 SOURCE_FILES = ('Sources/DouyinDiscEntry.m', 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m', 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m')
 SDK_DIR = 'iPhoneOS16.5.sdk'
 TARGET = 'arm64-apple-ios15.0'

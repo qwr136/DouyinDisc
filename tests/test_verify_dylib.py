@@ -162,7 +162,7 @@ class VerifyDylibTests(unittest.TestCase):
         from verify_dylib import inspect_dylib
         approved=("/System/Library/Frameworks/ImageIO.framework/ImageIO",
                  "/System/Library/Frameworks/PhotosUI.framework/PhotosUI",
-                 "/System/Library/Frameworks/MobileCoreServices.framework/MobileCoreServices")
+                 "/System/Library/Frameworks/UniformTypeIdentifiers.framework/UniformTypeIdentifiers")
         for name in approved:
             with self.subTest(name=name):
                 data=specimen(deps=((0xC,LIB_SYSTEM),(0xC,FOUNDATION),(0xC,name)))
