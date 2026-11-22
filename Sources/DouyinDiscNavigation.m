@@ -339,9 +339,16 @@ BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
     NSDictionary *item=douyindisc_navigationItems().firstObject;
     DouyinDiscNavigationRow *row=[[DouyinDiscNavigationRow alloc] initWithItem:item entry:@{@"enabled":@NO,@"opacity":@1} image:nil];
     BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"选择图标"] && row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==nil;
+    __block CGFloat previewed=0,committed=0;
+    row.douyindisc_previewScale=^(DouyinDiscNavigationRow *changed,CGFloat scale){(void)changed;previewed=scale;};
+    row.douyindisc_changeScale=^(DouyinDiscNavigationRow *changed,CGFloat scale){(void)changed;committed=scale;};
+    row.douyindisc_sizeSlider.value=1.25;[row.douyindisc_sizeSlider sendActionsForControlEvents:UIControlEventValueChanged];
+    BOOL previewWorks=fabs(previewed-1.25)<.001;
+    [row.douyindisc_sizeSlider sendActionsForControlEvents:UIControlEventTouchUpInside];
+    BOOL saveWorks=fabs(committed-1.25)<.001;
     row.douyindisc_thumbnail.image=image;
     [row douyindisc_setHasImage:YES];
-    return noImage && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
-        row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==image && row.douyindisc_clearButton.enabled && fabs(row.douyindisc_sizeSlider.minimumValue-.5)<.001 && fabs(row.douyindisc_sizeSlider.maximumValue-1.5)<.001 && fabs(row.douyindisc_sizeSlider.value-1)<.001;
+    return noImage && previewWorks && saveWorks && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
+        row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==image && row.douyindisc_clearButton.enabled && fabs(row.douyindisc_sizeSlider.minimumValue-.5)<.001 && fabs(row.douyindisc_sizeSlider.maximumValue-1.5)<.001 && fabs(row.douyindisc_sizeSlider.value-1.25)<.001;
 }
 #endif

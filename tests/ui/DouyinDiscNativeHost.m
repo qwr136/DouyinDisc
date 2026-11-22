@@ -46,19 +46,34 @@
 @end
 @implementation AWEFeedTopBarContainer
 @end
-@interface AWESettingsTableViewController : UIViewController
-@property (nonatomic) BOOL douyindisc_searchStatus;
+@interface AWESettingBaseViewController : UIViewController
 @property (nonatomic, strong) UITableView *douyindisc_table;
 - (UITableView *)tableView;
-- (BOOL)onSearchStatus;
-- (void)viewDidAppear:(BOOL)animated;
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView;
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section;
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)tableView:(UITableView *)tableView didEndDisplayingCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath;
 @end
-@implementation AWESettingsTableViewController
+@implementation AWESettingBaseViewController
 - (UITableView *)tableView { return self.douyindisc_table; }
-- (BOOL)onSearchStatus { return self.douyindisc_searchStatus; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 1; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView; return section==0?2:0; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.textLabel.text=indexPath.row?@"原生通用项2":@"原生通用项1";return cell; }
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)indexPath; }
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)cell;(void)indexPath; }
+- (void)tableView:(UITableView *)tableView didEndDisplayingCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)cell;(void)indexPath; }
 - (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; }
 @end
-@interface AWEGeneralSettingViewController : AWESettingsTableViewController
+@interface AWESettingsTableViewController : AWESettingBaseViewController
+@property (nonatomic) BOOL douyindisc_searchStatus;
+- (BOOL)onSearchStatus;
+@end
+@implementation AWESettingsTableViewController
+- (BOOL)onSearchStatus { return self.douyindisc_searchStatus; }
+@end
+@interface AWEGeneralSettingViewController : AWESettingBaseViewController
 @end
 @implementation AWEGeneralSettingViewController
 @end

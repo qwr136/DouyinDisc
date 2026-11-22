@@ -68,13 +68,16 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"selected image shows photo icon and change title while preview remains separate");
 
     AWESettingsTableViewController *otherSettings=[AWESettingsTableViewController new];
-    DD_CHECK(objc_getAssociatedObject(otherSettings,&douyindisc_generalRowKey)==nil,"non-General settings pages do not receive the DouyinDisc row");
-    AWEGeneralSettingViewController *general=[AWEGeneralSettingViewController new]; general.douyindisc_table=[[UITableView alloc] initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];
-    UINavigationController *generalNav=[[UINavigationController alloc] initWithRootViewController:general]; UIViewController *generalHost=[UIViewController new]; [generalHost addChildViewController:generalNav]; generalNav.view.frame=generalHost.view.bounds; [generalHost.view addSubview:generalNav.view]; (void)general.view;general.douyindisc_table.frame=general.view.bounds;[general.view addSubview:general.douyindisc_table];
+    otherSettings.douyindisc_table=[[UITableView alloc]initWithFrame:CGRectMake(0,0,390,300) style:UITableViewStyleGrouped];otherSettings.douyindisc_table.dataSource=otherSettings;otherSettings.douyindisc_table.delegate=otherSettings;
+    DD_CHECK([otherSettings tableView:otherSettings.douyindisc_table numberOfRowsInSection:0]==2,"non-General settings keep the two original rows");
+    AWEGeneralSettingViewController *general=[AWEGeneralSettingViewController new];general.douyindisc_table=[[UITableView alloc]initWithFrame:CGRectMake(0,0,390,420) style:UITableViewStyleGrouped];general.douyindisc_table.dataSource=general;general.douyindisc_table.delegate=general;
+    UINavigationController *generalNav=[[UINavigationController alloc]initWithRootViewController:general];UIViewController *generalHost=[UIViewController new];[generalHost addChildViewController:generalNav];generalNav.view.frame=generalHost.view.bounds;[generalHost.view addSubview:generalNav.view];(void)general.view;general.douyindisc_table.frame=general.view.bounds;[general.view addSubview:general.douyindisc_table];
     douyindisc_generalSettingsAppeared(general,@selector(viewDidAppear:),NO);
-    UIButton *entry=objc_getAssociatedObject(general,&douyindisc_generalRowKey);
-    DD_CHECK(entry!=nil && [[entry titleForState:UIControlStateNormal] isEqualToString:@"DouyinDisc"],"General settings page receives one DouyinDisc row");
-    DD_CHECK(entry.titleLabel.textColor==UIColor.blackColor && entry.frame.size.height==56 && general.douyindisc_table.frame.origin.y>=56,"General entry uses black text and pushes its table below the row");
-    [entry sendActionsForControlEvents:UIControlEventTouchUpInside];
-    DD_CHECK(generalNav.viewControllers.count==2 && [generalNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"General settings row opens the plugin panel on its original navigation stack");
+    DD_CHECK([general tableView:general.douyindisc_table numberOfRowsInSection:0]==3,"General section appends exactly one DouyinDisc table row");
+    NSIndexPath *originalIndex=[NSIndexPath indexPathForRow:0 inSection:0];UITableViewCell *originalCell=[general tableView:general.douyindisc_table cellForRowAtIndexPath:originalIndex];
+    DD_CHECK([originalCell.textLabel.text isEqualToString:@"原生通用项1"],"original General setting cells remain delegated to native base data source");
+    NSIndexPath *entryIndex=[NSIndexPath indexPathForRow:2 inSection:0];UITableViewCell *entryCell=[general tableView:general.douyindisc_table cellForRowAtIndexPath:entryIndex];UIButton *entry=nil;for(UIView *view in entryCell.contentView.subviews)if([view isKindOfClass:UIButton.class])entry=(UIButton *)view;
+    DD_CHECK(entry&&[[entry titleForState:UIControlStateNormal] isEqualToString:@"DouyinDisc"]&&entry.titleLabel.textColor==UIColor.blackColor,"General cell uses the black DouyinDisc title");
+    [general tableView:general.douyindisc_table didSelectRowAtIndexPath:entryIndex];
+    DD_CHECK(generalNav.viewControllers.count==2&&[generalNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"General table row opens the plugin panel on the existing navigation stack");
 }
