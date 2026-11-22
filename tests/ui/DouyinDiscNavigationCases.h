@@ -11,8 +11,9 @@ static NSUInteger douyindisc_navigationDarkPixels(UIView *view) {
     return dark;
 }
 
-extern BOOL douyindisc_uiTestPickerTitleStable(UIImage *image);
+extern BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image);
 extern void douyindisc_uiTestSetNavigationImage(NSString *identifier, UIImage *image, BOOL enabled);
+extern void douyindisc_uiTestSetNavigationScale(NSString *identifier, CGFloat scale);
 
 static void douyindisc_navigationCases(UIWindow *window) {
     NSArray<NSDictionary<NSString *,id> *> *items=douyindisc_navigationItems();
@@ -26,7 +27,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     AWENormalModeTabBar *bar=[AWENormalModeTabBar new]; bar.frame=CGRectMake(0,150,390,70); [feed addSubview:bar];
     AWENormalModeTabBarGeneralButton *tab=[AWENormalModeTabBarGeneralButton new]; tab.frame=CGRectMake(20,0,64,64); [bar addSubview:tab];
     AWENormalModeTabBarTextView *textView=[AWENormalModeTabBarTextView new]; textView.frame=CGRectMake(0,0,64,32);
-    textView->_label=[[UILabel alloc] initWithFrame:CGRectMake(7,4,50,24)]; textView->_label.text=@"首页"; [textView addSubview:textView->_label];
+    textView->_label=[[UILabel alloc] initWithFrame:CGRectMake(7,4,50,24)]; textView->_label.text=@"首页"; textView->_label.textAlignment=NSTextAlignmentCenter; [textView addSubview:textView->_label];
     tab->_innerView=textView; [tab addSubview:textView];
     AWEFeedTopBarContainer *container=[AWEFeedTopBarContainer new]; container.frame=CGRectMake(0,0,390,48); [feed addSubview:container];
     UIView *segment=[[UIView alloc] initWithFrame:container.bounds]; [container addSubview:segment]; container->_segmentControlView=segment;
@@ -40,7 +41,14 @@ static void douyindisc_navigationCases(UIWindow *window) {
     UIImage *testIcon=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemBlueColor)];
     douyindisc_uiTestSetNavigationImage(@"bottom_home",testIcon,YES);
     douyindisc_apply(textView);
+    NSDictionary *defaultEntry=[[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_entryForIdentifier:@"bottom_home"];
+    DD_CHECK(fabs([defaultEntry[@"scale"] doubleValue]-1)<.001,"legacy navigation entry defaults icon size to one hundred percent");
     DouyinDiscTextLease *textLease=[douyindisc_leases objectForKey:textView->_label];
+    CGSize originalIconSize=textLease.douyindisc_overlay.bounds.size;
+    douyindisc_uiTestSetNavigationScale(@"bottom_home",1.25);
+    douyindisc_apply(textView);
+    DD_CHECK(fabs(textLease.douyindisc_overlay.bounds.size.width-originalIconSize.width*1.25)<.5 && fabs(textLease.douyindisc_overlay.bounds.size.height-originalIconSize.height*1.25)<.5,"size setting scales the replacement around the original tab label center");
+    douyindisc_uiTestSetNavigationScale(@"bottom_home",1);
     DD_CHECK(textLease!=nil,"enabled configuration creates a navigation image lease");
     DD_CHECK(textView->_label.alpha==0 && [textView->_label.text isEqualToString:@"首页"],"replacement hides rendered text without changing native label content");
     CGRect labelTextRect=[textView->_label textRectForBounds:textView->_label.bounds limitedToNumberOfLines:textView->_label.numberOfLines];
@@ -49,22 +57,24 @@ static void douyindisc_navigationCases(UIWindow *window) {
     CGPoint overlayCenter=CGPointMake(CGRectGetMidX(overlayFrame),CGRectGetMidY(overlayFrame));
     DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<1.0,"replacement image follows the exact UIKit text-render coordinates");
     DD_CHECK(textLease.douyindisc_overlay.bounds.size.width<=textView->_label.bounds.size.width && textLease.douyindisc_overlay.bounds.size.height<=textView->_label.bounds.size.height,"replacement image fits inside the native label frame");
+    douyindisc_uiTestSetNavigationImage(@"top_recommend",testIcon,YES);douyindisc_apply(topView);
+    DouyinDiscTextLease *topLease=[douyindisc_leases objectForKey:topView->_titleLabel];
+    CGRect topItemRect=[itemView convertRect:itemView.bounds toView:topView];
+    DD_CHECK(topLease && fabs(CGRectGetMidX(topLease.douyindisc_overlay.frame)-CGRectGetMidX(topItemRect))<.5 && fabs(CGRectGetMidY(topLease.douyindisc_overlay.frame)-CGRectGetMidY(topItemRect))<.5,"top replacement aligns to the native tab item center not its offset text child");
     douyindisc_uiTestSetNavigationImage(@"bottom_home",nil,NO);
     douyindisc_apply(textView);
     DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && [textView->_label.text isEqualToString:@"首页"],"disabling image restores original label visibility and glyph content");
     [feed removeFromSuperview];
-    DD_CHECK(douyindisc_uiTestPickerTitleStable(testIcon),"selected image keeps the choose-icon title and enables a separate clear action");
+    DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"selected image shows photo icon and change title while preview remains separate");
 
-    UINavigationController *navigation=[UINavigationController new];
-    AWESettingsTableViewController *settings=[AWESettingsTableViewController new]; settings.douyindisc_table=[[UITableView alloc] initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];
-    UIView *root=[[UIView alloc] initWithFrame:window.bounds]; UIViewController *host=[UIViewController new]; host.view=root;
-    navigation.viewControllers=@[settings]; [host addChildViewController:navigation]; navigation.view.frame=root.bounds; [root addSubview:navigation.view];
-    (void)settings.view;
-    douyindisc_settingsAppeared(settings,@selector(viewDidAppear:),NO);
-    UIView *header=settings.douyindisc_table.tableHeaderView; UIButton *entry=nil;
-    for(UIView *child in header.subviews) if([child isKindOfClass:UIButton.class]) entry=(UIButton *)child;
-    DD_CHECK(entry!=nil,"settings page receives a native table-header entry");
+    AWESettingsTableViewController *otherSettings=[AWESettingsTableViewController new];
+    DD_CHECK(objc_getAssociatedObject(otherSettings,&douyindisc_generalRowKey)==nil,"non-General settings pages do not receive the DouyinDisc row");
+    AWEGeneralSettingViewController *general=[AWEGeneralSettingViewController new]; general.douyindisc_table=[[UITableView alloc] initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];
+    UINavigationController *generalNav=[[UINavigationController alloc] initWithRootViewController:general]; UIViewController *generalHost=[UIViewController new]; [generalHost addChildViewController:generalNav]; generalNav.view.frame=generalHost.view.bounds; [generalHost.view addSubview:generalNav.view]; (void)general.view;general.douyindisc_table.frame=general.view.bounds;[general.view addSubview:general.douyindisc_table];
+    douyindisc_generalSettingsAppeared(general,@selector(viewDidAppear:),NO);
+    UIButton *entry=objc_getAssociatedObject(general,&douyindisc_generalRowKey);
+    DD_CHECK(entry!=nil && [[entry titleForState:UIControlStateNormal] isEqualToString:@"DouyinDisc"],"General settings page receives one DouyinDisc row");
+    DD_CHECK(entry.titleLabel.textColor==UIColor.blackColor && entry.frame.size.height==56 && general.douyindisc_table.frame.origin.y>=56,"General entry uses black text and pushes its table below the row");
     [entry sendActionsForControlEvents:UIControlEventTouchUpInside];
-    DD_CHECK(navigation.viewControllers.count==2 && [navigation.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"settings entry pushes the plugin panel on the existing navigation stack");
-    [host removeFromParentViewController];
+    DD_CHECK(generalNav.viewControllers.count==2 && [generalNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"General settings row opens the plugin panel on its original navigation stack");
 }

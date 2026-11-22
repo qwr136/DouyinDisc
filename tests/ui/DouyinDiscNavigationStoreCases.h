@@ -72,10 +72,10 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     NSArray *items = douyindisc_navigationItems();
     for (NSDictionary *item in items) {
         NSDictionary *entry = [store douyindisc_entryForIdentifier:item[@"identifier"]];
-        DD_CHECK_NS(![entry[@"enabled"] boolValue] && [entry[@"opacity"] doubleValue] == 1 && ![entry[@"hasImage"] boolValue], @"all thirteen navigation entries have independent defaults");
+        DD_CHECK_NS(![entry[@"enabled"] boolValue] && [entry[@"opacity"] doubleValue] == 1 && [entry[@"scale"] doubleValue] == 1 && ![entry[@"hasImage"] boolValue], @"all thirteen navigation entries have independent defaults including 100 percent size");
     }
     NSError *invalidError = nil;
-    DD_CHECK_NS(![store douyindisc_saveEnabled:YES opacity:.4 identifier:@"not_a_navigation_item" error:&invalidError] && invalidError != nil,
+    DD_CHECK_NS(![store douyindisc_saveEnabled:YES opacity:.4 scale:1 identifier:@"not_a_navigation_item" error:&invalidError] && invalidError != nil,
              @"invalid identifier is rejected synchronously");
     NSData *jpeg=douyindisc_navCaseJPEG(UIColor.systemOrangeColor);
     DD_CHECK_NS(jpeg.length>0 && douyindisc_uiTestCanDecodeImageData(jpeg), @"system ImageIO decoder accepts an ordinary JPEG photo");
@@ -99,8 +99,8 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
                 DD_CHECK_NS(loaded.CGImage != NULL, @"preload decodes the persisted PNG from the real store directory");
                 DD_CHECK_NS(douyindisc_navCaseHasTransparentPixel(loaded), @"PNG persistence retains actual transparent and opaque pixels");
                 NSDictionary *bottom = [cold douyindisc_entryForIdentifier:@"bottom_home"];
-                DD_CHECK_NS([bottom[@"enabled"] boolValue] && fabs([bottom[@"opacity"] doubleValue] - .65) < .001,
-                         @"cold configuration read preserves a concurrent independent-item update");
+                DD_CHECK_NS([bottom[@"enabled"] boolValue] && fabs([bottom[@"opacity"] doubleValue] - .65) < .001 && fabs([bottom[@"scale"] doubleValue]-1.25)<.001,
+                         @"cold configuration read preserves size, opacity and another-item toggle");
 
                 __block BOOL clearObserverSawEmptyCache = NO;
                 id clearObserver = [NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.changed"
@@ -137,7 +137,7 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
                         [badBytes writeToURL:badURL atomically:YES];
                         DouyinDiscNavigationStore *corrupt = douyindisc_uiTestCreateStore(badDirectory);
                         NSError *corruptError = nil;
-                        BOOL corruptSave = [corrupt douyindisc_saveEnabled:YES opacity:.5 identifier:@"top_follow" error:&corruptError];
+                        BOOL corruptSave = [corrupt douyindisc_saveEnabled:YES opacity:.5 scale:1 identifier:@"top_follow" error:&corruptError];
                         DD_CHECK_NS(!corruptSave && corruptError != nil, @"corrupt existing config blocks writes");
                         DD_CHECK_NS([[NSData dataWithContentsOfURL:badURL] isEqualToData:badBytes], @"corrupt config bytes are never overwritten");
                         [NSFileManager.defaultManager removeItemAtURL:base error:nil];
@@ -178,8 +178,9 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
             continueAfterRace();
         }];
         NSError *toggleError = nil;
-        BOOL toggled = [store douyindisc_saveEnabled:YES opacity:.65 identifier:@"bottom_home" error:&toggleError];
+        BOOL toggled = [store douyindisc_saveEnabled:YES opacity:.65 scale:1.25 identifier:@"bottom_home" error:&toggleError];
         DD_CHECK_NS(toggled && toggleError == nil, @"unrelated setting commits while image work runs in background");
+        DD_CHECK_NS(fabs([[store douyindisc_entryForIdentifier:@"bottom_home"][@"scale"] doubleValue]-1.25)<.001, @"icon size persists independently for each navigation item");
     }];
 }
 

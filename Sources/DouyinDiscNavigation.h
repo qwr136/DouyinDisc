@@ -10,10 +10,12 @@ void douyindisc_installNavigationHooks(void);
 - (void)douyindisc_preloadImagesWithCompletion:(void (^)(void))completion;
 - (void)douyindisc_previewOpacity:(CGFloat)opacity identifier:(NSString *)identifier;
 - (void)douyindisc_clearOpacityPreviewForIdentifier:(NSString *)identifier;
+- (void)douyindisc_previewScale:(CGFloat)scale identifier:(NSString *)identifier;
+- (void)douyindisc_clearScalePreviewForIdentifier:(NSString *)identifier;
 - (NSDictionary<NSString *, id> *)douyindisc_entryForIdentifier:(NSString *)identifier;
 - (UIImage *)douyindisc_imageForIdentifier:(NSString *)identifier;
 - (UIImage *)douyindisc_decodeImageData:(NSData *)data;
-- (BOOL)douyindisc_saveEnabled:(BOOL)enabled opacity:(CGFloat)opacity identifier:(NSString *)identifier error:(NSError **)error;
+- (BOOL)douyindisc_saveEnabled:(BOOL)enabled opacity:(CGFloat)opacity scale:(CGFloat)scale identifier:(NSString *)identifier error:(NSError **)error;
 - (void)douyindisc_saveImageData:(NSData *)data identifier:(NSString *)identifier completion:(void (^)(NSError *error))completion;
 - (BOOL)douyindisc_clearImageForIdentifier:(NSString *)identifier error:(NSError **)error;
 @end

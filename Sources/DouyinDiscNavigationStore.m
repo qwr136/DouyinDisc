@@ -55,16 +55,18 @@ static BOOL douyindisc_validImageName(NSString *name) {
 
 static BOOL douyindisc_validConfig(id value) {
     if (![value isKindOfClass:NSDictionary.class]) return NO;
-    NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"image"]];
+    NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"scale", @"image"]];
     for (id key in (NSDictionary *)value) {
         id entry = value[key];
         if (![key isKindOfClass:NSString.class] || !douyindisc_validIdentifier(key) || ![entry isKindOfClass:NSDictionary.class]) return NO;
         for (id field in (NSDictionary *)entry) if (![field isKindOfClass:NSString.class] || ![allowed containsObject:field]) return NO;
         if (entry[@"enabled"] && ![entry[@"enabled"] isKindOfClass:NSNumber.class]) return NO;
         if (entry[@"opacity"] && ![entry[@"opacity"] isKindOfClass:NSNumber.class]) return NO;
+        if (entry[@"scale"] && ![entry[@"scale"] isKindOfClass:NSNumber.class]) return NO;
         if (entry[@"image"] && !douyindisc_validImageName(entry[@"image"])) return NO;
         double opacity = [entry[@"opacity"] respondsToSelector:@selector(doubleValue)] ? [entry[@"opacity"] doubleValue] : 1;
-        if (!isfinite(opacity) || opacity < 0 || opacity > 1) return NO;
+        double scale = [entry[@"scale"] respondsToSelector:@selector(doubleValue)] ? [entry[@"scale"] doubleValue] : 1;
+        if (!isfinite(opacity) || opacity < 0 || opacity > 1 || !isfinite(scale) || scale < .5 || scale > 1.5) return NO;
     }
     return YES;
 }
@@ -119,6 +121,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 @property (nonatomic, copy) NSDictionary<NSString *, NSDictionary<NSString *, id> *> *douyindisc_config;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIImage *> *douyindisc_images;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_previewOpacity;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_previewScale;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_imageGeneration;
 @property (nonatomic, strong) NSURL *douyindisc_storeDirectory;
 @property (nonatomic) NSUInteger douyindisc_preloadGeneration;
@@ -147,6 +150,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     _douyindisc_storeDirectory = directory;
     _douyindisc_images = [NSMutableDictionary dictionary];
     _douyindisc_previewOpacity = [NSMutableDictionary dictionary];
+    _douyindisc_previewScale = [NSMutableDictionary dictionary];
     _douyindisc_imageGeneration = [NSMutableDictionary dictionary];
     NSURL *url = [directory URLByAppendingPathComponent:@"settings.plist"];
     if (![NSFileManager.defaultManager fileExistsAtPath:url.path]) {
@@ -173,12 +177,27 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.preview" object:identifier];
 }
 
+- (void)douyindisc_previewScale:(CGFloat)scale identifier:(NSString *)identifier {
+    NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
+    if (!douyindisc_validIdentifier(identifier) || !isfinite(scale)) return;
+    self.douyindisc_previewScale[identifier] = @(fmin(1.5, fmax(.5, scale)));
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.preview" object:identifier];
+}
+
+- (void)douyindisc_clearScalePreviewForIdentifier:(NSString *)identifier {
+    NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
+    if (!douyindisc_validIdentifier(identifier)) return;
+    [self.douyindisc_previewScale removeObjectForKey:identifier];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.preview" object:identifier];
+}
+
 - (NSDictionary<NSString *, id> *)douyindisc_entryForIdentifier:(NSString *)identifier {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
     if (!douyindisc_validIdentifier(identifier)) return @{@"enabled":@NO, @"opacity":@1, @"hasImage":@NO};
     NSDictionary *stored = self.douyindisc_config[identifier];
     NSNumber *opacity = self.douyindisc_previewOpacity[identifier] ?: stored[@"opacity"] ?: @1;
-    return @{@"enabled":stored[@"enabled"] ?: @NO, @"opacity":opacity, @"hasImage":@(stored[@"image"] != nil)};
+    NSNumber *scale=self.douyindisc_previewScale[identifier] ?: stored[@"scale"] ?: @1;
+    return @{@"enabled":stored[@"enabled"] ?: @NO, @"opacity":opacity, @"scale":scale, @"hasImage":@(stored[@"image"] != nil)};
 }
 
 - (UIImage *)douyindisc_decodeImageData:(NSData *)data {
@@ -262,17 +281,19 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     return YES;
 }
 
-- (BOOL)douyindisc_saveEnabled:(BOOL)enabled opacity:(CGFloat)opacity identifier:(NSString *)identifier error:(NSError **)error {
+- (BOOL)douyindisc_saveEnabled:(BOOL)enabled opacity:(CGFloat)opacity scale:(CGFloat)scale identifier:(NSString *)identifier error:(NSError **)error {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
-    if (!douyindisc_validIdentifier(identifier) || !isfinite(opacity)) {
-        if (error) *error = douyindisc_error(3, @"导航项或不透明度无效。");
+    if (!douyindisc_validIdentifier(identifier) || !isfinite(opacity) || !isfinite(scale)) {
+        if (error) *error = douyindisc_error(3, @"导航项、不透明度或图标大小无效。");
         return NO;
     }
     opacity = fmin(1, fmax(0, opacity));
+    scale = fmin(1.5, fmax(.5, scale));
     NSMutableDictionary *config = [self.douyindisc_config mutableCopy];
     NSMutableDictionary *entry = [config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
     entry[@"enabled"] = @(enabled);
     entry[@"opacity"] = @(opacity);
+    entry[@"scale"] = @(scale);
     config[identifier] = entry;
     return [self douyindisc_commitLatestConfig:config beforeNotify:nil error:error];
 }
@@ -358,6 +379,12 @@ DouyinDiscNavigationStore *douyindisc_uiTestCreateStore(NSURL *directory) {
     return [[DouyinDiscNavigationStore alloc] initWithDouyinDiscDirectory:directory];
 }
 
+void douyindisc_uiTestPreviewNavigationScale(NSString *identifier, CGFloat scale) {
+    if (!NSThread.isMainThread || !douyindisc_validIdentifier(identifier) || !isfinite(scale)) return;
+    DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];
+    [store douyindisc_previewScale:scale identifier:identifier];
+}
+
 void douyindisc_uiTestSetNavigationImage(NSString *identifier, UIImage *image, BOOL enabled) {
     if (!NSThread.isMainThread || !douyindisc_validIdentifier(identifier)) return;
     DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];
@@ -367,6 +394,17 @@ void douyindisc_uiTestSetNavigationImage(NSString *identifier, UIImage *image, B
     entry[@"opacity"]=@1;
     if(image){entry[@"image"]=@"fixture.png";store.douyindisc_images[identifier]=image;}
     else { [entry removeObjectForKey:@"image"];[store.douyindisc_images removeObjectForKey:identifier]; }
+    config[identifier]=entry;
+    store.douyindisc_config=[config copy];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
+}
+
+void douyindisc_uiTestSetNavigationScale(NSString *identifier, CGFloat scale) {
+    if (!NSThread.isMainThread || !douyindisc_validIdentifier(identifier) || !isfinite(scale)) return;
+    DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];
+    NSMutableDictionary *config=[store.douyindisc_config mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSMutableDictionary *entry=[config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
+    entry[@"scale"]=@(fmin(1.5,fmax(.5,scale)));
     config[identifier]=entry;
     store.douyindisc_config=[config copy];
     [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];

@@ -58,6 +58,10 @@
 - (BOOL)onSearchStatus { return self.douyindisc_searchStatus; }
 - (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; }
 @end
+@interface AWEGeneralSettingViewController : AWESettingsTableViewController
+@end
+@implementation AWEGeneralSettingViewController
+@end
 
 @interface AWEButton : UIButton { @public UIImageView *_imageContentView; }
 @property (nonatomic) NSUInteger douyindisc_layoutCalls;
