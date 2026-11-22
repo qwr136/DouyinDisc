@@ -6,7 +6,7 @@ static NSUInteger douyindisc_navigationDarkPixels(UIView *view) {
     CGContextRef context=CGBitmapContextCreate(data.mutableBytes,width,height,8,width*4,space,kCGImageAlphaPremultipliedLast);
     CGColorSpaceRelease(space);
     if(!context)return 0;
-    CGContextClearRect(context,CGRectMake(0,0,width,height));[view setNeedsLayout];[view layoutIfNeeded];[view.layer displayIfNeeded];[view.layer renderInContext:context];CGContextRelease(context);
+    CGContextClearRect(context,CGRectMake(0,0,width,height));[view.layer displayIfNeeded];[view.layer renderInContext:context];CGContextRelease(context);
     const uint8_t *pixels=data.bytes;NSUInteger dark=0;for(size_t i=0;i<width*height;i++){const uint8_t *p=pixels+i*4;if(p[3]>32&&MAX(p[0],MAX(p[1],p[2]))<p[3]*.35)dark++;}
     return dark;
 }
