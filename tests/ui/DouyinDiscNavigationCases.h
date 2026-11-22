@@ -41,11 +41,15 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DouyinDiscTextLease *textLease=douyindisc_installTextIcon(textView,textView->_label,@"bottom_home",testIcon,1);
     NSLog(@"NAVDBG lease=%d alpha=%.3f darkBefore=%lu image=%d host=%d",textLease!=nil,textView->_label.alpha,(unsigned long)darkBefore,testIcon.CGImage!=NULL,textLease.douyindisc_overlay.superview==textView);
     NSUInteger darkAfter=douyindisc_navigationDarkPixels(textView);
-    DD_CHECK(textLease && textView->_label.alpha==0 && darkBefore>0,"custom icon hides all original label glyphs");
-    DD_CHECK(darkAfter==0,"custom icon fully replaces original dark glyph pixels");
+    DD_CHECK(textLease!=nil,"navigation label receives an image lease");
+    DD_CHECK(textView->_label.alpha==0,"native label alpha is hidden under the replacement image");
+    DD_CHECK(darkBefore>0,"navigation fixture begins with visible dark glyph pixels");
+    DD_CHECK(darkAfter==0,"replacement pass removes all dark native glyph pixels");
     CGRect labelTextRect=[textView->_label textRectForBounds:textView->_label.bounds limitedToNumberOfLines:textView->_label.numberOfLines];
     CGPoint expectedCenter=[textView->_label convertPoint:CGPointMake(CGRectGetMidX(labelTextRect),CGRectGetMidY(labelTextRect)) toView:textView];
-    CGPoint overlayCenter=CGPointMake(CGRectGetMidX(textLease.douyindisc_overlay.frame),CGRectGetMidY(textLease.douyindisc_overlay.frame));
+    CGRect overlayFrame=textLease.douyindisc_overlay.frame;
+    CGPoint overlayCenter=CGPointMake(CGRectGetMidX(overlayFrame),CGRectGetMidY(overlayFrame));
+    DD_CHECK_NS(YES,[NSString stringWithFormat:@"NAVDBG textRect=%@ expected=(%.2f,%.2f) overlay=(%.2f,%.2f) alpha=%.2f dark=%lu/%lu",NSStringFromCGRect(labelTextRect),expectedCenter.x,expectedCenter.y,overlayCenter.x,overlayCenter.y,textView->_label.alpha,(unsigned long)darkAfter,(unsigned long)darkBefore]);
     DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<1.0,"replacement image follows the exact UIKit text-render coordinates");
     DD_CHECK(textLease.douyindisc_overlay.bounds.size.width<=textView->_label.bounds.size.width && textLease.douyindisc_overlay.bounds.size.height<=textView->_label.bounds.size.height,"replacement image fits inside the native label frame");
     douyindisc_removeIcon(textView->_label);
