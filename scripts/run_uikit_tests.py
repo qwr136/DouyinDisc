@@ -40,7 +40,7 @@ def main():
                 '-framework', 'ImageIO', '-framework', 'PhotosUI', '-framework', 'UniformTypeIdentifiers',
                 'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c',
                 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
-                'Sources/DouyinDiscNavigationHooks.m', '-o', str(app / 'DouyinDiscHost'))
+                '-o', str(app / 'DouyinDiscHost'))
             run('/usr/bin/codesign', '--force', '--sign', '-', str(app))
             run('xcrun', 'simctl', 'boot', device)
             run('xcrun', 'simctl', 'bootstatus', device, '-b', timeout=300)
