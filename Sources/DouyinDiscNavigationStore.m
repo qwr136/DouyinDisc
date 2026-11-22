@@ -123,6 +123,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_previewOpacity;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_previewScale;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_imageGeneration;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_pickGeneration;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_activePickGeneration;
 @property (nonatomic, strong) NSURL *douyindisc_storeDirectory;
 @property (nonatomic) NSUInteger douyindisc_preloadGeneration;
 @property (nonatomic) BOOL douyindisc_loadFailed;
@@ -152,6 +154,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     _douyindisc_previewOpacity = [NSMutableDictionary dictionary];
     _douyindisc_previewScale = [NSMutableDictionary dictionary];
     _douyindisc_imageGeneration = [NSMutableDictionary dictionary];
+    _douyindisc_pickGeneration = [NSMutableDictionary dictionary];
+    _douyindisc_activePickGeneration = [NSMutableDictionary dictionary];
     NSURL *url = [directory URLByAppendingPathComponent:@"settings.plist"];
     if (![NSFileManager.defaultManager fileExistsAtPath:url.path]) {
         _douyindisc_config = @{};
@@ -198,6 +202,34 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSNumber *opacity = self.douyindisc_previewOpacity[identifier] ?: stored[@"opacity"] ?: @1;
     NSNumber *scale=self.douyindisc_previewScale[identifier] ?: stored[@"scale"] ?: @1;
     return @{@"enabled":stored[@"enabled"] ?: @NO, @"opacity":opacity, @"scale":scale, @"hasImage":@(stored[@"image"] != nil)};
+}
+
+- (BOOL)douyindisc_imagePickingEnabledForIdentifier:(NSString *)identifier {
+    NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
+    return douyindisc_validIdentifier(identifier) && [self.douyindisc_config[identifier][@"enabled"] boolValue];
+}
+
+- (NSUInteger)douyindisc_beginImagePickingForIdentifier:(NSString *)identifier {
+    NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
+    if (![self douyindisc_imagePickingEnabledForIdentifier:identifier]) return 0;
+    NSUInteger generation=[self.douyindisc_pickGeneration[identifier] unsignedIntegerValue]+1;
+    self.douyindisc_pickGeneration[identifier]=@(generation);
+    self.douyindisc_activePickGeneration[identifier]=@(generation);
+    return generation;
+}
+
+- (void)douyindisc_finishImagePickingForIdentifier:(NSString *)identifier generation:(NSUInteger)generation {
+    NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
+    if (!douyindisc_validIdentifier(identifier) || !generation) return;
+    if (![self.douyindisc_activePickGeneration[identifier] isEqualToNumber:@(generation)]) return;
+    [self.douyindisc_activePickGeneration removeObjectForKey:identifier];
+}
+
+- (void)douyindisc_cancelImagePickingForIdentifier:(NSString *)identifier {
+    NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
+    if (!douyindisc_validIdentifier(identifier)) return;
+    self.douyindisc_pickGeneration[identifier]=@([self.douyindisc_pickGeneration[identifier] unsignedIntegerValue]+1);
+    [self.douyindisc_activePickGeneration removeObjectForKey:identifier];
 }
 
 - (UIImage *)douyindisc_decodeImageData:(NSData *)data {
@@ -295,15 +327,24 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     entry[@"opacity"] = @(opacity);
     entry[@"scale"] = @(scale);
     config[identifier] = entry;
-    return [self douyindisc_commitLatestConfig:config beforeNotify:nil error:error];
+    BOOL committed=[self douyindisc_commitLatestConfig:config beforeNotify:nil error:error];
+    if(committed&&!enabled)[self douyindisc_cancelImagePickingForIdentifier:identifier];
+    return committed;
 }
 
 - (void)douyindisc_saveImageData:(NSData *)data identifier:(NSString *)identifier completion:(void (^)(NSError *))completion {
+    NSUInteger generation=[self douyindisc_beginImagePickingForIdentifier:identifier];
+    if(!generation){dispatch_async(dispatch_get_main_queue(),^{if(completion)completion(douyindisc_error(6,@"请先开启此项的图标替换开关。"));});return;}
+    [self douyindisc_saveImageData:data identifier:identifier pickingGeneration:generation completion:completion];
+}
+
+- (void)douyindisc_saveImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration completion:(void (^)(NSError *))completion {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
     NSData *snapshot = [data copy];
     NSString *key = [identifier copy];
-    if (!douyindisc_validIdentifier(key)) {
-        dispatch_async(dispatch_get_main_queue(), ^{ if (completion) completion(douyindisc_error(3, @"导航项无效。")); });
+    NSUInteger authorizedGeneration=pickingGeneration;
+    if (!douyindisc_validIdentifier(key) || !authorizedGeneration || ![self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)] || ![self douyindisc_imagePickingEnabledForIdentifier:key]) {
+        dispatch_async(dispatch_get_main_queue(), ^{ if(completion)completion(douyindisc_error(6,@"请先开启此项的图标替换开关，再选择图标。")); });
         return;
     }
     NSUInteger generation = [self.douyindisc_imageGeneration[key] unsignedIntegerValue] + 1;
@@ -328,12 +369,20 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             NSAssert(NSThread.isMainThread, @"Navigation store merge must be on main thread");
             if (!name || !image.CGImage) {
+                [self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
                 if (completion) completion(error ?: douyindisc_error(2, @"图片无法读取或保存。"));
                 return;
             }
             if ([self.douyindisc_imageGeneration[key] unsignedIntegerValue] != generation) {
                 [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
+                if([self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)])[self.douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
                 if (completion) completion(douyindisc_error(5, @"该图片导入已被更新操作取消。"));
+                return;
+            }
+            if (![self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)] || ![self douyindisc_imagePickingEnabledForIdentifier:key]) {
+                [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
+                [self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
+                if (completion) completion(douyindisc_error(6, @"此项图标替换已关闭，导入已取消，原图保留。"));
                 return;
             }
             NSString *oldName = self.douyindisc_config[key][@"image"];
@@ -343,6 +392,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             config[key] = entry;
             __block NSError *commitError = nil;
             BOOL saved = [self douyindisc_commitLatestConfig:config beforeNotify:^{ self.douyindisc_images[key] = image; } error:&commitError];
+            [self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
             if (!saved) [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
             else {
                 if (douyindisc_validImageName(oldName) && ![oldName isEqualToString:name])

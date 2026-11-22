@@ -59,6 +59,28 @@ static NSUInteger douyindisc_navCaseUUIDFiles(NSURL *directory) {
     return count;
 }
 
+static void douyindisc_navCaseVerifyDisabledImportRollback(DouyinDiscNavigationStore *store, NSURL *directory, dispatch_block_t done) {
+    UIImage *oldImage=[store douyindisc_imageForIdentifier:@"top_recommend"];
+    NSDictionary *disk=[NSDictionary dictionaryWithContentsOfURL:[directory URLByAppendingPathComponent:@"settings.plist"]];
+    NSString *oldName=disk[@"top_recommend"][@"image"];
+    NSUInteger oldFileCount=douyindisc_navCaseUUIDFiles(directory);
+    NSUInteger ticket=[store douyindisc_beginImagePickingForIdentifier:@"top_recommend"];
+    DD_CHECK_NS(ticket>0 && oldImage.CGImage!=NULL && oldName.length>0,@"enabled item grants photo import authorization while existing image is present");
+    [store douyindisc_saveImageData:douyindisc_navCaseImage(UIColor.purpleColor) identifier:@"top_recommend" pickingGeneration:ticket completion:^(NSError *error){
+        NSDictionary *after=[NSDictionary dictionaryWithContentsOfURL:[directory URLByAppendingPathComponent:@"settings.plist"]];
+        DD_CHECK_NS(error!=nil,@"photo result completing after switch-off is rejected");
+        DD_CHECK_NS([store douyindisc_imageForIdentifier:@"top_recommend"]==oldImage && [after[@"top_recommend"][@"image"] isEqualToString:oldName],@"late denied image leaves previous preview and stored reference intact");
+        DD_CHECK_NS(douyindisc_navCaseUUIDFiles(directory)==oldFileCount,@"late denied image temp PNG is removed");
+        NSDictionary *entry=[store douyindisc_entryForIdentifier:@"top_recommend"];NSError *enableError=nil;
+        BOOL reenabled=[store douyindisc_saveEnabled:YES opacity:[entry[@"opacity"] doubleValue] scale:[entry[@"scale"] doubleValue] identifier:@"top_recommend" error:&enableError];
+        DD_CHECK_NS(reenabled && enableError==nil,@"test re-enables image selection without touching the retained image");
+        if(done)done();
+    }];
+    NSDictionary *current=[store douyindisc_entryForIdentifier:@"top_recommend"];NSError *disableError=nil;
+    BOOL disabled=[store douyindisc_saveEnabled:NO opacity:[current[@"opacity"] doubleValue] scale:[current[@"scale"] doubleValue] identifier:@"top_recommend" error:&disableError];
+    DD_CHECK_NS(disabled && disableError==nil && ![store douyindisc_imagePickingEnabledForIdentifier:@"top_recommend"] && [store douyindisc_beginImagePickingForIdentifier:@"top_recommend"]==0,@"committed switch-off immediately revokes new picker authorization");
+}
+
 static void douyindisc_navigationStoreCases(void (^done)(void)) {
     NSURL *base = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:
         [@"DouyinDiscNavigationStoreCases-" stringByAppendingString:NSUUID.UUID.UUIDString]] isDirectory:YES];
@@ -69,6 +91,7 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     DouyinDiscNavigationStore *store = douyindisc_uiTestCreateStore(directory);
     NSURL *configURL = [directory URLByAppendingPathComponent:@"settings.plist"];
     DD_CHECK_NS(![NSFileManager.defaultManager fileExistsAtPath:configURL.path], @"fresh initialization reads without writing default configuration");
+    DD_CHECK_NS(![store douyindisc_imagePickingEnabledForIdentifier:@"bottom_home"] && [store douyindisc_beginImagePickingForIdentifier:@"bottom_home"]==0,@"disabled item cannot obtain a photo or file import authorization");
     NSArray *items = douyindisc_navigationItems();
     for (NSDictionary *item in items) {
         NSDictionary *entry = [store douyindisc_entryForIdentifier:item[@"identifier"]];
@@ -80,11 +103,13 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     NSData *jpeg=douyindisc_navCaseJPEG(UIColor.systemOrangeColor);
     DD_CHECK_NS(jpeg.length>0 && douyindisc_uiTestCanDecodeImageData(jpeg), @"system ImageIO decoder accepts an ordinary JPEG photo");
     DD_CHECK_NS(!douyindisc_uiTestCanDecodeImageData([@"not an image" dataUsingEncoding:NSUTF8StringEncoding]), @"decoder rejects non-image bytes with a fixed failure");
-    [store douyindisc_saveImageData:[@"not an image" dataUsingEncoding:NSUTF8StringEncoding] identifier:@"top_recommend" completion:^(NSError *error) {
-        DD_CHECK_NS(NSThread.isMainThread, @"invalid image completion is delivered on main thread");
-        DD_CHECK_NS(error != nil, @"invalid image data is rejected");
-        DD_CHECK_NS(![NSFileManager.defaultManager fileExistsAtPath:configURL.path], @"invalid image input leaves storage untouched");
+    [store douyindisc_saveImageData:douyindisc_navCaseImage(UIColor.redColor) identifier:@"top_recommend" completion:^(NSError *error) {
+        DD_CHECK_NS(NSThread.isMainThread, @"disabled image-import rejection is delivered on main thread");
+        DD_CHECK_NS(error.code==6, @"a valid image cannot be imported while the item switch is off");
+        DD_CHECK_NS(![NSFileManager.defaultManager fileExistsAtPath:configURL.path] && douyindisc_navCaseUUIDFiles(directory)==0, @"disabled image import creates no config or orphan file");
 
+        NSError *enableError=nil;
+        DD_CHECK_NS([store douyindisc_saveEnabled:YES opacity:1 scale:1 identifier:@"top_recommend" error:&enableError] && enableError==nil,@"image fixture enables the target item before import");
         NSData *firstImage = douyindisc_navCaseImage(UIColor.redColor);
         NSData *lastImage = douyindisc_navCaseImage(UIColor.systemGreenColor);
         __block NSUInteger raceCallbacks = 0;
@@ -92,6 +117,7 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
         continueAfterRace = ^{
             if (++raceCallbacks != 2) return;
             DD_CHECK_NS(douyindisc_navCaseUUIDFiles(directory) == 1, @"competing imports retain only the winning unique image file after both callbacks");
+            douyindisc_navCaseVerifyDisabledImportRollback(store,directory,^{
             DouyinDiscNavigationStore *cold = douyindisc_uiTestCreateStore(directory);
             DD_CHECK_NS([cold douyindisc_imageForIdentifier:@"top_recommend"] == nil, @"cold store begins with an empty image cache");
             [cold douyindisc_preloadImagesWithCompletion:^{
@@ -152,6 +178,7 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
                 DD_CHECK_NS(clearObserverSawEmptyCache, @"clear notification observes the already-cleared cache");
                 [NSNotificationCenter.defaultCenter removeObserver:clearObserver];
             }];
+            });
         };
         [store douyindisc_saveImageData:firstImage identifier:@"top_recommend" completion:^(NSError *error) {
             DD_CHECK_NS(NSThread.isMainThread, @"superseded import completion runs on main thread");

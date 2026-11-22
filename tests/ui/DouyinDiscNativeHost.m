@@ -46,8 +46,38 @@
 @end
 @implementation AWEFeedTopBarContainer
 @end
-@interface AWESettingBaseViewController : UIViewController
-@property (nonatomic, strong) UITableView *douyindisc_table;
+@interface AWESettingItemModel : NSObject
+@property (nonatomic,copy) NSString *identifier;
+@property (nonatomic,copy) NSString *title;
+@property (nonatomic,strong) UIColor *titleColor;
+@property (nonatomic,strong) UIImage *specificIconImage;
+@property (nonatomic,strong) NSString *businessID;
+@property (nonatomic) NSInteger type;
+@property (nonatomic) NSInteger cellType;
+@property (nonatomic) BOOL isEnable;
+@property (nonatomic) BOOL isUserInteractionEnabled;
+@property (nonatomic) BOOL isForbidChangeColor;
+@property (nonatomic,copy) void (^cellTappedBlock)(void);
+@property (nonatomic) double cellHeight;
+- (instancetype)initWithIdentifier:(NSString *)identifier;
+@end
+@implementation AWESettingItemModel
+- (instancetype)initWithIdentifier:(NSString *)identifier { self=[super init]; if(self)_identifier=[identifier copy]; return self; }
+- (void)setUserInteractionEnabled:(BOOL)enabled { _isUserInteractionEnabled=enabled; }
+@end
+@interface AWESettingSectionModel : NSObject
+@property (nonatomic) NSInteger type;
+@property (nonatomic,copy) NSArray<AWESettingItemModel *> *itemArray;
+@end
+@implementation AWESettingSectionModel @end
+@interface AWESettingsViewModel : NSObject
+@property (nonatomic,copy) NSArray<AWESettingSectionModel *> *sectionDataArray;
+@end
+@implementation AWESettingsViewModel @end
+@interface AWESettingBaseViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@property(nonatomic) NSUInteger douyindisc_nativeSelectCount;
+@property (nonatomic,strong) UITableView *douyindisc_table;
+@property (nonatomic,strong) AWESettingsViewModel *viewModel;
 - (UITableView *)tableView;
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView;
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section;
@@ -58,10 +88,10 @@
 @end
 @implementation AWESettingBaseViewController
 - (UITableView *)tableView { return self.douyindisc_table; }
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return 1; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView; return section==0?2:0; }
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.textLabel.text=indexPath.row?@"原生通用项2":@"原生通用项1";return cell; }
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)indexPath; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return self.viewModel.sectionDataArray.count; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;return section<self.viewModel.sectionDataArray.count?self.viewModel.sectionDataArray[section].itemArray.count:0; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.textLabel.text=item.title;cell.textLabel.textColor=item.titleColor;cell.imageView.image=item.specificIconImage;return cell; }
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; self.douyindisc_nativeSelectCount++; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];if(item.cellTappedBlock)item.cellTappedBlock(); }
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)cell;(void)indexPath; }
 - (void)tableView:(UITableView *)tableView didEndDisplayingCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)cell;(void)indexPath; }
 - (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; }
@@ -73,10 +103,9 @@
 @implementation AWESettingsTableViewController
 - (BOOL)onSearchStatus { return self.douyindisc_searchStatus; }
 @end
-@interface AWEGeneralSettingViewController : AWESettingBaseViewController
+@interface AWEGeneralSettingViewController : UIViewController
 @end
-@implementation AWEGeneralSettingViewController
-@end
+@implementation AWEGeneralSettingViewController @end
 
 @interface AWEButton : UIButton { @public UIImageView *_imageContentView; }
 @property (nonatomic) NSUInteger douyindisc_layoutCalls;

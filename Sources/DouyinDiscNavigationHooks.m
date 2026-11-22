@@ -2,9 +2,29 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import <string.h>
+#import <math.h>
 
-@interface UIViewController (DouyinDiscGeneralSettingsAccessors)
-- (void)viewDidAppear:(BOOL)animated;
+@interface NSObject (DouyinDiscRootModelAccessors)
+- (instancetype)initWithIdentifier:(NSString *)identifier;
+- (id)viewModel;
+- (id)sectionDataArray;
+- (id)itemArray;
+- (NSInteger)type;
+- (NSString *)title;
+- (NSString *)identifier;
+- (double)cellHeight;
+- (void)setItemArray:(NSArray *)items;
+- (void)setIdentifier:(NSString *)identifier;
+- (void)setTitle:(NSString *)title;
+- (void)setTitleColor:(UIColor *)color;
+- (void)setSpecificIconImage:(UIImage *)image;
+- (void)setType:(NSInteger)type;
+- (void)setCellType:(NSInteger)type;
+- (void)setCellHeight:(double)height;
+- (void)setIsEnable:(BOOL)enabled;
+- (void)setIsForbidChangeColor:(BOOL)forbid;
+- (void)setUserInteractionEnabled:(BOOL)enabled;
+- (void)setCellTappedBlock:(void (^)(void))block;
 @end
 @interface DouyinDiscTextLease : NSObject
 @property(nonatomic,weak) UILabel *douyindisc_label;
@@ -16,17 +36,6 @@
 @property(nonatomic,weak) UIView *douyindisc_overlayHost;
 @property(nonatomic,strong) UIImageView *douyindisc_overlay;
 @end
-@implementation DouyinDiscTextLease @end
-@interface DouyinDiscWeakControllerReference : NSObject
-@property(nonatomic,weak) UIViewController *controller;
-@end
-@implementation DouyinDiscWeakControllerReference @end
-@interface DouyinDiscSettingsAction : NSObject
-- (void)douyindisc_open:(id)sender;
-@end
-static char douyindisc_generalRowKey, douyindisc_generalRowCellKey, douyindisc_settingsOwnerKey;
-static NSIndexPath *douyindisc_generalEntryIndex;
-static DouyinDiscSettingsAction *douyindisc_settingsAction;
 static NSMutableSet<NSString *> *douyindisc_installedHooks;
 static NSMapTable<UILabel *,DouyinDiscTextLease *> *douyindisc_leases;
 static BOOL douyindisc_observersInstalled;
@@ -59,22 +68,156 @@ static void douyindisc_apply(UIView *v){
  DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];NSDictionary *entry=[store douyindisc_entryForIdentifier:identifier];UIImage *image=[store douyindisc_imageForIdentifier:identifier];if(![entry[@"enabled"] boolValue]||!image.CGImage){if(lease)douyindisc_removeIcon(l);return;}
  douyindisc_installTextIcon(v,l,identifier,image,[entry[@"opacity"] doubleValue],[entry[@"scale"] doubleValue]);
 }
-static IMP douyindisc_originalTopLayout,douyindisc_originalBottomLayout,douyindisc_originalBottomUpdate,douyindisc_originalBottomAnimatedUpdate,douyindisc_originalIconTextUpdate,douyindisc_originalTopUpdate,douyindisc_originalTopSelected,douyindisc_originalBottomStatus,douyindisc_originalIconStatus,douyindisc_originalGeneralSettingAppear,douyindisc_generalRowsOriginal,douyindisc_generalCellOriginal,douyindisc_generalSelectOriginal,douyindisc_generalWillDisplayOriginal,douyindisc_generalDidEndDisplayOriginal;
+static IMP douyindisc_originalTopLayout,douyindisc_originalBottomLayout,douyindisc_originalBottomUpdate,douyindisc_originalBottomAnimatedUpdate,douyindisc_originalIconTextUpdate,douyindisc_originalTopUpdate,douyindisc_originalTopSelected,douyindisc_originalBottomStatus,douyindisc_originalIconStatus,douyindisc_originalRootSettingsAppear,douyindisc_originalRootDidSelect;
 static void douyindisc_topLayout(id o,SEL s){((void(*)(id,SEL))douyindisc_originalTopLayout)(o,s);douyindisc_apply(o);}static void douyindisc_bottomLayout(id o,SEL s){((void(*)(id,SEL))douyindisc_originalBottomLayout)(o,s);douyindisc_apply(o);}static void douyindisc_bottomUpdate(id o,SEL s,id t){((void(*)(id,SEL,id))douyindisc_originalBottomUpdate)(o,s,t);douyindisc_apply(o);}static void douyindisc_bottomAnimatedUpdate(id o,SEL s,id t,BOOL a){((void(*)(id,SEL,id,BOOL))douyindisc_originalBottomAnimatedUpdate)(o,s,t,a);douyindisc_apply(o);}static void douyindisc_iconTextUpdate(id o,SEL s,id t){((void(*)(id,SEL,id))douyindisc_originalIconTextUpdate)(o,s,t);douyindisc_apply(o);}static void douyindisc_topUpdate(id o,SEL s,id t){((void(*)(id,SEL,id))douyindisc_originalTopUpdate)(o,s,t);douyindisc_apply(o);}static void douyindisc_topSelected(id o,SEL s,BOOL a,BOOL b){((void(*)(id,SEL,BOOL,BOOL))douyindisc_originalTopSelected)(o,s,a,b);douyindisc_apply(douyindisc_ivar(o,"AWEHPTopTabItemView","_textContentView","@\"AWEHPTopTabItemTextContentView\""));}static void douyindisc_bottomStatus(id o,SEL s,NSInteger a,BOOL b){((void(*)(id,SEL,NSInteger,BOOL))douyindisc_originalBottomStatus)(o,s,a,b);douyindisc_apply(o);}static void douyindisc_iconStatus(id o,SEL s,NSInteger a,BOOL b){((void(*)(id,SEL,NSInteger,BOOL))douyindisc_originalIconStatus)(o,s,a,b);douyindisc_apply(o);}
 static void douyindisc_reload(void){if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{douyindisc_reload();});return;}for(UIScene *scene in UIApplication.sharedApplication.connectedScenes){if(![scene isKindOfClass:UIWindowScene.class]||scene.activationState!=UISceneActivationStateForegroundActive)continue;NSMutableArray *stack=[NSMutableArray array];for(UIWindow *w in ((UIWindowScene *)scene).windows)if(w.windowLevel==UIWindowLevelNormal)[stack addObject:w];NSUInteger n=0;while(stack.count&&++n<=2200){UIView *v=stack.lastObject;[stack removeLastObject];if([v isKindOfClass:NSClassFromString(@"AWEHPTopTabItemTextContentView")]||[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarTextView")]||[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarIconTextView")])douyindisc_apply(v);if(stack.count+v.subviews.count<=2200)[stack addObjectsFromArray:v.subviews];}}}
-static void douyindisc_generalSettingsAppeared(id o,SEL s,BOOL animated){if(douyindisc_originalGeneralSettingAppear)((void(*)(id,SEL,BOOL))douyindisc_originalGeneralSettingAppear)(o,s,animated);}
-static NSInteger douyindisc_generalLastSection(id o){UITableView *table=((id(*)(id,SEL))objc_msgSend)(o,NSSelectorFromString(@"tableView"));return table.numberOfSections>0?(NSInteger)table.numberOfSections-1:-1;}
-static NSInteger douyindisc_generalRows(id o,SEL s,UITableView *table,NSInteger section){NSInteger rows=((NSInteger(*)(id,SEL,id,NSInteger))douyindisc_generalRowsOriginal)(o,s,table,section);return section==douyindisc_generalLastSection(o)?rows+1:rows;}
-static UITableViewCell *douyindisc_generalCell(id o,SEL s,UITableView *table,NSIndexPath *index){NSInteger section=douyindisc_generalLastSection(o),base=((NSInteger(*)(id,SEL,id,NSInteger))douyindisc_generalRowsOriginal)(o,NSSelectorFromString(@"tableView:numberOfRowsInSection:"),table,section);if(index.section!=section||index.row!=base)return ((id(*)(id,SEL,id,id))douyindisc_generalCellOriginal)(o,s,table,index);UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];button.frame=cell.contentView.bounds;button.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;button.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;button.contentEdgeInsets=UIEdgeInsetsMake(0,16,0,16);[button setTitle:@"DouyinDisc" forState:UIControlStateNormal];[button setTitleColor:UIColor.blackColor forState:UIControlStateNormal];button.accessibilityIdentifier=@"com.minis.douyindisc.general-setting";DouyinDiscWeakControllerReference *ref=[DouyinDiscWeakControllerReference new];ref.controller=o;objc_setAssociatedObject(button,&douyindisc_settingsOwnerKey,ref,OBJC_ASSOCIATION_RETAIN_NONATOMIC);if(!douyindisc_settingsAction)douyindisc_settingsAction=[DouyinDiscSettingsAction new];[button addTarget:douyindisc_settingsAction action:@selector(douyindisc_open:) forControlEvents:UIControlEventTouchUpInside];[cell.contentView addSubview:button];cell.backgroundColor=UIColor.whiteColor;objc_setAssociatedObject(cell,&douyindisc_generalRowCellKey,@YES,OBJC_ASSOCIATION_RETAIN_NONATOMIC);return cell;}
-static void douyindisc_generalSelect(id o,SEL s,UITableView *table,NSIndexPath *index){NSInteger section=douyindisc_generalLastSection(o),base=((NSInteger(*)(id,SEL,id,NSInteger))douyindisc_generalRowsOriginal)(o,NSSelectorFromString(@"tableView:numberOfRowsInSection:"),table,section);if(index.section==section&&index.row==base){[table deselectRowAtIndexPath:index animated:NO];return;}((void(*)(id,SEL,id,id))douyindisc_generalSelectOriginal)(o,s,table,index);}
-static void douyindisc_generalWillDisplay(id o,SEL s,UITableView *table,UITableViewCell *cell,NSIndexPath *index){if(objc_getAssociatedObject(cell,&douyindisc_generalRowCellKey))return;((void(*)(id,SEL,id,id,id))douyindisc_generalWillDisplayOriginal)(o,s,table,cell,index);}
-static void douyindisc_generalDidEndDisplay(id o,SEL s,UITableView *table,UITableViewCell *cell,NSIndexPath *index){if(objc_getAssociatedObject(cell,&douyindisc_generalRowCellKey))return;((void(*)(id,SEL,id,id,id))douyindisc_generalDidEndDisplayOriginal)(o,s,table,cell,index);}
+static BOOL douyindisc_rootSetObject(id object, SEL selector, id value) {
+    if (!object || !value || !douyindisc_encoding(object_getClass(object), selector, "v24@0:8@16")) return NO;
+    ((void (*)(id, SEL, id))objc_msgSend)(object, selector, value);
+    return YES;
+}
+static BOOL douyindisc_rootSetInteger(id object, SEL selector, NSInteger value) {
+    if (!object || !douyindisc_encoding(object_getClass(object), selector, "v24@0:8q16")) return NO;
+    ((void (*)(id, SEL, NSInteger))objc_msgSend)(object, selector, value);
+    return YES;
+}
+static BOOL douyindisc_rootSetBoolean(id object, SEL selector, BOOL value) {
+    if (!object || !douyindisc_encoding(object_getClass(object), selector, "v20@0:8B16")) return NO;
+    ((void (*)(id, SEL, BOOL))objc_msgSend)(object, selector, value);
+    return YES;
+}
+static BOOL douyindisc_rootSetBlock(id object, SEL selector, dispatch_block_t value) {
+    if (!object || !value || !douyindisc_encoding(object_getClass(object), selector, "v24@0:8@?16")) return NO;
+    ((void (*)(id, SEL, dispatch_block_t))objc_msgSend)(object, selector, [value copy]);
+    return YES;
+}
+static BOOL douyindisc_rootEntryIdentifier(id item) {
+    SEL selector = NSSelectorFromString(@"identifier");
+    if (!item || !douyindisc_encoding(object_getClass(item), selector, "@16@0:8")) return NO;
+    id value = ((id (*)(id, SEL))objc_msgSend)(item, selector);
+    return [value isKindOfClass:NSString.class] && [value isEqualToString:@"com.minis.douyindisc.root-entry"];
+}
+static void douyindisc_openRootPanel(UIViewController *source) {
+    UINavigationController *nav = source.navigationController;
+    if (NSThread.isMainThread && nav && nav.topViewController == source)
+        [nav pushViewController:[DouyinDiscSettingsViewController new] animated:YES];
+}
+static id douyindisc_rootItemAtPath(id controller, UITableView *table, NSIndexPath *path) {
+    if (!NSThread.isMainThread || ![path isKindOfClass:NSIndexPath.class] || path.length != 2 || path.section < 0 || path.row < 0) return nil;
+    Class root = NSClassFromString(@"AWESettingsTableViewController");
+    if (!root || ![controller isKindOfClass:root]) return nil;
+    SEL tableSel = NSSelectorFromString(@"tableView"), vmSel = NSSelectorFromString(@"viewModel");
+    SEL sectionsSel = NSSelectorFromString(@"sectionDataArray"), itemsSel = NSSelectorFromString(@"itemArray");
+    if (!douyindisc_encoding(object_getClass(controller), tableSel, "@16@0:8") ||
+        !douyindisc_encoding(object_getClass(controller), vmSel, "@16@0:8") ||
+        ((id (*)(id, SEL))objc_msgSend)(controller, tableSel) != table) return nil;
+    id vm = ((id (*)(id, SEL))objc_msgSend)(controller, vmSel);
+    if (!vm || !douyindisc_encoding(object_getClass(vm), sectionsSel, "@16@0:8")) return nil;
+    id sections = ((id (*)(id, SEL))objc_msgSend)(vm, sectionsSel);
+    if (![sections isKindOfClass:NSArray.class] || (NSUInteger)path.section >= [sections count]) return nil;
+    id section = sections[path.section];
+    if (!douyindisc_encoding(object_getClass(section), itemsSel, "@16@0:8")) return nil;
+    id items = ((id (*)(id, SEL))objc_msgSend)(section, itemsSel);
+    return [items isKindOfClass:NSArray.class] && (NSUInteger)path.row < [items count] ? items[path.row] : nil;
+}
+static void douyindisc_rootDidSelect(id object, SEL selector, UITableView *table, NSIndexPath *path) {
+    id item = douyindisc_rootItemAtPath(object, table, path);
+    if (douyindisc_rootEntryIdentifier(item)) {
+        [table deselectRowAtIndexPath:path animated:YES];
+        douyindisc_openRootPanel(object);
+        return;
+    }
+    if (douyindisc_originalRootDidSelect)
+        ((void (*)(id, SEL, id, id))douyindisc_originalRootDidSelect)(object, selector, table, path);
+}
+static BOOL douyindisc_insertRootSettingsItem(id controller) {
+    if (!NSThread.isMainThread) return NO;
+    Class rootClass = NSClassFromString(@"AWESettingsTableViewController");
+    Class vmClass = NSClassFromString(@"AWESettingsViewModel");
+    Class sectionClass = NSClassFromString(@"AWESettingSectionModel");
+    Class itemClass = NSClassFromString(@"AWESettingItemModel");
+    if (!rootClass || !vmClass || !sectionClass || !itemClass || ![controller isKindOfClass:rootClass]) return NO;
+    SEL vmSel = NSSelectorFromString(@"viewModel"), sectionsSel = NSSelectorFromString(@"sectionDataArray");
+    SEL typeSel = NSSelectorFromString(@"type"), itemsSel = NSSelectorFromString(@"itemArray");
+    SEL titleSel = NSSelectorFromString(@"title"), heightSel = NSSelectorFromString(@"cellHeight");
+    if (!douyindisc_encoding(object_getClass(controller), vmSel, "@16@0:8")) return NO;
+    id vm = ((id (*)(id, SEL))objc_msgSend)(controller, vmSel);
+    if (![vm isKindOfClass:vmClass] || !douyindisc_encoding(object_getClass(vm), sectionsSel, "@16@0:8")) return NO;
+    id sections = ((id (*)(id, SEL))objc_msgSend)(vm, sectionsSel);
+    if (![sections isKindOfClass:NSArray.class]) return NO;
+    for (id section in sections) {
+        if (![section isKindOfClass:sectionClass] || !douyindisc_encoding(object_getClass(section), typeSel, "q16@0:8") ||
+            ((NSInteger (*)(id, SEL))objc_msgSend)(section, typeSel) != 2 ||
+            !douyindisc_encoding(object_getClass(section), itemsSel, "@16@0:8")) continue;
+        id items = ((id (*)(id, SEL))objc_msgSend)(section, itemsSel);
+        if (![items isKindOfClass:NSArray.class]) continue;
+        NSUInteger anchor = NSNotFound;
+        id anchorItem = nil;
+        for (NSUInteger i = 0; i < [items count]; i++) {
+            id candidate = items[i];
+            if (douyindisc_rootEntryIdentifier(candidate)) return YES;
+            if (![candidate isKindOfClass:itemClass] || !douyindisc_encoding(object_getClass(candidate), titleSel, "@16@0:8")) continue;
+            id title = ((id (*)(id, SEL))objc_msgSend)(candidate, titleSel);
+            if ([title isKindOfClass:NSString.class] && [title isEqualToString:@"抖音图层"]) { anchor = i; anchorItem = candidate; }
+        }
+        SEL setItems = NSSelectorFromString(@"setItemArray:");
+        if (!anchorItem || anchor == NSNotFound || !douyindisc_encoding(object_getClass(anchorItem), typeSel, "q16@0:8") ||
+            !douyindisc_encoding(object_getClass(section), setItems, "v24@0:8@16")) continue;
+        SEL initializer = NSSelectorFromString(@"initWithIdentifier:");
+        if (!douyindisc_encoding(itemClass, initializer, "@24@0:8@16")) return NO;
+        id row = [[itemClass alloc] initWithIdentifier:@"com.minis.douyindisc.root-entry"];
+        if (!row) return NO;
+        NSInteger type = ((NSInteger (*)(id, SEL))objc_msgSend)(anchorItem, typeSel);
+        UIImage *icon = [[UIImage systemImageNamed:@"square.grid.2x2"] imageWithTintColor:UIColor.blackColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        __weak UIViewController *weakSource = controller;
+        dispatch_block_t entryTapped = ^{
+            dispatch_block_t open = ^{
+                UIViewController *source = weakSource;
+                UINavigationController *nav = source.navigationController;
+                if (nav && nav.topViewController == source) [nav pushViewController:[DouyinDiscSettingsViewController new] animated:YES];
+            };
+            if (NSThread.isMainThread) open(); else dispatch_async(dispatch_get_main_queue(), open);
+        };
+        BOOL ready = douyindisc_rootSetObject(row, NSSelectorFromString(@"setBusinessID:"), @"com.minis.douyindisc.root-entry") &&
+            douyindisc_rootSetObject(row, NSSelectorFromString(@"setTitle:"), @"DouyinDisc") &&
+            douyindisc_rootSetObject(row, NSSelectorFromString(@"setTitleColor:"), UIColor.blackColor) &&
+            douyindisc_rootSetObject(row, NSSelectorFromString(@"setSpecificIconImage:"), icon) &&
+            douyindisc_rootSetInteger(row, NSSelectorFromString(@"setType:"), type) &&
+            douyindisc_rootSetInteger(row, NSSelectorFromString(@"setCellType:"), 4) &&
+            douyindisc_rootSetBoolean(row, NSSelectorFromString(@"setIsEnable:"), YES) &&
+            douyindisc_rootSetBoolean(row, NSSelectorFromString(@"setUserInteractionEnabled:"), YES) &&
+            douyindisc_rootSetBoolean(row, NSSelectorFromString(@"setIsForbidChangeColor:"), YES) &&
+            douyindisc_rootSetBlock(row, NSSelectorFromString(@"setCellTappedBlock:"), entryTapped);
+        if (!ready) return NO;
+        SEL setHeight = NSSelectorFromString(@"setCellHeight:");
+        if (douyindisc_encoding(object_getClass(anchorItem), heightSel, "d16@0:8") && douyindisc_encoding(itemClass, setHeight, "v24@0:8d16")) {
+            double height = ((double (*)(id, SEL))objc_msgSend)(anchorItem, heightSel);
+            if (height > 0 && isfinite(height)) ((void (*)(id, SEL, double))objc_msgSend)(row, setHeight, height);
+        }
+        NSMutableArray *updated = [items mutableCopy];
+        [updated insertObject:row atIndex:anchor + 1];
+        ((void (*)(id, SEL, id))objc_msgSend)(section, setItems, [updated copy]);
+        SEL tableSel = NSSelectorFromString(@"tableView");
+        if (douyindisc_encoding(object_getClass(controller), tableSel, "@16@0:8")) {
+            id table = ((id (*)(id, SEL))objc_msgSend)(controller, tableSel);
+            if ([table isKindOfClass:UITableView.class]) [table reloadData];
+        }
+        return YES;
+    }
+    return NO;
+}
+static void douyindisc_rootSettingsAppeared(id object, SEL selector, BOOL animated) {
+    if (douyindisc_originalRootSettingsAppear) ((void (*)(id, SEL, BOOL))douyindisc_originalRootSettingsAppear)(object, selector, animated);
+    douyindisc_insertRootSettingsItem(object);
+}
 
-void douyindisc_installNavigationHooks(void){if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{douyindisc_installNavigationHooks();});return;}if(!douyindisc_leases){NSPointerFunctionsOptions k=NSPointerFunctionsWeakMemory|NSPointerFunctionsObjectPointerPersonality;douyindisc_leases=[NSMapTable mapTableWithKeyOptions:k valueOptions:NSPointerFunctionsStrongMemory];douyindisc_installedHooks=[NSMutableSet set];}Class top=NSClassFromString(@"AWEHPTopTabItemTextContentView"),bottom=NSClassFromString(@"AWENormalModeTabBarTextView"),icon=NSClassFromString(@"AWENormalModeTabBarIconTextView"),item=NSClassFromString(@"AWEHPTopTabItemView"),general=NSClassFromString(@"AWEGeneralSettingViewController");
- SEL appear=@selector(viewDidAppear:);if(general&&!douyindisc_originalGeneralSettingAppear)douyindisc_hook(general,appear,(IMP)douyindisc_generalSettingsAppeared,"v20@0:8B16",&douyindisc_originalGeneralSettingAppear);
- if(general&&!douyindisc_generalRowsOriginal){SEL rows=NSSelectorFromString(@"tableView:numberOfRowsInSection:"),cell=NSSelectorFromString(@"tableView:cellForRowAtIndexPath:"),select=NSSelectorFromString(@"tableView:didSelectRowAtIndexPath:"),will=NSSelectorFromString(@"tableView:willDisplayCell:forRowAtIndexPath:"),end=NSSelectorFromString(@"tableView:didEndDisplayingCell:forRowAtIndexPath:");BOOL valid=douyindisc_encoding(general,rows,"q32@0:8@16q24")&&douyindisc_encoding(general,cell,"@32@0:8@16@24")&&douyindisc_encoding(general,select,"v32@0:8@16@24")&&douyindisc_encoding(general,will,"v40@0:8@16@24@32")&&douyindisc_encoding(general,end,"v40@0:8@16@24@32");
- if(valid){BOOL displayHooks=douyindisc_hook(general,cell,(IMP)douyindisc_generalCell,"@32@0:8@16@24",&douyindisc_generalCellOriginal)&&douyindisc_hook(general,select,(IMP)douyindisc_generalSelect,"v32@0:8@16@24",&douyindisc_generalSelectOriginal)&&douyindisc_hook(general,will,(IMP)douyindisc_generalWillDisplay,"v40@0:8@16@24@32",&douyindisc_generalWillDisplayOriginal)&&douyindisc_hook(general,end,(IMP)douyindisc_generalDidEndDisplay,"v40@0:8@16@24@32",&douyindisc_generalDidEndDisplayOriginal);if(displayHooks)douyindisc_hook(general,rows,(IMP)douyindisc_generalRows,"q32@0:8@16q24",&douyindisc_generalRowsOriginal);}}
+void douyindisc_installNavigationHooks(void){if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{douyindisc_installNavigationHooks();});return;}if(!douyindisc_leases){NSPointerFunctionsOptions k=NSPointerFunctionsWeakMemory|NSPointerFunctionsObjectPointerPersonality;douyindisc_leases=[NSMapTable mapTableWithKeyOptions:k valueOptions:NSPointerFunctionsStrongMemory];douyindisc_installedHooks=[NSMutableSet set];}Class top=NSClassFromString(@"AWEHPTopTabItemTextContentView"),bottom=NSClassFromString(@"AWENormalModeTabBarTextView"),icon=NSClassFromString(@"AWENormalModeTabBarIconTextView"),item=NSClassFromString(@"AWEHPTopTabItemView"),root=NSClassFromString(@"AWESettingsTableViewController");
+ SEL appear=@selector(viewDidAppear:),select=NSSelectorFromString(@"tableView:didSelectRowAtIndexPath:");
+ if(root&&douyindisc_encoding(root,appear,"v20@0:8B16")&&douyindisc_encoding(root,select,"v32@0:8@16@24")){
+  if(!douyindisc_originalRootDidSelect)douyindisc_hook(root,select,(IMP)douyindisc_rootDidSelect,"v32@0:8@16@24",&douyindisc_originalRootDidSelect);
+  if(douyindisc_originalRootDidSelect&&!douyindisc_originalRootSettingsAppear)douyindisc_hook(root,appear,(IMP)douyindisc_rootSettingsAppeared,"v20@0:8B16",&douyindisc_originalRootSettingsAppear);
+ }
  if(!douyindisc_originalTopLayout)douyindisc_hook(top,@selector(layoutSubviews),(IMP)douyindisc_topLayout,"v16@0:8",&douyindisc_originalTopLayout);if(!douyindisc_originalBottomLayout)douyindisc_hook(bottom,@selector(layoutSubviews),(IMP)douyindisc_bottomLayout,"v16@0:8",&douyindisc_originalBottomLayout);if(!douyindisc_originalBottomUpdate)douyindisc_hook(bottom,@selector(updateTitle:),(IMP)douyindisc_bottomUpdate,"v24@0:8@16",&douyindisc_originalBottomUpdate);if(!douyindisc_originalBottomAnimatedUpdate)douyindisc_hook(bottom,@selector(updateTitle:animated:),(IMP)douyindisc_bottomAnimatedUpdate,"v28@0:8@16B24",&douyindisc_originalBottomAnimatedUpdate);if(!douyindisc_originalIconTextUpdate)douyindisc_hook(icon,@selector(updateTitle:),(IMP)douyindisc_iconTextUpdate,"v24@0:8@16",&douyindisc_originalIconTextUpdate);if(!douyindisc_originalTopUpdate)douyindisc_hook(top,@selector(setContentText:),(IMP)douyindisc_topUpdate,"v24@0:8@16",&douyindisc_originalTopUpdate);if(!douyindisc_originalTopSelected)douyindisc_hook(item,@selector(updateSelected:animated:),(IMP)douyindisc_topSelected,"v24@0:8B16B20",&douyindisc_originalTopSelected);if(!douyindisc_originalBottomStatus)douyindisc_hook(bottom,@selector(tabbarStatusDidChanged:animated:),(IMP)douyindisc_bottomStatus,"v28@0:8q16B24",&douyindisc_originalBottomStatus);if(!douyindisc_originalIconStatus)douyindisc_hook(icon,@selector(tabbarStatusDidChanged:animated:),(IMP)douyindisc_iconStatus,"v28@0:8q16B24",&douyindisc_originalIconStatus);if(!douyindisc_observersInstalled){douyindisc_observersInstalled=YES;[NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.changed" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_reload();}];[NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.preview" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){NSString *key=[n.object isKindOfClass:NSString.class]?n.object:nil;for(DouyinDiscTextLease *l in douyindisc_leases.objectEnumerator.allObjects)if(!key||[l.douyindisc_identifier isEqualToString:key])douyindisc_apply(l.douyindisc_textView);}];}douyindisc_reload();}
-@implementation DouyinDiscSettingsAction
-- (void)douyindisc_open:(id)sender {UIView *view=[sender isKindOfClass:UIView.class]?sender:nil;DouyinDiscWeakControllerReference *ref=view?objc_getAssociatedObject(view,&douyindisc_settingsOwnerKey):nil;UIViewController *source=ref.controller;if(!source||!source.navigationController||source.navigationController.topViewController!=source)return;[source.navigationController pushViewController:[DouyinDiscSettingsViewController new] animated:YES];}
+
+@implementation DouyinDiscTextLease
 @end
