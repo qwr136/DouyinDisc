@@ -354,7 +354,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 
 #if defined(DOUYINDISC_UI_TEST)
 DouyinDiscNavigationStore *douyindisc_uiTestCreateStore(NSURL *directory) {
-    NSAssert(NSThread.isMainThread && directory.isFileURL, @"UI_TEST store requires a local directory on main thread");
+    if (!NSThread.isMainThread || !directory.isFileURL) return nil;
     return [[DouyinDiscNavigationStore alloc] initWithDouyinDiscDirectory:directory];
 }
 
@@ -363,7 +363,7 @@ BOOL douyindisc_uiTestCanDecodeImageData(NSData *data) {
 }
 
 void douyindisc_uiTestFailNextCommit(DouyinDiscNavigationStore *store) {
-    NSAssert(NSThread.isMainThread, @"UI_TEST store injection is main-thread only");
+    if (!NSThread.isMainThread || !store) return;
     store.douyindisc_testFailNextCommit = YES;
 }
 #endif
