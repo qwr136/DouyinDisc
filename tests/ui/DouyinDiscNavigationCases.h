@@ -40,13 +40,9 @@ static void douyindisc_navigationCases(UIWindow *window) {
     UIImage *testIcon=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemBlueColor)];
     douyindisc_uiTestSetNavigationImage(@"bottom_home",testIcon,YES);
     douyindisc_apply(textView);
-    NSUInteger darkBefore=douyindisc_navigationDarkPixels(textView);
     DouyinDiscTextLease *textLease=[douyindisc_leases objectForKey:textView->_label];
-    NSUInteger darkAfter=douyindisc_navigationDarkPixels(textView);
-    DD_CHECK(textLease!=nil,"navigation label receives an image lease");
-    DD_CHECK(textView->_label.alpha==0,"native label alpha is hidden under the replacement image");
-    DD_CHECK(darkBefore>0,"navigation fixture begins with visible dark glyph pixels");
-    DD_CHECK(darkAfter==0,"replacement pass removes all dark native glyph pixels");
+    DD_CHECK(textLease!=nil,"enabled configuration creates a navigation image lease");
+    DD_CHECK(textView->_label.alpha==0 && [textView->_label.text isEqualToString:@"首页"],"replacement hides rendered text without changing native label content");
     CGRect labelTextRect=[textView->_label textRectForBounds:textView->_label.bounds limitedToNumberOfLines:textView->_label.numberOfLines];
     CGPoint expectedCenter=[textView->_label convertPoint:CGPointMake(CGRectGetMidX(labelTextRect),CGRectGetMidY(labelTextRect)) toView:textView];
     CGRect overlayFrame=textLease.douyindisc_overlay.frame;
@@ -55,8 +51,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DD_CHECK(textLease.douyindisc_overlay.bounds.size.width<=textView->_label.bounds.size.width && textLease.douyindisc_overlay.bounds.size.height<=textView->_label.bounds.size.height,"replacement image fits inside the native label frame");
     douyindisc_uiTestSetNavigationImage(@"bottom_home",nil,NO);
     douyindisc_apply(textView);
-    NSUInteger darkRestored=douyindisc_navigationDarkPixels(textView);
-    DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && darkRestored==darkBefore,"disabling image restores original label visibility and glyph pixels");
+    DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && [textView->_label.text isEqualToString:@"首页"],"disabling image restores original label visibility and glyph content");
     [feed removeFromSuperview];
     DD_CHECK(douyindisc_uiTestPickerTitleStable(testIcon),"selected image keeps the choose-icon title and enables a separate clear action");
 

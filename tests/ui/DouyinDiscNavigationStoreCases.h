@@ -91,6 +91,7 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
         __block void (^continueAfterRace)(void);
         continueAfterRace = ^{
             if (++raceCallbacks != 2) return;
+            DD_CHECK_NS(douyindisc_navCaseUUIDFiles(directory) == 1, @"competing imports retain only the winning unique image file after both callbacks");
             DouyinDiscNavigationStore *cold = douyindisc_uiTestCreateStore(directory);
             DD_CHECK_NS([cold douyindisc_imageForIdentifier:@"top_recommend"] == nil, @"cold store begins with an empty image cache");
             [cold douyindisc_preloadImagesWithCompletion:^{
@@ -174,7 +175,6 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
                      @"stored image uses a UUID-only PNG basename");
             DD_CHECK_NS([bottom[@"enabled"] boolValue] && fabs([bottom[@"opacity"] doubleValue] - .65) < .001,
                      @"image commit merges the latest config without losing another-item toggle");
-            DD_CHECK_NS(douyindisc_navCaseUUIDFiles(directory) == 1, @"competing imports retain only the winning unique image file");
             continueAfterRace();
         }];
         NSError *toggleError = nil;

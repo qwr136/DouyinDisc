@@ -33,7 +33,8 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('NSFileCoordinator',panel)
         self.assertIn('!hasSize||!size||!size.unsignedLongLongValue',panel)
         self.assertIn('douyindisc_uiTestPickerTitleStable',host)
-        self.assertIn('original label visibility and glyph pixels',host)
+        self.assertIn('replacement hides rendered text without changing native label content',host)
+        self.assertIn('disabling image restores original label visibility and glyph content',host)
         self.assertIn('CGImageSourceCreateWithData',store)
 
     def test_static_policy_on_generated_project(self):
