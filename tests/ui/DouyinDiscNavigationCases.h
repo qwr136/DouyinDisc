@@ -51,8 +51,8 @@ static void douyindisc_navigationCases(UIWindow *window) {
     douyindisc_uiTestSetNavigationScale(@"bottom_home",1);
     DD_CHECK(textLease!=nil,"enabled configuration creates a navigation image lease");
     DD_CHECK(textView->_label.alpha==0 && [textView->_label.text isEqualToString:@"首页"],"replacement hides rendered text without changing native label content");
-    CGRect labelTextRect=[textView->_label textRectForBounds:textView->_label.bounds limitedToNumberOfLines:textView->_label.numberOfLines];
-    CGPoint expectedCenter=[textView->_label convertPoint:CGPointMake(CGRectGetMidX(labelTextRect),CGRectGetMidY(labelTextRect)) toView:textView];
+    CGRect labelRect=[textView->_label convertRect:textView->_label.bounds toView:textView];
+    CGPoint expectedCenter=CGPointMake(CGRectGetMidX(labelRect),CGRectGetMidY(labelRect));
     CGRect overlayFrame=textLease.douyindisc_overlay.frame;
     CGPoint overlayCenter=CGPointMake(CGRectGetMidX(overlayFrame),CGRectGetMidY(overlayFrame));
     DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<1.0,"replacement image follows the exact UIKit text-render coordinates");
