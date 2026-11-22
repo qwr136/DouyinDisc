@@ -125,7 +125,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 #if defined(DOUYINDISC_UI_TEST)
 @property (nonatomic) BOOL douyindisc_testFailNextCommit;
 #endif
-- (instancetype)douyindisc_initWithDirectory:(NSURL *)directory;
+- (instancetype)initWithDouyinDiscDirectory:(NSURL *)directory;
 - (BOOL)douyindisc_commitLatestConfig:(NSDictionary *)config beforeNotify:(dispatch_block_t)beforeNotify error:(NSError **)error;
 @end
 
@@ -137,9 +137,9 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     return store;
 }
 
-- (instancetype)init { return [self douyindisc_initWithDirectory:douyindisc_defaultStoreDirectory()]; }
+- (instancetype)init { return [self initWithDouyinDiscDirectory:douyindisc_defaultStoreDirectory()]; }
 
-- (instancetype)douyindisc_initWithDirectory:(NSURL *)directory {
+- (instancetype)initWithDouyinDiscDirectory:(NSURL *)directory {
     self = [super init];
     if (!self) return nil;
     NSAssert(NSThread.isMainThread, @"Navigation store initialization must be on main thread");
@@ -349,7 +349,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 #if defined(DOUYINDISC_UI_TEST)
 DouyinDiscNavigationStore *douyindisc_uiTestCreateStore(NSURL *directory) {
     NSAssert(NSThread.isMainThread && directory.isFileURL, @"UI_TEST store requires a local directory on main thread");
-    return [[DouyinDiscNavigationStore alloc] douyindisc_initWithDirectory:directory];
+    return [[DouyinDiscNavigationStore alloc] initWithDouyinDiscDirectory:directory];
 }
 
 void douyindisc_uiTestFailNextCommit(DouyinDiscNavigationStore *store) {
