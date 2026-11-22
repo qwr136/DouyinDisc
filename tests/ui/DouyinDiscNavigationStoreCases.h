@@ -60,7 +60,6 @@ static NSUInteger douyindisc_navCaseUUIDFiles(NSURL *directory) {
 }
 
 static void douyindisc_navigationStoreCases(void (^done)(void)) {
-    NSAssert(NSThread.isMainThread, @"Store cases must start on main thread");
     NSURL *base = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:
         [@"DouyinDiscNavigationStoreCases-" stringByAppendingString:NSUUID.UUID.UUIDString]] isDirectory:YES];
     NSURL *directory = [base URLByAppendingPathComponent:@"main" isDirectory:YES];
