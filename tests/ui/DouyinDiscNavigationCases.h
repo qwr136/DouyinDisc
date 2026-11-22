@@ -16,21 +16,20 @@ static void douyindisc_navigationCases(UIWindow *window) {
     UIView *segment=[[UIView alloc] initWithFrame:container.bounds]; [container addSubview:segment]; container->_segmentControlView=segment;
     AWEHPTopTabItemView *itemView=[AWEHPTopTabItemView new]; itemView.frame=CGRectMake(180,0,70,48); itemView->_item=[AWEHPTopTabItemUIModel new]; itemView->_item->_title=@"推荐"; [segment addSubview:itemView];
     AWEHPTopTabItemTextContentView *topView=[AWEHPTopTabItemTextContentView new]; topView.frame=itemView.bounds; topView->_titleLabel=[[UILabel alloc] initWithFrame:CGRectMake(0,10,70,28)]; topView->_titleLabel.text=@"推荐"; [topView addSubview:topView->_titleLabel]; itemView->_textContentView=topView; [itemView addSubview:topView];
-    douyindisc_applyToTextView(textView); douyindisc_applyToTextView(topView);
-    DD_CHECK(!objc_getAssociatedObject(tab,&douyindisc_leaseKey),"tab button does not receive disc-replacement state");
+    douyindisc_apply(textView); douyindisc_apply(topView);
+    DD_CHECK(douyindisc_leases.count==0,"disabled items create no navigation image lease");
     DD_CHECK(textView->_label.layer.opacity==1 && topView->_titleLabel.layer.opacity==1,"no imported image means original text remains visible");
     DD_CHECK(![textView isKindOfClass:UIControl.class] && ![topView isKindOfClass:UIControl.class],"overlays operate on verified text-render views only");
     [feed removeFromSuperview];
 
     UINavigationController *navigation=[UINavigationController new];
-    AWESettingsTableViewController *settings=[AWESettingsTableViewController new];
+    AWESettingsTableViewController *settings=[AWESettingsTableViewController new]; settings.douyindisc_table=[[UITableView alloc] initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];
     UIView *root=[[UIView alloc] initWithFrame:window.bounds]; UIViewController *host=[UIViewController new]; host.view=root;
     navigation.viewControllers=@[settings]; [host addChildViewController:navigation]; navigation.view.frame=root.bounds; [root addSubview:navigation.view];
-    UIButton *entry=[UIButton buttonWithType:UIButtonTypeSystem]; entry.frame=CGRectMake(16,120,300,44); [root addSubview:entry];
-    DouyinDiscWeakControllerReference *reference=[DouyinDiscWeakControllerReference new]; reference.controller=settings;
-    objc_setAssociatedObject(entry,&douyindisc_settingsOwnerKey,reference,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    if(!douyindisc_settingsAction) douyindisc_settingsAction=[DouyinDiscSettingsAction new];
-    [entry addTarget:douyindisc_settingsAction action:@selector(douyindisc_open:) forControlEvents:UIControlEventTouchUpInside];
+    douyindisc_settingsAppeared(settings,@selector(viewDidAppear:),NO);
+    UIView *header=settings.douyindisc_table.tableHeaderView; UIButton *entry=nil;
+    for(UIView *child in header.subviews) if([child isKindOfClass:UIButton.class]) entry=(UIButton *)child;
+    DD_CHECK(entry!=nil,"settings page receives a native table-header entry");
     [entry sendActionsForControlEvents:UIControlEventTouchUpInside];
     DD_CHECK(navigation.viewControllers.count==2 && [navigation.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"settings entry pushes the plugin panel on the existing navigation stack");
     [host removeFromParentViewController];

@@ -47,13 +47,15 @@
 @implementation AWEFeedTopBarContainer
 @end
 @interface AWESettingsTableViewController : UIViewController
-@property (nonatomic) BOOL onSearchStatus;
+@property (nonatomic) BOOL douyindisc_searchStatus;
 @property (nonatomic, strong) UITableView *douyindisc_table;
 - (UITableView *)tableView;
+- (BOOL)onSearchStatus;
 - (void)viewDidAppear:(BOOL)animated;
 @end
 @implementation AWESettingsTableViewController
 - (UITableView *)tableView { return self.douyindisc_table; }
+- (BOOL)onSearchStatus { return self.douyindisc_searchStatus; }
 - (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; }
 @end
 
