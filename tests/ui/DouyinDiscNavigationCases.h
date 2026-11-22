@@ -78,6 +78,6 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DD_CHECK([originalCell.textLabel.text isEqualToString:@"原生通用项1"],"original General setting cells remain delegated to native base data source");
     NSIndexPath *entryIndex=[NSIndexPath indexPathForRow:2 inSection:0];UITableViewCell *entryCell=[general tableView:general.douyindisc_table cellForRowAtIndexPath:entryIndex];UIButton *entry=nil;for(UIView *view in entryCell.contentView.subviews)if([view isKindOfClass:UIButton.class])entry=(UIButton *)view;
     DD_CHECK(entry&&[[entry titleForState:UIControlStateNormal] isEqualToString:@"DouyinDisc"]&&entry.titleLabel.textColor==UIColor.blackColor,"General cell uses the black DouyinDisc title");
-    [general tableView:general.douyindisc_table didSelectRowAtIndexPath:entryIndex];
-    DD_CHECK(generalNav.viewControllers.count==2&&[generalNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"General table row opens the plugin panel on the existing navigation stack");
+    [entry sendActionsForControlEvents:UIControlEventTouchUpInside];
+    DD_CHECK(generalNav.viewControllers.count==2&&[generalNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"tapping General DouyinDisc row button opens the plugin panel on the existing navigation stack");
 }
