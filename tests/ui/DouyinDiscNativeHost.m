@@ -125,6 +125,11 @@ static void douyindisc_writeProgress(void) {
 }
 #define DD_CHECK(condition, message) do { \
     ++douyindisc_checks; \
+    NSString *line = [NSString stringWithFormat:@"%@: %s", (condition) ? @"PASS" : @"FAIL", message]; \
+    [douyindisc_results addObject:line]; NSLog(@"DD_CHECK %@", line); douyindisc_writeProgress(); \
+} while (0)
+#define DD_CHECK_NS(condition, message) do { \
+    ++douyindisc_checks; \
     NSString *line = [NSString stringWithFormat:@"%@: %@", (condition) ? @"PASS" : @"FAIL", message]; \
     [douyindisc_results addObject:line]; NSLog(@"DD_CHECK %@", line); douyindisc_writeProgress(); \
 } while (0)
