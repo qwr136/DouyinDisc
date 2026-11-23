@@ -51,12 +51,14 @@
 @property (nonatomic,copy) NSString *title;
 @property (nonatomic,strong) UIColor *titleColor;
 @property (nonatomic,strong) UIImage *specificIconImage;
+@property (nonatomic,strong) NSString *iconImageName;
 @property (nonatomic,strong) NSString *businessID;
 @property (nonatomic) NSInteger type;
 @property (nonatomic) NSInteger cellType;
 @property (nonatomic) BOOL isEnable;
 @property (nonatomic) BOOL isUserInteractionEnabled;
 @property (nonatomic) BOOL isForbidChangeColor;
+@property (nonatomic) BOOL useStandardArrowImage;
 @property (nonatomic,copy) void (^cellTappedBlock)(void);
 @property (nonatomic) double cellHeight;
 - (instancetype)initWithIdentifier:(NSString *)identifier;
@@ -64,6 +66,16 @@
 @implementation AWESettingItemModel
 - (instancetype)initWithIdentifier:(NSString *)identifier { self=[super init]; if(self)_identifier=[identifier copy]; return self; }
 - (void)setUserInteractionEnabled:(BOOL)enabled { _isUserInteractionEnabled=enabled; }
+@end
+@interface AWESettingsTableViewCell : UITableViewCell
+@property (nonatomic,strong) AWESettingItemModel *itemModel;
+@property (nonatomic,strong) UIImageView *iconImageView;
+@property (nonatomic,strong) UIImageView *arrowImageView;
+- (void)willDisplayItemModel:(AWESettingItemModel *)model;
+@end
+@implementation AWESettingsTableViewCell
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier { self=[super initWithStyle:style reuseIdentifier:reuseIdentifier];if(self){_iconImageView=[UIImageView new];_arrowImageView=[[UIImageView alloc]initWithImage:[UIImage systemImageNamed:@"chevron.right"]];_iconImageView.hidden=YES;_arrowImageView.hidden=YES;}return self; }
+- (void)willDisplayItemModel:(AWESettingItemModel *)model { (void)model; }
 @end
 @interface AWESettingSectionModel : NSObject
 @property (nonatomic) NSInteger type;
@@ -76,6 +88,7 @@
 @implementation AWESettingsViewModel @end
 @interface AWESettingBaseViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @property(nonatomic) NSUInteger douyindisc_nativeSelectCount;
+@property(nonatomic) NSUInteger douyindisc_nativeWillDisplayCount;
 @property (nonatomic,strong) UITableView *douyindisc_table;
 @property (nonatomic,strong) AWESettingsViewModel *viewModel;
 - (UITableView *)tableView;
@@ -90,9 +103,9 @@
 - (UITableView *)tableView { return self.douyindisc_table; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return self.viewModel.sectionDataArray.count; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;return section<self.viewModel.sectionDataArray.count?self.viewModel.sectionDataArray[section].itemArray.count:0; }
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.textLabel.text=item.title;cell.textLabel.textColor=item.titleColor;cell.imageView.image=item.specificIconImage;return cell; }
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];AWESettingsTableViewCell *cell=[[AWESettingsTableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.itemModel=item;cell.textLabel.text=item.title;cell.textLabel.textColor=item.titleColor;cell.iconImageView.image=nil;cell.arrowImageView.image=nil;return cell; }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; self.douyindisc_nativeSelectCount++; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];if(item.cellTappedBlock)item.cellTappedBlock(); }
-- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)cell;(void)indexPath; }
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;++self.douyindisc_nativeWillDisplayCount;AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];if([cell isKindOfClass:AWESettingsTableViewCell.class]){AWESettingsTableViewCell *native=(AWESettingsTableViewCell *)cell;native.itemModel=item;[native willDisplayItemModel:item];} }
 - (void)tableView:(UITableView *)tableView didEndDisplayingCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;(void)cell;(void)indexPath; }
 - (void)viewDidAppear:(BOOL)animated { [super viewDidAppear:animated]; }
 @end
@@ -477,10 +490,12 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     if(douyindisc_storeTestsStarted)return;
     douyindisc_storeTestsStarted=YES;
     douyindisc_navigationStoreCases(^{
+      douyindisc_pickerCases(self.window, ^{
         NSUInteger failures=0;
         for(NSString *line in douyindisc_results)if([line hasPrefix:@"FAIL"])++failures;
         [douyindisc_results addObject:[NSString stringWithFormat:@"UIKit host: %lu checks, %lu failures",(unsigned long)douyindisc_checks,(unsigned long)failures]];
         douyindisc_writeProgress();NSLog(@"%@",douyindisc_results.lastObject);exit(failures?1:0);
+      });
     });
 }
 @end

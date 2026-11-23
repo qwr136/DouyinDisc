@@ -76,10 +76,17 @@ static void douyindisc_navigationCases(UIWindow *window) {
     UINavigationController *rootNav=[[UINavigationController alloc]initWithRootViewController:rootSettings];UIViewController *rootHost=[UIViewController new];[rootHost addChildViewController:rootNav];rootNav.view.frame=rootHost.view.bounds;[rootHost.view addSubview:rootNav.view];(void)rootSettings.view;rootSettings.douyindisc_table.frame=rootSettings.view.bounds;[rootSettings.view addSubview:rootSettings.douyindisc_table];
     [rootSettings viewDidAppear:NO];
     NSArray *updatedItems=generalSection.itemArray;
+    AWESettingItemModel *pluginItem=updatedItems.count>1?updatedItems[1]:nil;
     DD_CHECK(updatedItems.count==3&&updatedItems[0]==layerItem&&[[updatedItems[1] title] isEqualToString:@"DouyinDisc"]&&updatedItems[2]==generalItem,"root General section inserts DouyinDisc immediately after the runtime 抖音图层 anchor");
-    AWESettingItemModel *pluginItem=updatedItems[1];DD_CHECK(pluginItem.type==layerItem.type&&pluginItem.cellType==4&&[pluginItem.titleColor isEqual:UIColor.blackColor]&&pluginItem.specificIconImage!=nil&&pluginItem.cellTappedBlock!=nil,"native item has black icon title and direct tap callback");
-    UITableViewCell *pluginCell=[rootSettings tableView:rootSettings.douyindisc_table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
-    DD_CHECK([pluginCell.textLabel.text isEqualToString:@"DouyinDisc"]&&pluginCell.imageView.image==pluginItem.specificIconImage,"root native table cell displays the inserted title and icon");
+    DD_CHECK(pluginItem.type==layerItem.type&&pluginItem.cellType==4&&[pluginItem.titleColor isEqual:UIColor.blackColor]&&pluginItem.specificIconImage!=nil&&[pluginItem.iconImageName isEqualToString:@""]&&pluginItem.cellTappedBlock!=nil,"native item has resolved icon, black text and direct tap callback");
+    AWESettingsTableViewCell *pluginCell=(AWESettingsTableViewCell *)[rootSettings tableView:rootSettings.douyindisc_table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
+    DD_CHECK(pluginCell.itemModel==pluginItem&&pluginCell.iconImageView.image==nil&&pluginCell.arrowImageView.image==nil,"IconTitle cell reproduces hidden asynchronous icon and missing chevron before display");
+    [rootSettings tableView:rootSettings.douyindisc_table willDisplayCell:pluginCell forRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
+    DD_CHECK(pluginCell.iconImageView.image==pluginItem.specificIconImage&&!pluginCell.iconImageView.hidden&&pluginCell.arrowImageView.hidden&&rootSettings.douyindisc_nativeWillDisplayCount==1,"only DouyinDisc root cell receives its icon after one original display callback");
+    AWESettingsTableViewCell *nativeLayerCell=(AWESettingsTableViewCell *)[rootSettings tableView:rootSettings.douyindisc_table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
+    [rootSettings tableView:rootSettings.douyindisc_table willDisplayCell:nativeLayerCell forRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
+    DD_CHECK(nativeLayerCell.iconImageView.image==nil&&nativeLayerCell.iconImageView.hidden&&nativeLayerCell.arrowImageView.image==nil&&nativeLayerCell.arrowImageView.hidden,"other native IconTitle rows remain untouched");
+
     DD_CHECK(otherSection.itemArray.count==1&&otherSection.itemArray.firstObject==generalItem,"other root sections stay unchanged");
     [rootSettings viewDidAppear:NO];
     DD_CHECK(generalSection.itemArray.count==3,"returning to root settings never duplicates the DouyinDisc item");
@@ -92,4 +99,17 @@ static void douyindisc_navigationCases(UIWindow *window) {
     DD_CHECK(rootNav.viewControllers.count==2&&[rootNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"root row delegate fallback also preserves the original settings stack");
     AWESettingsTableViewController *withoutAnchor=[AWESettingsTableViewController new];withoutAnchor.viewModel=[AWESettingsViewModel new];withoutAnchor.viewModel.sectionDataArray=@[otherSection];
     DD_CHECK(!douyindisc_insertRootSettingsItem(withoutAnchor)&&otherSection.itemArray.count==1,"missing runtime 抖音图层 anchor never falls back to guessed index");
+}
+
+extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));
+static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
+    douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
+        DD_CHECK([results[@"empty"] boolValue], "empty photo result dismisses the real picker and revokes its ticket");
+        DD_CHECK([results[@"interactive"] boolValue], "picker cancellation leaves the navigation panel visible and interactive");
+        DD_CHECK([results[@"brightness"] boolValue], "picker cancellation restores window brightness without removing system views");
+        DD_CHECK([results[@"adaptive"] boolValue], "adaptive dismissal closes only its matching photo session");
+        DD_CHECK([results[@"stale"] boolValue], "late dismissal from old picker cannot cancel the new photo session");
+        DD_CHECK([results[@"unchanged"] boolValue], "cancelled photo sessions preserve image and configuration");
+        if(done)done();
+    });
 }
