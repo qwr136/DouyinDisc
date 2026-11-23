@@ -201,10 +201,11 @@ static UIColor *douyindisc_color(NSString *hex) {
 @implementation DouyinDiscPickerDismissProxy
 - (void)presentationControllerWillDismiss:(UIPresentationController *)pc {
     id<UIViewControllerTransitionCoordinator> transition=pc.presentedViewController.transitionCoordinator;
-    if(transition){__weak typeof(self) weakSelf=self;UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
+    if(transition){
+        __weak UIViewController *picker=self.picker;
+        __weak DouyinDiscSettingsViewController *owner=self.owner;
         [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context){
-            if(context.isCancelled&&picker&&owner.douyindisc_activePicker==picker)[owner douyindisc_installDismissProxyForPicker:picker];
-            (void)weakSelf;
+            if(context.isCancelled)[owner douyindisc_installDismissProxyForPicker:picker];
         }];
     }
     id<UIAdaptivePresentationControllerDelegate> next=self.next;
@@ -349,6 +350,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (void)douyindisc_installDismissProxyForPicker:(UIViewController *)picker {
+    if (!picker || self.douyindisc_activePicker != picker) return;
     UIPresentationController *presentation=picker.presentationController;if(!presentation)return;
     DouyinDiscPickerDismissProxy *proxy=[self.douyindisc_activeDismissProxy isKindOfClass:DouyinDiscPickerDismissProxy.class]?(DouyinDiscPickerDismissProxy *)self.douyindisc_activeDismissProxy:[DouyinDiscPickerDismissProxy new];
     id<UIAdaptivePresentationControllerDelegate> current=presentation.delegate;
