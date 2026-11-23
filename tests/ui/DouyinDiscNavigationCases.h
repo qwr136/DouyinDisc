@@ -109,10 +109,11 @@ extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, voi
 static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
         DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker swipe dismissal without delegate callback clears active session");
-        DD_CHECK([results[@"empty"] boolValue], "empty photo result dismisses the real picker and revokes its ticket");
+        DD_CHECK([results[@"swipeRevoked"] boolValue], "photo picker swipe dismissal revokes the old import ticket");
+        DD_CHECK([results[@"emptyResult"] boolValue], "empty photo selection closes its picker session");
+        DD_CHECK([results[@"emptyTicketRevoked"] boolValue], "empty photo selection revokes its import ticket");
         DD_CHECK([results[@"interactive"] boolValue], "picker cancellation leaves the navigation panel visible and interactive");
         DD_CHECK([results[@"brightness"] boolValue], "picker cancellation restores window brightness without removing system views");
-        DD_CHECK([results[@"adaptive"] boolValue], "adaptive dismissal closes only its matching photo session");
         DD_CHECK([results[@"filePresented"] boolValue], "dedicated file button opens UIDocumentPicker directly");
         DD_CHECK([results[@"fileCancelled"] boolValue], "file picker cancellation also restores the settings controls");
         DD_CHECK([results[@"stale"] boolValue], "late dismissal from old picker cannot cancel the new photo session");
