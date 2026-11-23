@@ -94,7 +94,6 @@ static UIImage *douyindisc_rootPlaceholderFixture;
 @property(nonatomic) NSUInteger douyindisc_nativeWillDisplayCount;
 @property (nonatomic,strong) UITableView *douyindisc_table;
 @property (nonatomic,strong) AWESettingsViewModel *viewModel;
-@property (nonatomic) BOOL douyindisc_reloadAfterInstall;
 - (UITableView *)tableView;
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView;
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section;
@@ -106,7 +105,7 @@ static UIImage *douyindisc_rootPlaceholderFixture;
 @implementation AWESettingBaseViewController
 - (UITableView *)tableView { return self.douyindisc_table; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { (void)tableView; return self.viewModel.sectionDataArray.count; }
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;if(self.douyindisc_reloadAfterInstall)douyindisc_insertRootSettingsItem(self);return section<self.viewModel.sectionDataArray.count?self.viewModel.sectionDataArray[section].itemArray.count:0; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { (void)tableView;return section<self.viewModel.sectionDataArray.count?self.viewModel.sectionDataArray[section].itemArray.count:0; }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];AWESettingsTableViewCell *cell=[[AWESettingsTableViewCell alloc]initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];cell.itemModel=item;cell.textLabel.text=item.title;cell.textLabel.textColor=item.titleColor;cell.iconImageView.image=nil;cell.arrowImageView.image=nil;return cell; }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView; self.douyindisc_nativeSelectCount++; AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];if(item.cellTappedBlock)item.cellTappedBlock(); }
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath { (void)tableView;++self.douyindisc_nativeWillDisplayCount;AWESettingItemModel *item=self.viewModel.sectionDataArray[indexPath.section].itemArray[indexPath.row];if([cell isKindOfClass:AWESettingsTableViewCell.class]){AWESettingsTableViewCell *native=(AWESettingsTableViewCell *)cell;native.itemModel=item;[native willDisplayItemModel:item];} }
