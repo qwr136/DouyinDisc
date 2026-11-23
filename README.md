@@ -1,6 +1,6 @@
 # DouyinDisc · TrollFools
 
-## 3.20：单次下滑取消后恢复可点击界面
+## 3.30：单次照片下滑取消状态回归
 
 照片按钮直接展示照片选择器，文件夹按钮直接展示文件选择器。picker presenter在设置页恢复时仅按活动picker对象及展示/转场状态回收缺失delegate的下滑取消。模拟回归按picker展示完成→退出完成→presenter重新出现逐段串行，不在旧modal未关闭时叠加新picker；还覆盖空照片票据撤销与文件picker取消后继续可点。UIKit通过仍不代表用户真机已验收。
 

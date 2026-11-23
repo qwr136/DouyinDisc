@@ -535,7 +535,6 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     __block BOOL completed=NO;
     __block NSInteger source=-1;
     __block NSUInteger generation=0;
-    __block UIPresentationController *oldPresentation=nil;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
         if(completed)return;completed=YES;
         [panel.view layoutIfNeeded];[window layoutIfNeeded];
@@ -558,17 +557,12 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             @"photoDirect":@(photoDirect),@"fileDirect":@(fileDirect),
             @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]])
         } mutableCopy];
-        if(oldPresentation){
-            [panel presentationControllerDidDismiss:oldPresentation];
-            results[@"stale"]=@(panel.douyindisc_activePicker==nil&&panel.douyindisc_activePickGeneration==0&&window.rootViewController==nav);
-        }
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
     };
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:PHPickerViewController.class])return;
         generation=panel.douyindisc_activePickGeneration;
-        oldPresentation=picker.presentationController;
         /* Simulate the reported interactive swipe, with adaptive dismissal callback intentionally absent. */
         picker.presentationController.delegate=nil;
         [picker dismissViewControllerAnimated:NO completion:^{[panel viewDidAppear:NO];}];

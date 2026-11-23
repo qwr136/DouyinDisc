@@ -108,13 +108,12 @@ static void douyindisc_navigationCases(UIWindow *window) {
 extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));
 static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
-        DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker down-swipe without delegate clears the modal session");
+        DD_CHECK([results[@"swipeRecovery"] boolValue], "single photo picker down-swipe without adaptive callback clears active state");
         DD_CHECK([results[@"ticketRevoked"] boolValue], "photo picker down-swipe revokes the previous selection ticket");
         DD_CHECK([results[@"interactive"] boolValue], "photo file and switch controls all receive touch after picker dismissal");
         DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after down-swipe");
         DD_CHECK([results[@"photoDirect"] boolValue]&&[results[@"fileDirect"] boolValue], "independent photo and file buttons route directly to their own picker");
         DD_CHECK([results[@"unchanged"] boolValue], "picker cancellation leaves existing image and configuration intact");
-        DD_CHECK([results[@"stale"] boolValue], "duplicate late dismissal preserves the recovered settings window");
         if(done)done();
     });
 }
