@@ -534,7 +534,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         NSString *configPath=[directory stringByAppendingPathComponent:@"settings.plist"];
         NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
         NSMutableDictionary *results=[NSMutableDictionary dictionary];
-        __block BOOL completed=NO;__block NSUInteger stage=0;
+        __block BOOL completed=NO;__block NSUInteger stage=0,ticket=0;
         __block double brightness=0;
         __block UIPresentationController *oldPresentation=nil;
         __block NSString *originalFileTitle=[row.douyindisc_filesButton accessibilityLabel];
@@ -585,6 +585,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             if(![controller isKindOfClass:PHPickerViewController.class]){finish();return;}
             PHPickerViewController *picker=(PHPickerViewController *)controller;
             if(stage==0){
+                ticket=panel.douyindisc_activePickGeneration;
                 oldPresentation=picker.presentationController;
                 [panel picker:picker didFinishPicking:@[]];[panel picker:picker didFinishPicking:@[]];
             }else{
