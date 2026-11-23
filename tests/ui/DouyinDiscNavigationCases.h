@@ -108,15 +108,13 @@ static void douyindisc_navigationCases(UIWindow *window) {
 extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));
 static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
-        DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker swipe dismissal without delegate callback clears active session");
-        DD_CHECK([results[@"swipeRevoked"] boolValue], "photo picker swipe dismissal revokes the old import ticket");
-        DD_CHECK([results[@"emptyResult"] boolValue], "empty photo selection closes its picker session");
-        DD_CHECK([results[@"emptyTicketRevoked"] boolValue], "empty photo selection revokes its import ticket");
-        DD_CHECK([results[@"interactive"] boolValue], "picker cancellation leaves the navigation panel visible and interactive");
-        DD_CHECK([results[@"brightness"] boolValue], "picker cancellation restores window brightness without removing system views");
-        DD_CHECK([results[@"filePresented"] boolValue], "dedicated file button opens UIDocumentPicker directly");
-        DD_CHECK([results[@"fileCancelled"] boolValue], "file picker cancellation also restores the settings controls");
-        DD_CHECK([results[@"stale"] boolValue], "late dismissal from old picker cannot cancel the new photo session");
+        DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker down-swipe without delegate clears the modal session");
+        DD_CHECK([results[@"ticketRevoked"] boolValue], "photo picker down-swipe revokes the previous selection ticket");
+        DD_CHECK([results[@"interactive"] boolValue], "photo file and switch controls all receive touch after picker dismissal");
+        DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after down-swipe");
+        DD_CHECK([results[@"photoDirect"] boolValue]&&[results[@"fileDirect"] boolValue], "independent photo and file buttons route directly to their own picker");
+        DD_CHECK([results[@"unchanged"] boolValue], "picker cancellation leaves existing image and configuration intact");
+        DD_CHECK([results[@"stale"] boolValue], "late dismissal notification cannot revive an old picker overlay");
         DD_CHECK([results[@"unchanged"] boolValue], "cancelled photo sessions preserve image and configuration");
         if(done)done();
     });
