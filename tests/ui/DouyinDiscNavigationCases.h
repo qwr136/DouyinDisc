@@ -68,17 +68,21 @@ static void douyindisc_navigationCases(UIWindow *window) {
     [feed removeFromSuperview];
     DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"selected image shows photo icon and change title while preview remains separate");
 
+    UIImage *rootPlaceholder=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemGrayColor)];
+    douyindisc_rootPlaceholderFixture=rootPlaceholder;
     AWESettingItemModel *layerItem=[AWESettingItemModel new];layerItem.identifier=@"thirdparty-layer";layerItem.businessID=@"thirdparty-layer";layerItem.title=@"抖音图层";layerItem.type=9;layerItem.cellType=4;layerItem.isEnable=YES;layerItem.isUserInteractionEnabled=YES;layerItem.cellHeight=56;
     AWESettingItemModel *generalItem=[AWESettingItemModel new];generalItem.identifier=@"general_setting";generalItem.businessID=@"general_setting";generalItem.title=@"通用设置";generalItem.type=22;generalItem.cellType=4;generalItem.isEnable=YES;generalItem.isUserInteractionEnabled=YES;generalItem.cellHeight=56;
     AWESettingSectionModel *generalSection=[AWESettingSectionModel new];generalSection.type=2;generalSection.itemArray=@[layerItem,generalItem];
     AWESettingSectionModel *otherSection=[AWESettingSectionModel new];otherSection.type=1;otherSection.itemArray=@[generalItem];
+    layerItem.placeholderIconImage=rootPlaceholder;
+    generalItem.placeholderIconImage=rootPlaceholder;
     AWESettingsTableViewController *rootSettings=[AWESettingsTableViewController new];rootSettings.viewModel=[AWESettingsViewModel new];rootSettings.viewModel.sectionDataArray=@[generalSection,otherSection];rootSettings.douyindisc_table=[[UITableView alloc]initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];rootSettings.douyindisc_table.dataSource=rootSettings;rootSettings.douyindisc_table.delegate=rootSettings;
     UINavigationController *rootNav=[[UINavigationController alloc]initWithRootViewController:rootSettings];UIViewController *rootHost=[UIViewController new];[rootHost addChildViewController:rootNav];rootNav.view.frame=rootHost.view.bounds;[rootHost.view addSubview:rootNav.view];(void)rootSettings.view;rootSettings.douyindisc_table.frame=rootSettings.view.bounds;[rootSettings.view addSubview:rootSettings.douyindisc_table];
     [rootSettings viewDidAppear:NO];
     NSArray *updatedItems=generalSection.itemArray;
     AWESettingItemModel *pluginItem=updatedItems.count>1?updatedItems[1]:nil;
     DD_CHECK(updatedItems.count==3&&updatedItems[0]==layerItem&&[[updatedItems[1] title] isEqualToString:@"DouyinDisc"]&&updatedItems[2]==generalItem,"root General section inserts DouyinDisc immediately after the runtime 抖音图层 anchor");
-    DD_CHECK(pluginItem.type==layerItem.type&&pluginItem.cellType==4&&[pluginItem.titleColor isEqual:UIColor.blackColor]&&pluginItem.specificIconImage!=nil&&[pluginItem.iconImageName isEqualToString:@""]&&pluginItem.cellTappedBlock!=nil,"native item has resolved icon, black text and direct tap callback");
+    DD_CHECK(pluginItem.type==layerItem.type&&pluginItem.cellType==4&&[pluginItem.titleColor isEqual:UIColor.blackColor]&&pluginItem.specificIconImage!=nil&&pluginItem.specificIconImage!=rootPlaceholder&&[pluginItem.iconImageName isEqualToString:@""]&&pluginItem.cellTappedBlock!=nil,"native item has resolved icon, black text and direct tap callback");
     AWESettingsTableViewCell *pluginCell=(AWESettingsTableViewCell *)[rootSettings tableView:rootSettings.douyindisc_table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
     DD_CHECK(pluginCell.itemModel==pluginItem&&pluginCell.iconImageView.image==nil&&pluginCell.arrowImageView.image==nil,"IconTitle cell reproduces hidden asynchronous icon and missing chevron before display");
     [rootSettings tableView:rootSettings.douyindisc_table willDisplayCell:pluginCell forRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];

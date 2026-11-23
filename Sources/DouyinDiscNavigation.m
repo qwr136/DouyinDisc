@@ -183,7 +183,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerPresented)(UIViewController *picker);
 #endif
 - (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files;
-- (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled;
+- (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket;
+- (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation;
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion;
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
@@ -309,9 +310,9 @@ static UIColor *douyindisc_color(NSString *hex) {
         if (weakSelf.douyindisc_activePicker==picker) picker.presentationController.delegate=weakSelf;
     }];
 }
-- (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled {
+- (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket {
     if (!picker || self.douyindisc_activePicker!=picker) return;
-    if (cancelled) [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
+    if (cancelled && !keepImportTicket) [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
     self.douyindisc_activePicker=nil;
     self.douyindisc_activeRow=nil;
     self.douyindisc_activeIdentifier=nil;
@@ -321,6 +322,12 @@ static UIColor *douyindisc_color(NSString *hex) {
 #if defined(DOUYINDISC_UI_TEST)
     if(self.douyindisc_uiTestPickerFinished)self.douyindisc_uiTestPickerFinished(cancelled);
 #endif
+}
+- (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation {
+    [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:identifier generation:generation];
+    if ([self.douyindisc_activeIdentifier isEqualToString:identifier] && self.douyindisc_activePickGeneration==generation && !self.douyindisc_activePicker) {
+        self.douyindisc_activeIdentifier=nil;self.douyindisc_activePickGeneration=0;self.douyindisc_activeRow=nil;
+    }
 }
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion {
     if (!picker.presentingViewController) { if (completion) completion(); return; }
@@ -341,16 +348,17 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController {
     UIViewController *picker=presentationController.presentedViewController;
-    [self douyindisc_finishPickerUI:picker cancelled:!self.douyindisc_pickerHasProvider];
+    BOOL hasProvider=self.douyindisc_pickerHasProvider;
+    [self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
 }
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError {
     if(index>=types.count){
         if([provider canLoadObjectOfClass:UIImage.class]){
             __weak typeof(self) weakSelf=self;
             [provider loadObjectOfClass:UIImage.class completionHandler:^(id object,NSError *objectError){
-                dispatch_async(dispatch_get_main_queue(),^{NSData *fallback=[object isKindOfClass:UIImage.class]?UIImagePNGRepresentation(object):nil;if(fallback)[weakSelf douyindisc_commitImageData:fallback identifier:identifier pickingGeneration:pickingGeneration];else {[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:identifier generation:pickingGeneration];[weakSelf douyindisc_showError:objectError?:lastError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片无法解码为静态图片。"}]];}});
+                dispatch_async(dispatch_get_main_queue(),^{NSData *fallback=[object isKindOfClass:UIImage.class]?UIImagePNGRepresentation(object):nil;if(fallback)[weakSelf douyindisc_commitImageData:fallback identifier:identifier pickingGeneration:pickingGeneration];else {[weakSelf douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];[weakSelf douyindisc_showError:objectError?:lastError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片无法解码为静态图片。"}]];}});
             }];
-        } else dispatch_async(dispatch_get_main_queue(),^{[[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_finishImagePickingForIdentifier:identifier generation:pickingGeneration];[self douyindisc_showError:lastError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片提供器没有返回可读取的图片数据。"}]];});
+        } else dispatch_async(dispatch_get_main_queue(),^{[self douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];[self douyindisc_showError:lastError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片提供器没有返回可读取的图片数据。"}]];});
         return;
     }
     NSString *type=types[index];
@@ -365,7 +373,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     __weak typeof(self) weakSelf=self;
     [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_saveImageData:data identifier:identifier pickingGeneration:pickingGeneration completion:^(NSError *error){
         DouyinDiscSettingsViewController *strongSelf=weakSelf;
-        if(error){if(strongSelf.isViewLoaded&&strongSelf.view.window)[strongSelf douyindisc_showError:error];return;}
+        if(error){[strongSelf douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];if(strongSelf.isViewLoaded&&strongSelf.view.window)[strongSelf douyindisc_showError:error];return;}
         for(UIView *view in strongSelf.douyindisc_stack.arrangedSubviews){
             if(![view isKindOfClass:DouyinDiscNavigationRow.class])continue;
             DouyinDiscNavigationRow *row=(DouyinDiscNavigationRow *)view;
@@ -384,7 +392,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_pickerHasProvider=provider!=nil;
     __weak typeof(self) weakSelf=self;
     [self douyindisc_dismissPicker:picker completion:^{
-        [weakSelf douyindisc_finishPickerUI:picker cancelled:!provider];
+        [weakSelf douyindisc_finishPickerUI:picker cancelled:!provider keepImportTicket:provider!=nil];
         if (!provider) return;
         NSArray<NSString *> *types=@[douyindisc_utiPNG,douyindisc_utiJPEG,douyindisc_utiHEIC,@"public.heif",@"public.tiff",@"public.gif",douyindisc_utiImage];
         [weakSelf douyindisc_loadPhotoProvider:provider types:types index:0 identifier:identifier pickingGeneration:generation error:nil];
@@ -396,11 +404,10 @@ static UIColor *douyindisc_color(NSString *hex) {
     NSString *identifier=[self.douyindisc_activeIdentifier copy]; NSUInteger generation=self.douyindisc_activePickGeneration;
     self.douyindisc_pickerHasResult=YES;
     self.douyindisc_pickerHasProvider=url!=nil;
-    if (!url) [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:identifier generation:generation];
     [self douyindisc_dismissPicker:controller completion:^{
-        [self douyindisc_finishPickerUI:controller cancelled:NO];
+        [self douyindisc_finishPickerUI:controller cancelled:!url keepImportTicket:url!=nil];
         if (!url || !identifier || !generation) return;
-    BOOL scoped=[url startAccessingSecurityScopedResource];
+        BOOL scoped=[url startAccessingSecurityScopedResource];
     __weak typeof(self) weakSelf=self;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
         __block NSData *data=nil; __block NSError *readError=nil;
@@ -412,7 +419,7 @@ static UIColor *douyindisc_color(NSString *hex) {
             data=[NSData dataWithContentsOfURL:readURL options:NSDataReadingMappedIfSafe error:&readError];
         }];
         if(scoped)[url stopAccessingSecurityScopedResource];
-        dispatch_async(dispatch_get_main_queue(), ^{if(data)[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];else {[[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_finishImagePickingForIdentifier:identifier generation:generation];[weakSelf douyindisc_showError:readError];}});
+        dispatch_async(dispatch_get_main_queue(), ^{if(data)[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];else {[weakSelf douyindisc_finishImportSessionIdentifier:identifier generation:generation];[weakSelf douyindisc_showError:readError];}});
     });
     }];
 }
@@ -421,7 +428,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_pickerHasResult=YES;
     [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
     __weak typeof(self) weakSelf=self;
-    [self douyindisc_dismissPicker:controller completion:^{ [weakSelf douyindisc_finishPickerUI:controller cancelled:NO]; }];
+    [self douyindisc_dismissPicker:controller completion:^{ [weakSelf douyindisc_finishPickerUI:controller cancelled:YES keepImportTicket:NO]; }];
 }
 @end
 

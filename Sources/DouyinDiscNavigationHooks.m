@@ -201,8 +201,8 @@ static BOOL douyindisc_insertRootSettingsItem(id controller) {
         BOOL ready = douyindisc_rootSetObject(row, NSSelectorFromString(@"setBusinessID:"), @"com.minis.douyindisc.root-entry") &&
             douyindisc_rootSetObject(row, NSSelectorFromString(@"setTitle:"), @"DouyinDisc") &&
             douyindisc_rootSetObject(row, NSSelectorFromString(@"setTitleColor:"), UIColor.blackColor) &&
-            douyindisc_rootSetObject(row, NSSelectorFromString(@"setSpecificIconImage:"), icon) &&
             douyindisc_rootSetObject(row, NSSelectorFromString(@"setIconImageName:"), @"") &&
+            douyindisc_rootSetObject(row, NSSelectorFromString(@"setSpecificIconImage:"), icon) &&
             douyindisc_rootSetInteger(row, NSSelectorFromString(@"setType:"), type) &&
             douyindisc_rootSetInteger(row, NSSelectorFromString(@"setCellType:"), 4) &&
             douyindisc_rootSetBoolean(row, NSSelectorFromString(@"setIsEnable:"), YES) &&

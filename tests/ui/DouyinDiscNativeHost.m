@@ -46,12 +46,14 @@
 @end
 @implementation AWEFeedTopBarContainer
 @end
+static UIImage *douyindisc_rootPlaceholderFixture;
 @interface AWESettingItemModel : NSObject
 @property (nonatomic,copy) NSString *identifier;
 @property (nonatomic,copy) NSString *title;
 @property (nonatomic,strong) UIColor *titleColor;
 @property (nonatomic,strong) UIImage *specificIconImage;
 @property (nonatomic,strong) NSString *iconImageName;
+@property (nonatomic,strong) UIImage *placeholderIconImage;
 @property (nonatomic,strong) NSString *businessID;
 @property (nonatomic) NSInteger type;
 @property (nonatomic) NSInteger cellType;
@@ -64,7 +66,8 @@
 - (instancetype)initWithIdentifier:(NSString *)identifier;
 @end
 @implementation AWESettingItemModel
-- (instancetype)initWithIdentifier:(NSString *)identifier { self=[super init]; if(self)_identifier=[identifier copy]; return self; }
+- (instancetype)initWithIdentifier:(NSString *)identifier { self=[super init]; if(self){_identifier=[identifier copy];self.placeholderIconImage=douyindisc_rootPlaceholderFixture;} return self; }
+- (void)setIconImageName:(NSString *)iconImageName { _iconImageName=[iconImageName copy];if(!iconImageName.length)self.specificIconImage=self.placeholderIconImage?:douyindisc_rootPlaceholderFixture; }
 - (void)setUserInteractionEnabled:(BOOL)enabled { _isUserInteractionEnabled=enabled; }
 @end
 @interface AWESettingsTableViewCell : UITableViewCell
