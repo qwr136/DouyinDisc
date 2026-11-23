@@ -115,7 +115,6 @@ static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
         DD_CHECK([results[@"photoDirect"] boolValue]&&[results[@"fileDirect"] boolValue], "independent photo and file buttons route directly to their own picker");
         DD_CHECK([results[@"unchanged"] boolValue], "picker cancellation leaves existing image and configuration intact");
         DD_CHECK([results[@"stale"] boolValue], "late dismissal notification cannot revive an old picker overlay");
-        DD_CHECK([results[@"unchanged"] boolValue], "cancelled photo sessions preserve image and configuration");
         if(done)done();
     });
 }

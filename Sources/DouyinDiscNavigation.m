@@ -559,11 +559,8 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]])
         } mutableCopy];
         if(oldPresentation){
-            NSUInteger beforeOldCallback=[store douyindisc_beginImagePickingForIdentifier:@"top_recommend"];
             [panel presentationControllerDidDismiss:oldPresentation];
-            NSUInteger afterOldCallback=[store douyindisc_beginImagePickingForIdentifier:@"top_recommend"];
-            results[@"stale"]=@(afterOldCallback==beforeOldCallback+1);
-            [store douyindisc_finishImagePickingForIdentifier:@"top_recommend" generation:afterOldCallback];
+            results[@"stale"]=@(!panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==0);
         }
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
