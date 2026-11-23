@@ -52,7 +52,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('native-general-id-do-not-depend-on-this',host)
         self.assertIn('fallbackRoot viewDidAppear:NO',host)
         self.assertIn('third-party anchor wins globally over fallback even in an earlier General section',host)
-        self.assertIn('fallbackItems[1].title isEqualToString:@"DouyinDisc"',host)
+        self.assertIn('[fallbackItems[1] title] isEqualToString:@"DouyinDisc"',host)
         self.assertIn('same bottom image at maximum scale has the same twenty-four point long edge across different native text frames',host)
         self.assertIn('targetLongEdge=16.0*scale',hooks)
         self.assertIn('douyindisc_rootWillDisplay', hooks)

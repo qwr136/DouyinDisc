@@ -120,7 +120,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     AWESettingsTableViewController *fallbackRoot=[AWESettingsTableViewController new];fallbackRoot.viewModel=[AWESettingsViewModel new];fallbackRoot.viewModel.sectionDataArray=@[withoutThirdParty];
     DD_CHECK(douyindisc_insertRootSettingsItem(fallbackRoot),"safe native general_setting row before fallback plugin entry");
     NSArray *fallbackItems=withoutThirdParty.itemArray;
-    DD_CHECK(fallbackItems.count==4&&fallbackItems[0]==leadingNativeItem&&[fallbackItems[1] isKindOfClass:AWESettingItemModel.class]&&[fallbackItems[1].title isEqualToString:@"DouyinDisc"]&&fallbackItems[2]==generalItem&&fallbackItems[3]==afterNativeItem,"DouyinDisc falls back immediately before native General Settings without index guessing");
+    DD_CHECK(fallbackItems.count==4&&fallbackItems[0]==leadingNativeItem&&[fallbackItems[1] isKindOfClass:AWESettingItemModel.class]&&[[fallbackItems[1] title] isEqualToString:@"DouyinDisc"]&&fallbackItems[2]==generalItem&&fallbackItems[3]==afterNativeItem,"DouyinDisc falls back immediately before native General Settings without index guessing");
     [fallbackRoot viewDidAppear:NO];DD_CHECK(withoutThirdParty.itemArray.count==4,"fallback row is not duplicated on repeated root appearances");
     AWESettingItemModel *duplicateGeneral=[AWESettingItemModel new];duplicateGeneral.title=@"通用设置";duplicateGeneral.businessID=@"general_setting";duplicateGeneral.type=2;
     withoutThirdParty.itemArray=@[leadingNativeItem,generalItem,duplicateGeneral,afterNativeItem];
