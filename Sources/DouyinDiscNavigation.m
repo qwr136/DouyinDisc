@@ -560,7 +560,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         } mutableCopy];
         if(oldPresentation){
             [panel presentationControllerDidDismiss:oldPresentation];
-            results[@"stale"]=@(!panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==0);
+            results[@"stale"]=@(panel.douyindisc_activePicker==nil&&panel.douyindisc_activePickGeneration==0&&window.rootViewController==nav);
         }
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
