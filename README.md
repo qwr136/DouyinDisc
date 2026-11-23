@@ -1,8 +1,8 @@
 # DouyinDisc · TrollFools
 
-## 3.30：单次照片下滑取消状态回归
+## 3.50：修复下滑、底部尺寸和入口独立性
 
-照片按钮直接展示照片选择器，文件夹按钮直接展示文件选择器。picker presenter在设置页恢复时仅按活动picker对象及展示/转场状态回收缺失delegate的下滑取消。模拟回归按picker展示完成→退出完成→presenter重新出现逐段串行，不在旧modal未关闭时叠加新picker；还覆盖空照片票据撤销与文件picker取消后继续可点。UIKit通过仍不代表用户真机已验收。
+照片按钮直接展示照片选择器，文件夹按钮直接展示文件选择器。picker presenter不抢占系统presentation delegate；交互式退场由系统adaptive dismissal回调收尾，设置页重新出现时仅在picker已经离场且没有新presented controller后，按picker对象和导入代次回收会话。第三方“抖音图层”行存在时紧跟其后；不存在时，仅当唯一原生 `businessID=general_setting` 且标题为“通用设置”时插到该行之前；跨section先做唯一性扫描，歧义时不猜位置。底部四项使用统一16pt长边尺寸基准、50%–150%，顶部保留原标签适配。模拟器验证状态回收、缺delegate恢复、fallback插入和不同宽度label下同素材同倍率等尺寸；这不是用户真机手势，暗屏现象仍待设备确认。
 
 素材行采用独立的照片按钮和文件夹按钮，分别直接打开系统照片选择器与文件选择器，不再叠加来源菜单。设置页重新出现时，如果当前picker已不在展示/退场状态且取消代理未触发，则按picker对象身份回收此会话并撤销空选择票据；取得有效provider的导入票据会保留。无固定延时清理。
 

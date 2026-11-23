@@ -57,6 +57,14 @@ static void douyindisc_navigationCases(UIWindow *window) {
     CGPoint overlayCenter=CGPointMake(CGRectGetMidX(overlayFrame),CGRectGetMidY(overlayFrame));
     DD_CHECK(textLease.douyindisc_overlay.superview==textView && hypot(overlayCenter.x-expectedCenter.x,overlayCenter.y-expectedCenter.y)<1.0,"replacement image follows the exact UIKit text-render coordinates");
     DD_CHECK(textLease.douyindisc_overlay.bounds.size.width<=textView->_label.bounds.size.width && textLease.douyindisc_overlay.bounds.size.height<=textView->_label.bounds.size.height,"replacement image fits inside the native label frame");
+    AWENormalModeTabBarGeneralButton *secondTab=[AWENormalModeTabBarGeneralButton new];secondTab.frame=CGRectMake(320,0,64,64);[bar addSubview:secondTab];
+    AWENormalModeTabBarIconTextView *secondInner=[AWENormalModeTabBarIconTextView new];secondInner.frame=CGRectMake(0,0,64,32);secondInner->_textLabel=[[UILabel alloc]initWithFrame:CGRectMake(23,8,16,16)];secondInner->_textLabel.text=@"我";[secondInner addSubview:secondInner->_textLabel];secondTab->_innerView=secondInner;[secondTab addSubview:secondInner];
+    douyindisc_uiTestSetNavigationImage(@"bottom_me",testIcon,YES);douyindisc_uiTestSetNavigationScale(@"bottom_home",1.5);douyindisc_uiTestSetNavigationScale(@"bottom_me",1.5);
+    douyindisc_apply(textView);douyindisc_apply(secondInner);
+    DouyinDiscTextLease *secondLease=[douyindisc_leases objectForKey:secondInner->_textLabel];
+    DD_CHECK(secondLease&&fabs(textLease.douyindisc_overlay.bounds.size.width-secondLease.douyindisc_overlay.bounds.size.width)<.01&&fabs(textLease.douyindisc_overlay.bounds.size.height-secondLease.douyindisc_overlay.bounds.size.height)<.01&&fabs(textLease.douyindisc_overlay.bounds.size.width-24)<.01&&fabs(textLease.douyindisc_overlay.bounds.size.height-24)<.01,"same bottom image at maximum scale has the same twenty-four point long edge across different native text frames");
+    douyindisc_uiTestSetNavigationScale(@"bottom_home",1);douyindisc_uiTestSetNavigationScale(@"bottom_me",1);douyindisc_uiTestSetNavigationImage(@"bottom_me",nil,NO);[secondInner removeFromSuperview];[secondTab removeFromSuperview];
+    douyindisc_uiTestSetNavigationImage(@"bottom_friends",testIcon,YES);douyindisc_uiTestSetNavigationScale(@"bottom_friends",1.5);
     douyindisc_uiTestSetNavigationImage(@"top_recommend",testIcon,YES);douyindisc_apply(topView);
     DouyinDiscTextLease *topLease=[douyindisc_leases objectForKey:topView->_titleLabel];
     CGRect topItemRect=[itemView convertRect:itemView.bounds toView:topView];
@@ -102,7 +110,28 @@ static void douyindisc_navigationCases(UIWindow *window) {
     [rootSettings tableView:rootSettings.douyindisc_table didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
     DD_CHECK(rootNav.viewControllers.count==2&&[rootNav.topViewController isKindOfClass:DouyinDiscSettingsViewController.class],"root row delegate fallback also preserves the original settings stack");
     AWESettingsTableViewController *withoutAnchor=[AWESettingsTableViewController new];withoutAnchor.viewModel=[AWESettingsViewModel new];withoutAnchor.viewModel.sectionDataArray=@[otherSection];
-    DD_CHECK(!douyindisc_insertRootSettingsItem(withoutAnchor)&&otherSection.itemArray.count==1,"missing runtime 抖音图层 anchor never falls back to guessed index");
+    DD_CHECK(!douyindisc_insertRootSettingsItem(withoutAnchor)&&otherSection.itemArray.count==1,"type-one section never acts as the fallback anchor");
+    generalItem.title=@"通用设置";generalItem.identifier=@"native-general-id-do-not-depend-on-this";generalItem.businessID=@"general_setting";
+    AWESettingSectionModel *withoutThirdParty=[AWESettingSectionModel new];withoutThirdParty.type=2;
+    AWESettingItemModel *leadingNativeItem=[AWESettingItemModel new];leadingNativeItem.title=@"隐私设置";leadingNativeItem.type=2;leadingNativeItem.cellHeight=52;
+    AWESettingItemModel *afterNativeItem=[AWESettingItemModel new];afterNativeItem.title=@"高级设置";afterNativeItem.type=2;afterNativeItem.cellHeight=52;
+    withoutThirdParty.itemArray=@[leadingNativeItem,generalItem,afterNativeItem];
+    generalItem.identifier=@"native-general-id-do-not-depend-on-this";
+    AWESettingsTableViewController *fallbackRoot=[AWESettingsTableViewController new];fallbackRoot.viewModel=[AWESettingsViewModel new];fallbackRoot.viewModel.sectionDataArray=@[withoutThirdParty];
+    DD_CHECK(douyindisc_insertRootSettingsItem(fallbackRoot),"safe native general_setting row before fallback plugin entry");
+    NSArray *fallbackItems=withoutThirdParty.itemArray;
+    DD_CHECK(fallbackItems.count==4&&fallbackItems[0]==leadingNativeItem&&[fallbackItems[1] isKindOfClass:AWESettingItemModel.class]&&[fallbackItems[1].title isEqualToString:@"DouyinDisc"]&&fallbackItems[2]==generalItem&&fallbackItems[3]==afterNativeItem,"DouyinDisc falls back immediately before native General Settings without index guessing");
+    [fallbackRoot viewDidAppear:NO];DD_CHECK(withoutThirdParty.itemArray.count==4,"fallback row is not duplicated on repeated root appearances");
+    AWESettingItemModel *duplicateGeneral=[AWESettingItemModel new];duplicateGeneral.title=@"通用设置";duplicateGeneral.businessID=@"general_setting";duplicateGeneral.type=2;
+    withoutThirdParty.itemArray=@[leadingNativeItem,generalItem,duplicateGeneral,afterNativeItem];
+    AWESettingsTableViewController *ambiguousRoot=[AWESettingsTableViewController new];ambiguousRoot.viewModel=[AWESettingsViewModel new];ambiguousRoot.viewModel.sectionDataArray=@[withoutThirdParty];
+    DD_CHECK(!douyindisc_insertRootSettingsItem(ambiguousRoot)&&withoutThirdParty.itemArray.count==4,"ambiguous general-setting fallback fails safely without duplicate entry");
+    AWESettingItemModel *safeFallback=[AWESettingItemModel new];safeFallback.title=@"通用设置";safeFallback.businessID=@"general_setting";safeFallback.identifier=@"native-general-other-section";safeFallback.type=22;
+    AWESettingSectionModel *fallbackOnlySection=[AWESettingSectionModel new];fallbackOnlySection.type=2;fallbackOnlySection.itemArray=@[leadingNativeItem,safeFallback];
+    AWESettingItemModel *duplicateThirdParty=[AWESettingItemModel new];duplicateThirdParty.title=@"抖音图层";duplicateThirdParty.businessID=@"thirdparty.layer";duplicateThirdParty.type=9;
+    AWESettingSectionModel *thirdPartySection=[AWESettingSectionModel new];thirdPartySection.type=2;thirdPartySection.itemArray=@[duplicateThirdParty,generalItem];
+    AWESettingsTableViewController *twoRoots=[AWESettingsTableViewController new];twoRoots.viewModel=[AWESettingsViewModel new];twoRoots.viewModel.sectionDataArray=@[fallbackOnlySection,thirdPartySection];
+    DD_CHECK(douyindisc_insertRootSettingsItem(twoRoots)&&fallbackOnlySection.itemArray.count==2&&thirdPartySection.itemArray.count==3&&thirdPartySection.itemArray[0]==duplicateThirdParty&&[thirdPartySection.itemArray[1].title isEqualToString:@"DouyinDisc"]&&thirdPartySection.itemArray[2]==generalItem,"third-party anchor wins globally over fallback even in an earlier General section");
 }
 
 extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));
