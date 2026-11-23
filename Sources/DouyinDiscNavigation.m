@@ -199,6 +199,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 #if defined(DOUYINDISC_UI_TEST)
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerFinished)(BOOL cancelled);
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerPresented)(UIViewController *picker);
+@property (nonatomic, copy) dispatch_block_t douyindisc_uiTestPickerReady;
 #endif
 - (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files;
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket;
@@ -351,6 +352,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_pickerHasProvider=NO;
 #if defined(DOUYINDISC_UI_TEST)
     if(self.douyindisc_uiTestPickerFinished)self.douyindisc_uiTestPickerFinished(cancelled);
+    if(self.douyindisc_uiTestPickerReady)self.douyindisc_uiTestPickerReady();
 #endif
 }
 - (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation {
@@ -534,13 +536,14 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
         NSMutableDictionary *results=[NSMutableDictionary dictionary];
         __block BOOL completed=NO;__block NSUInteger stage=0,swipeGeneration=0,emptyGeneration=0;
-        __block double brightness=0;__block UIPresentationController *oldPhotoPresentation=nil;
+        __block double brightness=0;__block UIPresentationController *oldPhotoPresentation=nil;__block dispatch_block_t pickerReady=nil;
         void (^finish)(void)=^{
             if(completed)return;completed=YES;
             panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;
             results[@"unchanged"]=@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]]);
             window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
         };
+        panel.douyindisc_uiTestPickerReady=^{if(pickerReady){dispatch_block_t ready=pickerReady;pickerReady=nil;ready();}};
         panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
             dispatch_async(dispatch_get_main_queue(),^{
                 if(completed)return;
@@ -557,15 +560,14 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
                 results[@"brightness"]=@(brightness>0&&fabs(after-brightness)<3&&(stage==0||[results[@"brightness"] boolValue]));
                 if(stage==0){
                     results[@"swipeRecovery"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);
-                    [store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:swipeGeneration completion:^(NSError *denied){
-                        results[@"swipeRevoked"]=@(denied.code==6);
-                        stage=1;dispatch_async(dispatch_get_main_queue(),^{if(!completed)[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];});
-                    }];
+                    pickerReady=^{[store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:swipeGeneration completion:^(NSError *denied){
+                        results[@"swipeRevoked"]=@(denied.code==6);stage=1;[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
+                    }];};
                 }else if(stage==1){
                     results[@"emptyResult"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);
                     [store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:emptyGeneration completion:^(NSError *denied){
-                        results[@"emptyTicketRevoked"]=@(denied.code==6);
-                        stage=2;dispatch_async(dispatch_get_main_queue(),^{if(!completed)[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];});
+                        results[@"emptyTicketRevoked"]=@(denied.code==6);stage=2;
+                        pickerReady=^{[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];};
                     }];
                 }else{results[@"fileCancelled"]=@(cancelled&&!panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==0);finish();}
             });
