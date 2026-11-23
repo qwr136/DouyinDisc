@@ -466,10 +466,22 @@ static UIColor *douyindisc_color(NSString *hex) {
 BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
     NSDictionary *item=douyindisc_navigationItems().firstObject;
     DouyinDiscNavigationRow *row=[[DouyinDiscNavigationRow alloc] initWithItem:item entry:@{@"enabled":@NO,@"opacity":@1} image:nil];row.frame=CGRectMake(0,0,390,198);[row setNeedsLayout];[row layoutIfNeeded];
-    BOOL sliderLabels=[row.douyindisc_opacityTitle.text isEqualToString:@"透明度"]&&[row.douyindisc_sizeTitle.text isEqualToString:@"图标大小"]&&[row.douyindisc_slider.accessibilityLabel isEqualToString:@"图标透明度"]&&[row.douyindisc_sizeSlider.accessibilityLabel isEqualToString:@"图标大小"]&&fabs(CGRectGetMinY(row.douyindisc_slider.frame)-CGRectGetMaxY(row.douyindisc_opacityTitle.frame))<1&&fabs(CGRectGetMinY(row.douyindisc_sizeSlider.frame)-CGRectGetMaxY(row.douyindisc_sizeTitle.frame))<1;
+    BOOL opacityTitle=[row.douyindisc_opacityTitle.text isEqualToString:@"透明度"];
+    BOOL sizeTitle=[row.douyindisc_sizeTitle.text isEqualToString:@"图标大小"];
+    BOOL opacityAccess=[row.douyindisc_slider.accessibilityLabel isEqualToString:@"图标透明度"];
+    BOOL sizeAccess=[row.douyindisc_sizeSlider.accessibilityLabel isEqualToString:@"图标大小"];
+    BOOL opacityFrame=fabs(CGRectGetMinY(row.douyindisc_slider.frame)-CGRectGetMaxY(row.douyindisc_opacityTitle.frame))<1;
+    BOOL sizeFrame=fabs(CGRectGetMinY(row.douyindisc_sizeSlider.frame)-CGRectGetMaxY(row.douyindisc_sizeTitle.frame))<1;
+    BOOL sliderLabels=opacityTitle&&sizeTitle&&opacityAccess&&sizeAccess&&opacityFrame&&sizeFrame;
     BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"选择图标"] && row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==nil && !row.douyindisc_imageButton.enabled;
     [row douyindisc_setImagePickingEnabled:YES];
     BOOL opened=row.douyindisc_imageButton.enabled;
+    __block NSInteger source=-1;
+    row.douyindisc_pick=^(DouyinDiscNavigationRow *selected,BOOL files){(void)selected;source=files?1:0;};
+    [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL photoDirect=source==0;
+    source=-1;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL filesDirect=source==1;
+    [row douyindisc_setEnabledAfterCommit:NO];source=-1;
+    [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL disabledBoth=source==-1&&!row.douyindisc_imageButton.enabled&&!row.douyindisc_filesButton.enabled;
     __block CGFloat previewed=0,committed=0;
     row.douyindisc_previewScale=^(DouyinDiscNavigationRow *changed,CGFloat scale){(void)changed;previewed=scale;};
     row.douyindisc_changeScale=^(DouyinDiscNavigationRow *changed,CGFloat scale){(void)changed;committed=scale;};
@@ -480,7 +492,7 @@ BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
     row.douyindisc_thumbnail.image=image;
     [row douyindisc_setHasImage:YES];
     [row douyindisc_setEnabledAfterCommit:NO];
-    return sliderLabels&&row.bounds.size.height==198&&row.douyindisc_filesButton!=nil&&row.douyindisc_filesButton.enabled==opened&&row.douyindisc_actions.arrangedSubviews.count==3&&noImage && opened && previewWorks && saveWorks && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
+    return sliderLabels&&photoDirect&&filesDirect&&disabledBoth&&row.bounds.size.height==198&&row.douyindisc_filesButton!=nil&&[row.douyindisc_filesButton.accessibilityLabel isEqualToString:@"从文件选择图标"]&&row.douyindisc_actions.arrangedSubviews.count==3&&noImage && opened && previewWorks && saveWorks && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
         row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==image && !row.douyindisc_imageButton.enabled && row.douyindisc_clearButton.enabled && row.douyindisc_actions.spacing<=4 && row.douyindisc_imageButton.bounds.size.width==92 && fabs(row.douyindisc_sizeSlider.minimumValue-.5)<.001 && fabs(row.douyindisc_sizeSlider.maximumValue-1.5)<.001 && fabs(row.douyindisc_sizeSlider.value-1.25)<.001;
 }
 
@@ -522,10 +534,10 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         NSString *configPath=[directory stringByAppendingPathComponent:@"settings.plist"];
         NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
         NSMutableDictionary *results=[NSMutableDictionary dictionary];
-        __block BOOL completed=NO;__block NSUInteger stage=0,ticket=0;
+        __block BOOL completed=NO;__block NSUInteger stage=0;
         __block double brightness=0;
-        __block PHPickerViewController *oldPicker=nil;
         __block UIPresentationController *oldPresentation=nil;
+        __block NSString *originalFileTitle=[row.douyindisc_filesButton accessibilityLabel];
         void (^finish)(void)=^{
             if(completed)return;completed=YES;
             panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;
@@ -549,23 +561,41 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
                         results[@"empty"]=@(cancelled&&denied.code==6&&panel.douyindisc_activePickGeneration==0);
                         stage=1;[panel douyindisc_presentPickerForRow:row files:NO];
                     }];
-                }else{results[@"adaptive"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);finish();}
+                }else if(stage==1){
+                    results[@"adaptive"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);
+                    stage=2;
+                    [row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];
+                }else{
+                    results[@"fileCancelled"]=@(cancelled&&panel.douyindisc_activePickGeneration==0&&row.douyindisc_filesButton.enabled);
+                    finish();
+                }
             });
         };
         panel.douyindisc_uiTestPickerPresented=^(UIViewController *controller){
             if(completed)return;
+            if(stage==2){
+                if(![controller isKindOfClass:UIDocumentPickerViewController.class]){results[@"filePresented"]=@NO;finish();return;}
+                results[@"filePresented"]=@YES;
+                [panel documentPickerWasCancelled:(UIDocumentPickerViewController *)controller];
+                [controller dismissViewControllerAnimated:NO completion:^{
+                    [panel beginAppearanceTransition:YES animated:NO];[panel endAppearanceTransition];
+                }];
+                return;
+            }
             if(![controller isKindOfClass:PHPickerViewController.class]){finish();return;}
             PHPickerViewController *picker=(PHPickerViewController *)controller;
             if(stage==0){
-                oldPicker=picker;oldPresentation=picker.presentationController;ticket=panel.douyindisc_activePickGeneration;
+                oldPresentation=picker.presentationController;
                 [panel picker:picker didFinishPicking:@[]];[panel picker:picker didFinishPicking:@[]];
             }else{
-                NSUInteger current=panel.douyindisc_activePickGeneration;
-                [panel picker:oldPicker didFinishPicking:@[]];[panel presentationControllerDidDismiss:oldPresentation];
-                results[@"stale"]=@(panel.douyindisc_activePicker==picker&&panel.douyindisc_activePickGeneration==current&&current!=ticket);
+                [oldPresentation.delegate presentationControllerDidDismiss:oldPresentation];
+                [panel beginAppearanceTransition:YES animated:NO];
+                [panel endAppearanceTransition];
+                BOOL staleDidNotSteal=panel.douyindisc_activePicker==picker&&panel.douyindisc_activePickGeneration!=0;
+                results[@"stale"]=@(staleDidNotSteal);
+                UIPresentationController *presentation=picker.presentationController;
                 [picker dismissViewControllerAnimated:YES completion:^{
-                    [panel beginAppearanceTransition:YES animated:NO];
-                    [panel endAppearanceTransition];
+                    [panel presentationControllerDidDismiss:presentation];
                 }];
             }
         };

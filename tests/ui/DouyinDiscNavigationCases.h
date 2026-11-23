@@ -112,6 +112,8 @@ static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
         DD_CHECK([results[@"interactive"] boolValue], "picker cancellation leaves the navigation panel visible and interactive");
         DD_CHECK([results[@"brightness"] boolValue], "picker cancellation restores window brightness without removing system views");
         DD_CHECK([results[@"adaptive"] boolValue], "adaptive dismissal closes only its matching photo session");
+        DD_CHECK([results[@"filePresented"] boolValue], "dedicated file button opens UIDocumentPicker directly");
+        DD_CHECK([results[@"fileCancelled"] boolValue], "file picker cancellation also restores the settings controls");
         DD_CHECK([results[@"stale"] boolValue], "late dismissal from old picker cannot cancel the new photo session");
         DD_CHECK([results[@"unchanged"] boolValue], "cancelled photo sessions preserve image and configuration");
         if(done)done();
