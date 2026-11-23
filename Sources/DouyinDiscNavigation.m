@@ -207,6 +207,18 @@ static UIColor *douyindisc_color(NSString *hex) {
 @end
 
 @implementation DouyinDiscSettingsViewController
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    UIViewController *picker=self.douyindisc_activePicker;
+    if(!picker)return;
+    __weak typeof(self) weakSelf=self;
+    dispatch_async(dispatch_get_main_queue(),^{
+        DouyinDiscSettingsViewController *strongSelf=weakSelf;
+        if(!strongSelf||strongSelf.douyindisc_activePicker!=picker||strongSelf.presentedViewController||picker.isBeingDismissed||picker.isBeingPresented)return;
+        BOOL hasProvider=strongSelf.douyindisc_pickerHasProvider;
+        [strongSelf douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
+    });
+}
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"DouyinDisc";
@@ -549,9 +561,9 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
                 NSUInteger current=panel.douyindisc_activePickGeneration;
                 [panel picker:oldPicker didFinishPicking:@[]];[panel presentationControllerDidDismiss:oldPresentation];
                 results[@"stale"]=@(panel.douyindisc_activePicker==picker&&panel.douyindisc_activePickGeneration==current&&current!=ticket);
-                UIPresentationController *presentation=picker.presentationController;
                 [picker dismissViewControllerAnimated:YES completion:^{
-                    [panel presentationControllerDidDismiss:presentation];[panel presentationControllerDidDismiss:presentation];
+                    [panel beginAppearanceTransition:YES animated:NO];
+                    [panel endAppearanceTransition];
                 }];
             }
         };
