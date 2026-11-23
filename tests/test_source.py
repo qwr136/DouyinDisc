@@ -61,6 +61,8 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('initForOpeningContentTypes:',panel)
         self.assertIn('UIDocumentPickerViewController.class',panel)
         self.assertIn('dedicated file button opens UIDocumentPicker directly',host)
+        self.assertIn('file picker cancellation also restores the settings controls',host)
+        self.assertIn('results[@"fileHit"]',panel)
         self.assertNotIn('UIMenu *',panel)
         self.assertNotIn('UIAction *photos=',panel)
         self.assertNotIn('UIAlertControllerStyleActionSheet',panel)

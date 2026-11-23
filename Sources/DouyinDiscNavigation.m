@@ -456,7 +456,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
     if (self.douyindisc_activePicker!=controller || self.douyindisc_pickerHasResult) return;
     self.douyindisc_pickerHasResult=YES;
-    [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
     __weak typeof(self) weakSelf=self;
     [self douyindisc_dismissPicker:controller completion:^{ [weakSelf douyindisc_finishPickerUI:controller cancelled:YES keepImportTicket:NO]; }];
 }
@@ -534,10 +533,10 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         NSString *configPath=[directory stringByAppendingPathComponent:@"settings.plist"];
         NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
         NSMutableDictionary *results=[NSMutableDictionary dictionary];
-        __block BOOL completed=NO;__block NSUInteger stage=0,ticket=0;
+        __block BOOL completed=NO;__block NSUInteger stage=0,firstTicket=0;
         __block double brightness=0;
+        __block PHPickerViewController *oldPicker=nil;
         __block UIPresentationController *oldPresentation=nil;
-        __block NSString *originalFileTitle=[row.douyindisc_filesButton accessibilityLabel];
         void (^finish)(void)=^{
             if(completed)return;completed=YES;
             panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;
@@ -550,25 +549,27 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
                 [panel.view layoutIfNeeded];[window layoutIfNeeded];
                 CGPoint point=[row.douyindisc_imageButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_imageButton.bounds),CGRectGetMidY(row.douyindisc_imageButton.bounds)) toView:window];
                 UIView *hit=[window hitTest:point withEvent:nil];
+                CGPoint filePoint=[row.douyindisc_filesButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_filesButton.bounds),CGRectGetMidY(row.douyindisc_filesButton.bounds)) toView:window];
+                UIView *fileHit=[window hitTest:filePoint withEvent:nil];
                 CGPoint switchPoint=[row.douyindisc_switch convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds)) toView:window];
                 UIView *switchHit=[window hitTest:switchPoint withEvent:nil];
-                BOOL interactive=cancelled&&!nav.presentedViewController&&!panel.douyindisc_activePicker&&row.douyindisc_imageButton.enabled&&[hit isDescendantOfView:row.douyindisc_imageButton]&&[switchHit isDescendantOfView:row.douyindisc_switch];
+                BOOL interactive=cancelled&&!nav.presentedViewController&&!panel.douyindisc_activePicker&&row.douyindisc_imageButton.enabled&&row.douyindisc_filesButton.enabled&&[hit isDescendantOfView:row.douyindisc_imageButton]&&[fileHit isDescendantOfView:row.douyindisc_filesButton]&&[switchHit isDescendantOfView:row.douyindisc_switch];
                 double after=douyindisc_uiTestWindowBrightness(window);
-                results[@"interactive"]=@(interactive&&(stage==0||[results[@"interactive"] boolValue]));
+                results[@"interactive"]=@(interactive&&(stage==0||[results[@"interactive"] boolValue])&&(stage!=0||[results[@"fileHit"] boolValue]));
                 results[@"brightness"]=@(brightness>0&&fabs(after-brightness)<3&&(stage==0||[results[@"brightness"] boolValue]));
                 if(stage==0){
-                    [store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:ticket completion:^(NSError *denied){
+                    CGPoint filePoint=[row.douyindisc_filesButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_filesButton.bounds),CGRectGetMidY(row.douyindisc_filesButton.bounds)) toView:window];
+                    UIView *fileHit=[window hitTest:filePoint withEvent:nil];
+                    results[@"fileHit"]=@([fileHit isDescendantOfView:row.douyindisc_filesButton]&&row.douyindisc_filesButton.enabled);
+                    [store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:firstTicket completion:^(NSError *denied){
+
                         results[@"empty"]=@(cancelled&&denied.code==6&&panel.douyindisc_activePickGeneration==0);
-                        stage=1;[panel douyindisc_presentPickerForRow:row files:NO];
+                        stage=1;[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
                     }];
                 }else if(stage==1){
                     results[@"adaptive"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);
-                    stage=2;
-                    [row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];
-                }else{
-                    results[@"fileCancelled"]=@(cancelled&&panel.douyindisc_activePickGeneration==0&&row.douyindisc_filesButton.enabled);
-                    finish();
-                }
+                    stage=2;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];
+                }else{results[@"fileCancelled"]=@(cancelled&&!panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==0&&row.douyindisc_filesButton.enabled);finish();}
             });
         };
         panel.douyindisc_uiTestPickerPresented=^(UIViewController *controller){
@@ -577,32 +578,28 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
                 if(![controller isKindOfClass:UIDocumentPickerViewController.class]){results[@"filePresented"]=@NO;finish();return;}
                 results[@"filePresented"]=@YES;
                 [panel documentPickerWasCancelled:(UIDocumentPickerViewController *)controller];
-                [controller dismissViewControllerAnimated:NO completion:^{
-                    [panel beginAppearanceTransition:YES animated:NO];[panel endAppearanceTransition];
-                }];
                 return;
             }
             if(![controller isKindOfClass:PHPickerViewController.class]){finish();return;}
             PHPickerViewController *picker=(PHPickerViewController *)controller;
             if(stage==0){
-                ticket=panel.douyindisc_activePickGeneration;
-                oldPresentation=picker.presentationController;
-                [panel picker:picker didFinishPicking:@[]];[panel picker:picker didFinishPicking:@[]];
-            }else{
-                [oldPresentation.delegate presentationControllerDidDismiss:oldPresentation];
-                [panel beginAppearanceTransition:YES animated:NO];
-                [panel endAppearanceTransition];
-                BOOL staleDidNotSteal=panel.douyindisc_activePicker==picker&&panel.douyindisc_activePickGeneration!=0;
-                results[@"stale"]=@(staleDidNotSteal);
+                oldPicker=picker;oldPresentation=picker.presentationController;firstTicket=panel.douyindisc_activePickGeneration;
                 UIPresentationController *presentation=picker.presentationController;
-                [picker dismissViewControllerAnimated:YES completion:^{
-                    [panel presentationControllerDidDismiss:presentation];
+                [picker dismissViewControllerAnimated:NO completion:^{
+                    /* Simulate a system down-swipe that returns without the picker delegate callback. */
+                    (void)presentation;[panel beginAppearanceTransition:YES animated:NO];[panel endAppearanceTransition];
                 }];
+            }else{
+                NSUInteger active=panel.douyindisc_activePickGeneration;
+                [panel picker:oldPicker didFinishPicking:@[]];
+                [panel presentationControllerDidDismiss:oldPresentation];
+                results[@"stale"]=@(panel.douyindisc_activePicker==picker&&panel.douyindisc_activePickGeneration==active&&active!=0);
+                [panel picker:picker didFinishPicking:@[]];
             }
         };
         dispatch_async(dispatch_get_main_queue(),^{
             [window layoutIfNeeded];[panel.view layoutIfNeeded];brightness=douyindisc_uiTestWindowBrightness(window);
-            [panel douyindisc_presentPickerForRow:row files:NO];
+            [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
         });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,20*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(!completed)finish();});
     }];
