@@ -66,7 +66,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     douyindisc_apply(textView);
     DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && [textView->_label.text isEqualToString:@"首页"],"disabling image restores original label visibility and glyph content");
     [feed removeFromSuperview];
-    DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"selected image shows photo icon and change title while preview remains separate");
+    DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"slider labels, image selection title and preview remain independently visible");
 
     UIImage *rootPlaceholder=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemGrayColor)];
     douyindisc_rootPlaceholderFixture=rootPlaceholder;
