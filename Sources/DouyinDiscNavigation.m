@@ -27,6 +27,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, strong) UILabel *douyindisc_sizeTitle;
 @property (nonatomic, strong) UIImageView *douyindisc_thumbnail;
 @property (nonatomic, strong) UIButton *douyindisc_imageButton;
+@property (nonatomic, strong) UIButton *douyindisc_filesButton;
 @property (nonatomic, strong) UIButton *douyindisc_clearButton;
 @property (nonatomic, strong) UIStackView *douyindisc_actions;
 @property (nonatomic, copy) void (^douyindisc_change)(DouyinDiscNavigationRow *, BOOL, CGFloat);
@@ -39,6 +40,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_sizeSliderChanged;
 - (void)douyindisc_sizeSliderEnded;
 - (void)douyindisc_switchChanged;
+- (void)douyindisc_photoTapped;
+- (void)douyindisc_filesTapped;
 - (void)douyindisc_clearTapped;
 - (void)douyindisc_setHasImage:(BOOL)hasImage;
 - (void)douyindisc_setImagePickingEnabled:(BOOL)enabled;
@@ -85,22 +88,19 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_imageButton.imageView.contentMode=UIViewContentModeScaleAspectFit;
     self.douyindisc_imageButton.titleEdgeInsets=UIEdgeInsetsMake(0,6,0,0);
     self.douyindisc_imageButton.contentVerticalAlignment=UIControlContentVerticalAlignmentCenter;
-    __weak typeof(self) weakRow=self;
-    UIAction *photos=[UIAction actionWithTitle:@"照片" image:[UIImage systemImageNamed:@"photo"] identifier:@"douyindisc.source.photos" handler:^(__kindof UIAction *action){
-        (void)action;DouyinDiscNavigationRow *row=weakRow;
-        dispatch_async(dispatch_get_main_queue(),^{if(row.douyindisc_imageButton.enabled&&row.douyindisc_pick)row.douyindisc_pick(row,NO);});
-    }];
-    UIAction *files=[UIAction actionWithTitle:@"文件" image:[UIImage systemImageNamed:@"folder"] identifier:@"douyindisc.source.files" handler:^(__kindof UIAction *action){
-        (void)action;DouyinDiscNavigationRow *row=weakRow;
-        dispatch_async(dispatch_get_main_queue(),^{if(row.douyindisc_imageButton.enabled&&row.douyindisc_pick)row.douyindisc_pick(row,YES);});
-    }];
-    self.douyindisc_imageButton.menu=[UIMenu menuWithTitle:@"选择自定义图标" children:@[photos,files]];
-    self.douyindisc_imageButton.showsMenuAsPrimaryAction=YES;
+    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.douyindisc_filesButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_filesButton.translatesAutoresizingMaskIntoConstraints=NO;
+    [self.douyindisc_filesButton setImage:[UIImage systemImageNamed:@"folder"] forState:UIControlStateNormal];
+    self.douyindisc_filesButton.tintColor=douyindisc_color(@"#1557C0");
+    self.douyindisc_filesButton.accessibilityLabel=@"从文件选择图标";
+    self.douyindisc_filesButton.enabled=[entry[@"enabled"] boolValue];
+    self.douyindisc_filesButton.accessibilityIdentifier=[@"douyindisc.files." stringByAppendingString:self.douyindisc_identifier];
+    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTapped) forControlEvents:UIControlEventTouchUpInside];
     self.douyindisc_clearButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.douyindisc_clearButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_clearButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
     self.douyindisc_clearButton.accessibilityLabel=@"移除此项自定义图标"; self.douyindisc_clearButton.enabled=image!=nil;
     [self.douyindisc_clearButton addTarget:self action:@selector(douyindisc_clearTapped) forControlEvents:UIControlEventTouchUpInside];
-    self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_clearButton]];
+    self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_filesButton,self.douyindisc_clearButton]];
     self.douyindisc_actions.translatesAutoresizingMaskIntoConstraints=NO; self.douyindisc_actions.axis=UILayoutConstraintAxisHorizontal; self.douyindisc_actions.spacing=4;
     [content addSubview:self.douyindisc_actions];
     self.douyindisc_thumbnail=[UIImageView new]; self.douyindisc_thumbnail.translatesAutoresizingMaskIntoConstraints=NO;
@@ -147,7 +147,7 @@ static UIColor *douyindisc_color(NSString *hex) {
         [self.douyindisc_switch.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_switch.centerYAnchor constraintEqualToAnchor:swatch.centerYAnchor],
         [self.douyindisc_thumbnail.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_thumbnail.topAnchor constraintEqualToAnchor:swatch.bottomAnchor constant:8], [self.douyindisc_thumbnail.widthAnchor constraintEqualToConstant:38], [self.douyindisc_thumbnail.heightAnchor constraintEqualToConstant:38],
         [self.douyindisc_actions.leadingAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.trailingAnchor constant:8], [self.douyindisc_actions.centerYAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.centerYAnchor], [self.douyindisc_actions.trailingAnchor constraintLessThanOrEqualToAnchor:content.trailingAnchor],
-        [self.douyindisc_imageButton.widthAnchor constraintEqualToConstant:92], [self.douyindisc_imageButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.heightAnchor constraintEqualToConstant:36],
+        [self.douyindisc_imageButton.widthAnchor constraintEqualToConstant:92], [self.douyindisc_imageButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_filesButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_filesButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.heightAnchor constraintEqualToConstant:36],
         [self.douyindisc_opacityTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_opacityTitle.topAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.bottomAnchor constant:4], [self.douyindisc_opacityTitle.heightAnchor constraintEqualToConstant:16],
         [self.douyindisc_slider.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_slider.trailingAnchor constraintEqualToAnchor:self.douyindisc_value.leadingAnchor constant:-10], [self.douyindisc_slider.topAnchor constraintEqualToAnchor:self.douyindisc_opacityTitle.bottomAnchor constant:0],
         [self.douyindisc_value.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_value.centerYAnchor constraintEqualToAnchor:self.douyindisc_slider.centerYAnchor], [self.douyindisc_value.widthAnchor constraintEqualToConstant:44],
@@ -166,7 +166,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_sizeSlider.value);
 }
 - (void)douyindisc_sizeSliderEnded { if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_sizeSlider.value); }
-- (void)douyindisc_setImagePickingEnabled:(BOOL)enabled { self.douyindisc_imageButton.enabled=enabled; }
+- (void)douyindisc_setImagePickingEnabled:(BOOL)enabled { self.douyindisc_imageButton.enabled=enabled;self.douyindisc_filesButton.enabled=enabled; }
 - (void)douyindisc_setHasImage:(BOOL)hasImage {
     NSString *title=hasImage?@"更换图标":@"选择图标";
     [self.douyindisc_imageButton setTitle:title forState:UIControlStateNormal];
@@ -181,6 +181,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_sliderEnded { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
 - (void)douyindisc_switchChanged { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
+- (void)douyindisc_photoTapped { if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
+- (void)douyindisc_filesTapped { if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
 - (void)douyindisc_setEnabledAfterCommit:(BOOL)enabled { self.douyindisc_switch.on=enabled; [self douyindisc_setImagePickingEnabled:enabled]; }
 - (void)douyindisc_clearTapped { if (self.douyindisc_clear) self.douyindisc_clear(self); }
 @end
@@ -478,7 +480,7 @@ BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
     row.douyindisc_thumbnail.image=image;
     [row douyindisc_setHasImage:YES];
     [row douyindisc_setEnabledAfterCommit:NO];
-    return sliderLabels&&row.bounds.size.height==198&&noImage && opened && previewWorks && saveWorks && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
+    return sliderLabels&&row.bounds.size.height==198&&row.douyindisc_filesButton!=nil&&row.douyindisc_filesButton.enabled==opened&&row.douyindisc_actions.arrangedSubviews.count==3&&noImage && opened && previewWorks && saveWorks && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
         row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==image && !row.douyindisc_imageButton.enabled && row.douyindisc_clearButton.enabled && row.douyindisc_actions.spacing<=4 && row.douyindisc_imageButton.bounds.size.width==92 && fabs(row.douyindisc_sizeSlider.minimumValue-.5)<.001 && fabs(row.douyindisc_sizeSlider.maximumValue-1.5)<.001 && fabs(row.douyindisc_sizeSlider.value-1.25)<.001;
 }
 
