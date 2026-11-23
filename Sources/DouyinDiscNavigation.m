@@ -200,7 +200,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)presentationControllerDidDismiss:(UIPresentationController *)pc {
     UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
     id<UIAdaptivePresentationControllerDelegate> next=self.next;
-    if(picker&&owner.douyindisc_activePicker==picker)[owner douyindisc_finishAdaptiveDismissForPicker:picker];
+    if(picker&&owner)[owner douyindisc_finishAdaptiveDismissForPicker:picker];
     if([next respondsToSelector:_cmd]&&next!=(id)self)[next presentationControllerDidDismiss:pc];
     self.next=nil;self.picker=nil;self.owner=nil;
 }
@@ -215,6 +215,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic) NSUInteger douyindisc_activePickGeneration;
 @property (nonatomic, strong) UIViewController *douyindisc_activePicker;
 @property (nonatomic, strong) NSObject<UIAdaptivePresentationControllerDelegate> *douyindisc_activeDismissProxy;
+@property (nonatomic) NSUInteger douyindisc_pickerDetachedSamples;
 @property (nonatomic) BOOL douyindisc_pickerHasResult;
 @property (nonatomic) BOOL douyindisc_pickerHasProvider;
 @property (nonatomic) NSUInteger douyindisc_pickerRecoveryGeneration;
@@ -229,7 +230,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation;
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion;
 - (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation;
-- (void)douyindisc_startPickerWatchdog:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;

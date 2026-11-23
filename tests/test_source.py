@@ -50,7 +50,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('disclosure arrow',host)
         self.assertIn('late settings data inserts DouyinDisc synchronously when the model arrives',host)
         self.assertIn('activePicker!=picker',panel)
-        self.assertIn('if(picker&&owner.douyindisc_activePicker==picker)',panel)
+        self.assertIn('if(picker&&owner)',panel)
         self.assertIn('targetLongEdge=16.0*scale',hooks)
         self.assertIn('same bottom image at maximum scale has the same twenty-four point long edge',host)
         self.assertIn('businessSel', hooks)
