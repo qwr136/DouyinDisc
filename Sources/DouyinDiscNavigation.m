@@ -533,9 +533,8 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         NSString *configPath=[directory stringByAppendingPathComponent:@"settings.plist"];
         NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
         NSMutableDictionary *results=[NSMutableDictionary dictionary];
-        __block BOOL completed=NO;__block NSUInteger stage=0,firstTicket=0;
+        __block BOOL completed=NO;__block NSUInteger stage=0,photoGeneration=0;
         __block double brightness=0;
-        __block PHPickerViewController *oldPicker=nil;
         __block UIPresentationController *oldPresentation=nil;
         void (^finish)(void)=^{
             if(completed)return;completed=YES;
@@ -555,20 +554,16 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
                 UIView *switchHit=[window hitTest:switchPoint withEvent:nil];
                 BOOL interactive=cancelled&&!nav.presentedViewController&&!panel.douyindisc_activePicker&&row.douyindisc_imageButton.enabled&&row.douyindisc_filesButton.enabled&&[hit isDescendantOfView:row.douyindisc_imageButton]&&[fileHit isDescendantOfView:row.douyindisc_filesButton]&&[switchHit isDescendantOfView:row.douyindisc_switch];
                 double after=douyindisc_uiTestWindowBrightness(window);
-                results[@"interactive"]=@(interactive&&(stage==0||[results[@"interactive"] boolValue])&&(stage!=0||[results[@"fileHit"] boolValue]));
+                results[@"interactive"]=@(interactive&&(stage==0||[results[@"interactive"] boolValue]));
                 results[@"brightness"]=@(brightness>0&&fabs(after-brightness)<3&&(stage==0||[results[@"brightness"] boolValue]));
                 if(stage==0){
-                    CGPoint filePoint=[row.douyindisc_filesButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_filesButton.bounds),CGRectGetMidY(row.douyindisc_filesButton.bounds)) toView:window];
-                    UIView *fileHit=[window hitTest:filePoint withEvent:nil];
-                    results[@"fileHit"]=@([fileHit isDescendantOfView:row.douyindisc_filesButton]&&row.douyindisc_filesButton.enabled);
-                    [store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:firstTicket completion:^(NSError *denied){
-
-                        results[@"empty"]=@(cancelled&&denied.code==6&&panel.douyindisc_activePickGeneration==0);
-                        stage=1;[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
-                    }];
+                    results[@"swipeRecovery"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);
+                    stage=1;dispatch_async(dispatch_get_main_queue(),^{if(!completed)[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];});
                 }else if(stage==1){
-                    results[@"adaptive"]=@(cancelled&&panel.douyindisc_activePickGeneration==0);
-                    stage=2;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];
+                    [store douyindisc_saveImageData:data identifier:@"top_recommend" pickingGeneration:photoGeneration completion:^(NSError *denied){
+                        results[@"empty"]=@(cancelled&&denied.code==6&&panel.douyindisc_activePickGeneration==0);
+                        stage=2;dispatch_async(dispatch_get_main_queue(),^{if(!completed)[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];});
+                    }];
                 }else{results[@"fileCancelled"]=@(cancelled&&!panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==0&&row.douyindisc_filesButton.enabled);finish();}
             });
         };
@@ -577,23 +572,19 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             if(stage==2){
                 if(![controller isKindOfClass:UIDocumentPickerViewController.class]){results[@"filePresented"]=@NO;finish();return;}
                 results[@"filePresented"]=@YES;
-                [panel documentPickerWasCancelled:(UIDocumentPickerViewController *)controller];
+                UIDocumentPickerViewController *document=(UIDocumentPickerViewController *)controller;
+                NSUInteger active=panel.douyindisc_activePickGeneration;
+                [panel presentationControllerDidDismiss:oldPresentation];
+                results[@"stale"]=@(panel.douyindisc_activePicker==document&&panel.douyindisc_activePickGeneration==active&&active!=0);
+                [panel documentPickerWasCancelled:document];
                 return;
             }
             if(![controller isKindOfClass:PHPickerViewController.class]){finish();return;}
             PHPickerViewController *picker=(PHPickerViewController *)controller;
             if(stage==0){
-                oldPicker=picker;oldPresentation=picker.presentationController;firstTicket=panel.douyindisc_activePickGeneration;
-                UIPresentationController *presentation=picker.presentationController;
-                [picker dismissViewControllerAnimated:NO completion:^{
-                    /* Simulate a system down-swipe that returns without the picker delegate callback. */
-                    (void)presentation;[panel beginAppearanceTransition:YES animated:NO];[panel endAppearanceTransition];
-                }];
+                photoGeneration=panel.douyindisc_activePickGeneration;oldPresentation=picker.presentationController;
+                [picker dismissViewControllerAnimated:NO completion:^{[panel beginAppearanceTransition:YES animated:NO];[panel endAppearanceTransition];}];
             }else{
-                NSUInteger active=panel.douyindisc_activePickGeneration;
-                [panel picker:oldPicker didFinishPicking:@[]];
-                [panel presentationControllerDidDismiss:oldPresentation];
-                results[@"stale"]=@(panel.douyindisc_activePicker==picker&&panel.douyindisc_activePickGeneration==active&&active!=0);
                 [panel picker:picker didFinishPicking:@[]];
             }
         };

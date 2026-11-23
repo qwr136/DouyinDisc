@@ -108,6 +108,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
 extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));
 static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
+        DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker swipe dismissal without delegate callback clears active session");
         DD_CHECK([results[@"empty"] boolValue], "empty photo result dismisses the real picker and revokes its ticket");
         DD_CHECK([results[@"interactive"] boolValue], "picker cancellation leaves the navigation panel visible and interactive");
         DD_CHECK([results[@"brightness"] boolValue], "picker cancellation restores window brightness without removing system views");
