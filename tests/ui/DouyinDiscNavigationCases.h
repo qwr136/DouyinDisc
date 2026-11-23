@@ -86,15 +86,17 @@ static void douyindisc_navigationCases(UIWindow *window) {
     generalItem.placeholderIconImage=rootPlaceholder;
     AWESettingsTableViewController *rootSettings=[AWESettingsTableViewController new];rootSettings.viewModel=[AWESettingsViewModel new];rootSettings.viewModel.sectionDataArray=@[generalSection,otherSection];rootSettings.douyindisc_table=[[UITableView alloc]initWithFrame:CGRectMake(0,0,390,600) style:UITableViewStyleGrouped];rootSettings.douyindisc_table.dataSource=rootSettings;rootSettings.douyindisc_table.delegate=rootSettings;
     UINavigationController *rootNav=[[UINavigationController alloc]initWithRootViewController:rootSettings];UIViewController *rootHost=[UIViewController new];[rootHost addChildViewController:rootNav];rootNav.view.frame=rootHost.view.bounds;[rootHost.view addSubview:rootNav.view];(void)rootSettings.view;rootSettings.douyindisc_table.frame=rootSettings.view.bounds;[rootSettings.view addSubview:rootSettings.douyindisc_table];
-    [rootSettings viewDidAppear:NO];
+    [rootSettings viewWillAppear:NO];
     NSArray *updatedItems=generalSection.itemArray;
+    DD_CHECK(updatedItems.count==3&&[[updatedItems[1] title] isEqualToString:@"DouyinDisc"],"DouyinDisc is inserted during root viewWillAppear before the first visible cell");
+    [rootSettings viewDidAppear:NO];
     AWESettingItemModel *pluginItem=updatedItems.count>1?updatedItems[1]:nil;
     DD_CHECK(updatedItems.count==3&&updatedItems[0]==layerItem&&[[updatedItems[1] title] isEqualToString:@"DouyinDisc"]&&updatedItems[2]==generalItem,"root General section inserts DouyinDisc immediately after the runtime 抖音图层 anchor");
-    DD_CHECK(pluginItem.type==layerItem.type&&pluginItem.cellType==4&&[pluginItem.titleColor isEqual:UIColor.blackColor]&&pluginItem.specificIconImage!=nil&&pluginItem.specificIconImage!=rootPlaceholder&&[pluginItem.iconImageName isEqualToString:@""]&&pluginItem.cellTappedBlock!=nil,"native item has resolved icon, black text and direct tap callback");
+    DD_CHECK(pluginItem.type==layerItem.type&&pluginItem.cellType==4&&[pluginItem.titleColor isEqual:UIColor.blackColor]&&pluginItem.specificIconImage!=nil&&pluginItem.specificIconImage!=rootPlaceholder&&[pluginItem.iconImageName isEqualToString:@""]&&pluginItem.cellTappedBlock!=nil&&pluginItem.useStandardArrowImage,"native item has resolved icon, black text, disclosure arrow and direct tap callback");
     AWESettingsTableViewCell *pluginCell=(AWESettingsTableViewCell *)[rootSettings tableView:rootSettings.douyindisc_table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
-    DD_CHECK(pluginCell.itemModel==pluginItem&&pluginCell.iconImageView.image==nil&&pluginCell.arrowImageView.image==nil,"IconTitle cell reproduces hidden asynchronous icon and missing chevron before display");
+    DD_CHECK(pluginCell.itemModel==pluginItem&&pluginCell.iconImageView.image==nil&&pluginCell.arrowImageView.image==nil,"IconTitle cell reproduces hidden asynchronous icon before display");
     [rootSettings tableView:rootSettings.douyindisc_table willDisplayCell:pluginCell forRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:0]];
-    DD_CHECK(pluginCell.iconImageView.image==pluginItem.specificIconImage&&!pluginCell.iconImageView.hidden&&pluginCell.arrowImageView.hidden&&rootSettings.douyindisc_nativeWillDisplayCount==1,"only DouyinDisc root cell receives its icon after one original display callback");
+    DD_CHECK(pluginCell.iconImageView.image==pluginItem.specificIconImage&&!pluginCell.iconImageView.hidden&&pluginCell.arrowImageView.image!=nil&&!pluginCell.arrowImageView.hidden&&rootSettings.douyindisc_nativeWillDisplayCount==1,"DouyinDisc root cell receives its icon and disclosure arrow after one original display callback");
     AWESettingsTableViewCell *nativeLayerCell=(AWESettingsTableViewCell *)[rootSettings tableView:rootSettings.douyindisc_table cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
     [rootSettings tableView:rootSettings.douyindisc_table willDisplayCell:nativeLayerCell forRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
     DD_CHECK(nativeLayerCell.iconImageView.image==nil&&nativeLayerCell.iconImageView.hidden&&nativeLayerCell.arrowImageView.image==nil&&nativeLayerCell.arrowImageView.hidden,"other native IconTitle rows remain untouched");
@@ -132,6 +134,11 @@ static void douyindisc_navigationCases(UIWindow *window) {
     AWESettingSectionModel *thirdPartySection=[AWESettingSectionModel new];thirdPartySection.type=2;thirdPartySection.itemArray=@[duplicateThirdParty,generalItem];
     AWESettingsTableViewController *twoRoots=[AWESettingsTableViewController new];twoRoots.viewModel=[AWESettingsViewModel new];twoRoots.viewModel.sectionDataArray=@[fallbackOnlySection,thirdPartySection];
     DD_CHECK(douyindisc_insertRootSettingsItem(twoRoots)&&fallbackOnlySection.itemArray.count==2&&thirdPartySection.itemArray.count==3&&thirdPartySection.itemArray[0]==duplicateThirdParty&&[thirdPartySection.itemArray[1].title isEqualToString:@"DouyinDisc"]&&thirdPartySection.itemArray[2]==generalItem,"third-party anchor wins globally over fallback even in an earlier General section");
+    AWESettingsTableViewController *lateRoot=[AWESettingsTableViewController new];lateRoot.viewModel=[AWESettingsViewModel new];[lateRoot viewWillAppear:NO];
+    AWESettingItemModel *lateGeneral=[AWESettingItemModel new];lateGeneral.title=@"通用设置";lateGeneral.businessID=@"general_setting";lateGeneral.type=22;
+    AWESettingSectionModel *lateSection=[AWESettingSectionModel new];lateSection.type=2;lateSection.itemArray=@[lateGeneral];
+    lateRoot.viewModel.sectionDataArray=@[lateSection];
+    DD_CHECK(lateSection.itemArray.count==2&&[[lateSection.itemArray[0] title] isEqualToString:@"DouyinDisc"]&&lateSection.itemArray[1]==lateGeneral,"late settings data inserts DouyinDisc synchronously when the model arrives");
 }
 
 extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));

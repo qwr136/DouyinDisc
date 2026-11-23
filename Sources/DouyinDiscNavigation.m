@@ -198,10 +198,10 @@ static UIColor *douyindisc_color(NSString *hex) {
 @end
 @implementation DouyinDiscPickerDismissProxy
 - (void)presentationControllerDidDismiss:(UIPresentationController *)pc {
+    UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
     id<UIAdaptivePresentationControllerDelegate> next=self.next;
+    if(picker&&owner.douyindisc_activePicker==picker)[owner douyindisc_finishAdaptiveDismissForPicker:picker];
     if([next respondsToSelector:_cmd]&&next!=(id)self)[next presentationControllerDidDismiss:pc];
-    UIViewController *picker=pc.presentedViewController;
-    if(picker==self.picker)[self.owner douyindisc_finishAdaptiveDismissForPicker:picker];
     self.next=nil;self.picker=nil;self.owner=nil;
 }
 - (BOOL)respondsToSelector:(SEL)selector{return [super respondsToSelector:selector]||[self.next respondsToSelector:selector];}
@@ -229,6 +229,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation;
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion;
 - (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation;
+- (void)douyindisc_startPickerWatchdog:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
@@ -238,7 +239,10 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     UIViewController *picker=self.douyindisc_activePicker;
-    if(picker)[self douyindisc_schedulePickerRecovery:picker generation:self.douyindisc_activePickGeneration];
+    if(picker){
+        if(!self.presentedViewController&&!picker.isBeingPresented&&!picker.isBeingDismissed&&(!picker.isViewLoaded||!picker.view.window)){BOOL hasProvider=self.douyindisc_pickerHasProvider;[self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];}
+        else [self douyindisc_schedulePickerRecovery:picker generation:self.douyindisc_activePickGeneration];
+    }
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -359,6 +363,7 @@ static UIColor *douyindisc_color(NSString *hex) {
                 DouyinDiscPickerDismissProxy *proxy=[DouyinDiscPickerDismissProxy new];proxy.next=next;proxy.owner=weakSelf;proxy.picker=picker;
                 weakSelf.douyindisc_activeDismissProxy=proxy;current.delegate=proxy;
             }
+            [weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
         }
 #if defined(DOUYINDISC_UI_TEST)
         if(weakSelf.douyindisc_uiTestPickerPresented)weakSelf.douyindisc_uiTestPickerPresented(picker);
@@ -396,6 +401,7 @@ static UIColor *douyindisc_color(NSString *hex) {
                 if (weakSelf.douyindisc_activePicker==picker) {
                     weakSelf.douyindisc_pickerHasResult=NO;
                     weakSelf.douyindisc_pickerHasProvider=NO;
+                    [weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
                 }
             } else if (completion) completion();
         }];
@@ -405,20 +411,22 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery {
     if(self.douyindisc_pickerRecoveryGeneration!=recovery||self.douyindisc_activePicker!=picker||self.douyindisc_activePickGeneration!=generation)return;
-    if(self.presentedViewController||picker.isBeingPresented||picker.isBeingDismissed){
-        if(++self.douyindisc_pickerRecoveryAttempts>2)return;
-        id<UIViewControllerTransitionCoordinator> transition=picker.transitionCoordinator?:self.transitionCoordinator;
-        __weak typeof(self) weakSelf=self;
-        if(transition)[transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context){if(!context.isCancelled)dispatch_async(dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});}];
+    if(UIApplication.sharedApplication.applicationState!=UIApplicationStateActive)return;
+    UIViewController *presented=self.presentedViewController;
+    BOOL transitional=picker.isBeingPresented||picker.isBeingDismissed||(presented&&presented!=picker);
+    if(transitional){
+        if(++self.douyindisc_pickerRecoveryAttempts<=5){__weak typeof(self) weakSelf=self;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.2*NSEC_PER_SEC)),dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});}
         return;
     }
-    self.douyindisc_pickerRecoveryAttempts=0;
-    BOOL hasProvider=self.douyindisc_pickerHasProvider;
-    [self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
+    if(presented==picker&&picker.isViewLoaded&&picker.view.window){self.douyindisc_pickerDetachedSamples=0;return;}
+    if(presented==picker&&++self.douyindisc_pickerDetachedSamples<3){__weak typeof(self) weakSelf=self;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.2*NSEC_PER_SEC)),dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});return;}
+    BOOL hasProvider=self.douyindisc_pickerHasProvider;__weak typeof(self) weakSelf=self;
+    if(presented==picker){[picker dismissViewControllerAnimated:NO completion:^{[weakSelf douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];}];return;}
+    if(!presented&&!picker.presentingViewController)[self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
 }
 - (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation {
     if(!NSThread.isMainThread||!picker||self.douyindisc_activePicker!=picker||!generation||self.douyindisc_activePickGeneration!=generation)return;
-    NSUInteger recovery=++self.douyindisc_pickerRecoveryGeneration;__weak typeof(self) weakSelf=self;
+    NSUInteger recovery=++self.douyindisc_pickerRecoveryGeneration;self.douyindisc_pickerRecoveryAttempts=0;self.douyindisc_pickerDetachedSamples=0;__weak typeof(self) weakSelf=self;
     dispatch_async(dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});
 }
 - (void)douyindisc_finishAdaptiveDismissForPicker:(UIViewController *)picker {
