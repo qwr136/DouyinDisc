@@ -239,7 +239,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, strong) UIViewController *douyindisc_activePicker;
 @property (nonatomic, strong) NSObject<UIAdaptivePresentationControllerDelegate> *douyindisc_activeDismissProxy;
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *douyindisc_touchTraceEvents;
-@property (nonatomic, strong) UIBarButtonItem *douyindisc_touchTraceItem;
+@property (nonatomic, strong) UIButton *douyindisc_touchTraceButton;
 @property (nonatomic) BOOL douyindisc_touchTraceEnabled;
 @property (nonatomic) NSTimeInterval douyindisc_touchTraceStart;
 @property (nonatomic) NSTimeInterval douyindisc_touchTraceDeadline;
@@ -302,6 +302,10 @@ static UIColor *douyindisc_color(NSString *hex) {
     UILabel *notice = [UILabel new]; notice.numberOfLines = 0; notice.font = [UIFont systemFontOfSize:13]; notice.textColor = UIColor.secondaryLabelColor;
     notice.text = @"每项独立启用图标替换。未选择图片或关闭开关时保留抖音原文字。图片从照片或文件导入，保存于抖音沙盒。";
     [self.douyindisc_stack addArrangedSubview:notice];
+    self.douyindisc_touchTraceButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_touchTraceButton.translatesAutoresizingMaskIntoConstraints=NO;
+    [self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];self.douyindisc_touchTraceButton.accessibilityIdentifier=@"douyindisc.touch-diagnostics";self.douyindisc_touchTraceButton.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
+    self.douyindisc_touchTraceButton.titleLabel.font=[UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];[self.douyindisc_touchTraceButton addTarget:self action:@selector(douyindisc_touchTraceToggle) forControlEvents:UIControlEventTouchUpInside];
+    [self.douyindisc_stack addArrangedSubview:self.douyindisc_touchTraceButton];[self.douyindisc_touchTraceButton.heightAnchor constraintGreaterThanOrEqualToConstant:40].active=YES;
     for (NSDictionary *item in douyindisc_navigationItems()) {
         NSString *group = [item[@"identifier"] hasPrefix:@"top_"] ? @"首页顶部分类" : @"底部导航";
         BOOL needsHeader = self.douyindisc_stack.arrangedSubviews.count == 1 ||
@@ -354,15 +358,14 @@ static UIColor *douyindisc_color(NSString *hex) {
             [row douyindisc_setHasImage:image!=nil];
         }
     }];
-    self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"开始诊断" style:UIBarButtonItemStylePlain target:self action:@selector(douyindisc_touchTraceToggle)];
 }
 
 - (void)douyindisc_touchTraceToggle {
     if(self.douyindisc_touchTraceEnabled){[self douyindisc_touchTraceRecord:@"capture-stop" row:nil files:NO];[self douyindisc_touchTraceExport];return;}
     if(self.douyindisc_touchTraceEvents.count){[self douyindisc_touchTraceExport];return;}
     self.douyindisc_touchTraceEvents=[NSMutableArray array];self.douyindisc_touchTraceEnabled=YES;self.douyindisc_touchTraceStart=CACurrentMediaTime();self.douyindisc_touchTraceDeadline=self.douyindisc_touchTraceStart+20;
-    self.navigationItem.rightBarButtonItem.title=@"结束并导出";[self douyindisc_touchTraceRecord:@"capture-start" row:nil files:NO];
-    __weak typeof(self) weakSelf=self;self.douyindisc_touchTraceTimer=[NSTimer timerWithTimeInterval:.25 repeats:YES block:^(NSTimer *timer){if(!weakSelf||!weakSelf.douyindisc_touchTraceEnabled){[timer invalidate];return;}if(CACurrentMediaTime()>=weakSelf.douyindisc_touchTraceDeadline){[weakSelf douyindisc_touchTraceRecord:@"capture-timeout" row:nil files:NO];weakSelf.douyindisc_touchTraceEnabled=NO;weakSelf.navigationItem.rightBarButtonItem.title=@"导出诊断";[weakSelf.douyindisc_touchTraceTimer invalidate];weakSelf.douyindisc_touchTraceTimer=nil;}}];[[NSRunLoop mainRunLoop] addTimer:self.douyindisc_touchTraceTimer forMode:NSRunLoopCommonModes];
+    self.douyindisc_touchTraceButton.enabled=YES;[self.douyindisc_touchTraceButton setTitle:@"结束并导出" forState:UIControlStateNormal];[self douyindisc_touchTraceRecord:@"capture-start" row:nil files:NO];
+    __weak typeof(self) weakSelf=self;self.douyindisc_touchTraceTimer=[NSTimer timerWithTimeInterval:.25 repeats:YES block:^(NSTimer *timer){if(!weakSelf||!weakSelf.douyindisc_touchTraceEnabled){[timer invalidate];return;}if(CACurrentMediaTime()>=weakSelf.douyindisc_touchTraceDeadline){[weakSelf douyindisc_touchTraceRecord:@"capture-timeout" row:nil files:NO];weakSelf.douyindisc_touchTraceEnabled=NO;[weakSelf.douyindisc_touchTraceButton setTitle:@"导出诊断" forState:UIControlStateNormal];[weakSelf.douyindisc_touchTraceTimer invalidate];weakSelf.douyindisc_touchTraceTimer=nil;}}];[[NSRunLoop mainRunLoop] addTimer:self.douyindisc_touchTraceTimer forMode:NSRunLoopCommonModes];
 }
 - (void)douyindisc_touchTraceRecord:(NSString *)event row:(DouyinDiscNavigationRow *)row files:(BOOL)files {
     if(!self.douyindisc_touchTraceEnabled||self.douyindisc_touchTraceEvents.count>=80)return;
@@ -373,9 +376,9 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_touchTraceExport {
     self.douyindisc_touchTraceEnabled=NO;[self.douyindisc_touchTraceTimer invalidate];self.douyindisc_touchTraceTimer=nil;
-    NSData *data=[NSJSONSerialization dataWithJSONObject:@{@"schema":@1,@"events":self.douyindisc_touchTraceEvents?:@[]} options:NSJSONWritingPrettyPrinted error:nil];if(!data){self.navigationItem.rightBarButtonItem.title=@"开始诊断";return;}
-    NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"DouyinDisc-button-trace.json"]];if(![data writeToURL:url atomically:YES]){self.navigationItem.rightBarButtonItem.title=@"开始诊断";return;}
-    self.navigationItem.rightBarButtonItem.title=@"开始诊断";UIActivityViewController *activity=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];if(activity.popoverPresentationController)activity.popoverPresentationController.barButtonItem=self.navigationItem.rightBarButtonItem;[self presentViewController:activity animated:YES completion:nil];
+    NSData *data=[NSJSONSerialization dataWithJSONObject:@{@"schema":@1,@"events":self.douyindisc_touchTraceEvents?:@[]} options:NSJSONWritingPrettyPrinted error:nil];if(!data){[self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];return;}
+    NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"DouyinDisc-button-trace.json"]];if(![data writeToURL:url atomically:YES]){[self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];return;}
+    [self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];UIActivityViewController *activity=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];if(activity.popoverPresentationController)activity.popoverPresentationController.sourceView=self.douyindisc_touchTraceButton;[self presentViewController:activity animated:YES completion:nil];
 }
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];

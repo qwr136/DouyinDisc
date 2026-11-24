@@ -16,7 +16,10 @@ class VisualRegressionTests(unittest.TestCase):
         if 'douyindisc_touchTraceToggle' in panel:
             self.assertIn('douyindisc_touchTraceDeadline=self.douyindisc_touchTraceStart+20',panel)
             self.assertIn('douyindisc_touchTraceEvents.count>=80',panel)
-            self.assertIn('DouyinDisc-button-trace.json',panel)
+            self.assertIn('douyindisc_touchTraceButton=[UIButton buttonWithType:UIButtonTypeSystem]',panel)
+            self.assertIn('[self.douyindisc_stack addArrangedSubview:self.douyindisc_touchTraceButton]',panel)
+            self.assertNotIn('navigationItem.rightBarButtonItem',panel)
+
 
     def test_caption_allowlist_stays_exact_and_local(self):
         caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()
