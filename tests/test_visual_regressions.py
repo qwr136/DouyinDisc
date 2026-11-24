@@ -7,17 +7,12 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class VisualRegressionTests(unittest.TestCase):
-    def test_diagnostic_capture_is_explicitly_bounded_and_redacted(self):
-        panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text(encoding='utf-8')
-        self.assertIn('self.douyindisc_touchCaptureStart+30',panel)
-        self.assertIn('self.douyindisc_touchEvents.count>=120',panel)
-        self.assertIn('touch-began',panel)
-        self.assertIn('touch-ended',panel)
-        self.assertIn('picker-gate-blocked',panel)
-        self.assertIn('DouyinDisc-touch-trace.json',panel)
-        self.assertNotIn('imageData',panel)
-        self.assertNotIn('accountID',panel)
-        self.assertNotIn('videoURL',panel)
+    def test_runtime_diagnostic_capture_is_absent(self):
+        production = '\\n'.join(path.read_text() for path in (ROOT / 'Sources').iterdir() if path.is_file())
+        self.assertFalse((ROOT / 'Sources/DouyinDiscDiagnostics.inc').exists())
+        for forbidden in ('douyindisc_diag_', 'DouyinDiscDiagnostics', 'visual-trace', '圆盘取证', '导出取证'):
+            self.assertNotIn(forbidden, production)
+        self.assertNotIn('UIActivityViewController', production)
 
     def test_caption_allowlist_stays_exact_and_local(self):
         caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()

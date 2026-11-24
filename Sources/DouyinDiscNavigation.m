@@ -35,12 +35,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, copy) void (^douyindisc_changeScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_previewScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_pick)(DouyinDiscNavigationRow *, BOOL);
-@property (nonatomic, copy) void (^douyindisc_touchTrace)(NSString *);
 @property (nonatomic, copy) void (^douyindisc_clear)(DouyinDiscNavigationRow *);
-- (void)douyindisc_photoTouchDown;
-- (void)douyindisc_filesTouchDown;
-- (void)douyindisc_photoTouchOutside;
-- (void)douyindisc_filesTouchOutside;
 - (void)douyindisc_sliderChanged;
 - (void)douyindisc_sizeSliderChanged;
 - (void)douyindisc_sizeSliderEnded;
@@ -93,18 +88,14 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_imageButton.imageView.contentMode=UIViewContentModeScaleAspectFit;
     self.douyindisc_imageButton.titleEdgeInsets=UIEdgeInsetsMake(0,6,0,0);
     self.douyindisc_imageButton.contentVerticalAlignment=UIControlContentVerticalAlignmentCenter;
-    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTouchOutside) forControlEvents:UIControlEventTouchUpOutside|UIControlEventTouchCancel];
     self.douyindisc_filesButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_filesButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_filesButton setImage:[UIImage systemImageNamed:@"folder"] forState:UIControlStateNormal];
     self.douyindisc_filesButton.tintColor=douyindisc_color(@"#1557C0");
     self.douyindisc_filesButton.accessibilityLabel=@"从文件选择图标";
     self.douyindisc_filesButton.enabled=[entry[@"enabled"] boolValue];
     self.douyindisc_filesButton.accessibilityIdentifier=[@"douyindisc.files." stringByAppendingString:self.douyindisc_identifier];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTouchOutside) forControlEvents:UIControlEventTouchUpOutside|UIControlEventTouchCancel];
     self.douyindisc_clearButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.douyindisc_clearButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_clearButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
     self.douyindisc_clearButton.accessibilityLabel=@"移除此项自定义图标"; self.douyindisc_clearButton.enabled=image!=nil;
@@ -190,19 +181,13 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_sliderEnded { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
 - (void)douyindisc_switchChanged { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
-- (void)douyindisc_photoTouchDown { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-down"); }
-- (void)douyindisc_filesTouchDown { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-down"); }
-- (void)douyindisc_photoTouchOutside { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-cancel"); }
-- (void)douyindisc_filesTouchOutside { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-cancel"); }
-- (void)douyindisc_photoTapped { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-up");if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
-- (void)douyindisc_filesTapped { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-up");if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
+- (void)douyindisc_photoTapped { if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
+- (void)douyindisc_filesTapped { if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
 - (void)douyindisc_setEnabledAfterCommit:(BOOL)enabled { self.douyindisc_switch.on=enabled; [self douyindisc_setImagePickingEnabled:enabled]; }
 - (void)douyindisc_clearTapped { if (self.douyindisc_clear) self.douyindisc_clear(self); }
 @end
 
 @interface DouyinDiscSettingsViewController (DouyinDiscPickerDismissHandling)
-- (void)douyindisc_debugRecord:(NSString *)event extra:(NSDictionary *)extra;
-- (void)douyindisc_debugWindowTapped:(UITapGestureRecognizer *)recognizer;
 - (void)presentationControllerWillDismiss:(UIPresentationController *)presentationController;
 - (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController;
 - (void)douyindisc_installDismissProxyForPicker:(UIViewController *)picker;
@@ -215,8 +200,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 @end
 @implementation DouyinDiscPickerDismissProxy
 - (void)presentationControllerWillDismiss:(UIPresentationController *)pc {
-    UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
-    if(owner)[owner douyindisc_debugRecord:@"adaptive-will-dismiss" extra:@{@"boundPickerClass":NSStringFromClass(picker.class)?:@"?",@"pickerIsPresented":@(owner.presentedViewController==picker)}];
     id<UIViewControllerTransitionCoordinator> transition=pc.presentedViewController.transitionCoordinator;
     if(transition){
         __weak UIViewController *picker=self.picker;
@@ -231,7 +214,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)presentationControllerDidDismiss:(UIPresentationController *)pc {
     UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
     id<UIAdaptivePresentationControllerDelegate> next=self.next;
-    if(owner)[owner douyindisc_debugRecord:@"adaptive-did-dismiss" extra:@{@"boundPickerClass":NSStringFromClass(picker.class)?:@"?",@"ownerHasPicker":@(owner.douyindisc_activePicker==picker),@"presentedIsPicker":@(owner.presentedViewController==picker)}];
     if(picker&&owner)[owner douyindisc_finishAdaptiveDismissForPicker:picker];
     if([next respondsToSelector:_cmd]&&next!=(id)self)[next presentationControllerDidDismiss:pc];
     self.next=nil;self.picker=nil;self.owner=nil;
@@ -239,7 +221,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (BOOL)respondsToSelector:(SEL)selector{return [super respondsToSelector:selector]||[self.next respondsToSelector:selector];}
 - (id)forwardingTargetForSelector:(SEL)selector{return [self.next respondsToSelector:selector]?self.next:[super forwardingTargetForSelector:selector];}
 @end
-@interface DouyinDiscSettingsViewController () <PHPickerViewControllerDelegate, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate, UIGestureRecognizerDelegate>
+@interface DouyinDiscSettingsViewController () <PHPickerViewControllerDelegate, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate>
 @property (nonatomic, strong) UIScrollView *douyindisc_scrollView;
 @property (nonatomic, strong) UIStackView *douyindisc_stack;
 @property (nonatomic, weak) DouyinDiscNavigationRow *douyindisc_activeRow;
@@ -247,12 +229,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic) NSUInteger douyindisc_activePickGeneration;
 @property (nonatomic, strong) UIViewController *douyindisc_activePicker;
 @property (nonatomic, strong) NSObject<UIAdaptivePresentationControllerDelegate> *douyindisc_activeDismissProxy;
-@property (nonatomic, strong) NSMutableArray<NSDictionary *> *douyindisc_touchEvents;
-@property (nonatomic, strong) NSMapTable<UIWindow *, UITapGestureRecognizer *> *douyindisc_touchProbes;
-@property (nonatomic, strong) NSTimer *douyindisc_touchProbeTimer;
-@property (nonatomic) BOOL douyindisc_touchCaptureEnabled;
-@property (nonatomic) NSTimeInterval douyindisc_touchCaptureDeadline;
-@property (nonatomic) NSTimeInterval douyindisc_touchCaptureStart;
 @property (nonatomic, strong) NSTimer *douyindisc_pickerMonitor;
 @property (nonatomic) BOOL douyindisc_pickerWasAttached;
 @property (nonatomic) BOOL douyindisc_pickerMonitorDismissRequested;
@@ -275,13 +251,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
-- (void)douyindisc_debugTapped;
-- (void)douyindisc_debugRecord:(NSString *)event extra:(NSDictionary *)extra;
-- (void)douyindisc_debugInstallWindowProbes;
-- (void)douyindisc_debugRemoveWindowProbes;
-- (void)douyindisc_debugWindowTapped:(UITapGestureRecognizer *)recognizer;
-- (NSString *)douyindisc_debugClassChain:(UIView *)view;
-- (void)douyindisc_debugExport;
 @end
 
 @implementation DouyinDiscSettingsViewController
@@ -289,10 +258,9 @@ static UIColor *douyindisc_color(NSString *hex) {
     [super viewDidAppear:animated];
     UIViewController *picker=self.douyindisc_activePicker;
     if(picker){
-        [self douyindisc_debugRecord:@"panel-appear-picker" extra:@{@"pickerClass":NSStringFromClass(picker.class)?:@"?",@"pickerInWindow":@(picker.viewIfLoaded.window!=nil),@"presentedIsPicker":@(self.presentedViewController==picker),@"pickerDismissing":@(picker.isBeingDismissed),@"generation":@(self.douyindisc_activePickGeneration)}];
         if(!self.presentedViewController&&!picker.isBeingPresented&&!picker.isBeingDismissed&&(!picker.isViewLoaded||!picker.view.window)){BOOL hasProvider=self.douyindisc_pickerHasProvider;[self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];}
         else [self douyindisc_schedulePickerRecovery:picker generation:self.douyindisc_activePickGeneration];
-    }else [self douyindisc_debugRecord:@"panel-appear-no-picker" extra:nil];
+    }
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -347,8 +315,7 @@ static UIColor *douyindisc_color(NSString *hex) {
             if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:[entry[@"enabled"] boolValue] opacity:[entry[@"opacity"] doubleValue] scale:scale identifier:changed.douyindisc_identifier error:&error]){[weakSelf douyindisc_showError:error];return;}
             [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:changed.douyindisc_identifier];
         };
-        row.douyindisc_touchTrace=^(NSString *event){[weakSelf douyindisc_debugRecord:event extra:@{@"row":NSStringFromClass(row.class)?:@"?",@"window":@(row.window!=nil),@"imageEnabled":@(row.douyindisc_imageButton.enabled),@"filesEnabled":@(row.douyindisc_filesButton.enabled),@"imageAlpha":@(row.douyindisc_imageButton.alpha),@"filesAlpha":@(row.douyindisc_filesButton.alpha)}];};
-        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_debugRecord:files?@"files-action":@"photo-action" extra:nil];[weakSelf douyindisc_presentPickerForRow:selected files:files]; };
+        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_presentPickerForRow:selected files:files]; };
         row.douyindisc_clear = ^(DouyinDiscNavigationRow *selected) {
             NSError *error = nil;
             if (![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearImageForIdentifier:selected.douyindisc_identifier error:&error]) { [weakSelf douyindisc_showError:error]; return; }
@@ -368,70 +335,8 @@ static UIColor *douyindisc_color(NSString *hex) {
             [row douyindisc_setHasImage:image!=nil];
         }
     }];
-    self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"开始诊断" style:UIBarButtonItemStylePlain target:self action:@selector(douyindisc_debugTapped)];
-}
-- (void)douyindisc_debugTapped {
-    if(self.douyindisc_touchCaptureEnabled){[self douyindisc_debugRecord:@"capture-stop" extra:nil];[self douyindisc_debugExport];return;}
-    self.douyindisc_touchEvents=[NSMutableArray array];self.douyindisc_touchProbes=[NSMapTable weakToStrongObjectsMapTable];self.douyindisc_touchCaptureEnabled=YES;
-    self.douyindisc_touchCaptureStart=CACurrentMediaTime();self.douyindisc_touchCaptureDeadline=self.douyindisc_touchCaptureStart+30;
-    self.navigationItem.rightBarButtonItem.title=@"结束并导出";[self douyindisc_debugRecord:@"capture-start" extra:nil];[self douyindisc_debugInstallWindowProbes];
-    __weak typeof(self) weakSelf=self;self.douyindisc_touchProbeTimer=[NSTimer timerWithTimeInterval:.5 repeats:YES block:^(NSTimer *timer){if(!weakSelf||!weakSelf.douyindisc_touchCaptureEnabled){[timer invalidate];return;}[weakSelf douyindisc_debugInstallWindowProbes];}];[[NSRunLoop mainRunLoop] addTimer:self.douyindisc_touchProbeTimer forMode:NSRunLoopCommonModes];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,30*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(weakSelf.douyindisc_touchCaptureEnabled){[weakSelf douyindisc_debugRecord:@"capture-timeout" extra:nil];weakSelf.douyindisc_touchCaptureEnabled=NO;[weakSelf.douyindisc_touchProbeTimer invalidate];weakSelf.douyindisc_touchProbeTimer=nil;weakSelf.navigationItem.rightBarButtonItem.title=@"导出诊断";[weakSelf douyindisc_debugRemoveWindowProbes];}});
-}
-- (void)douyindisc_debugRecord:(NSString *)event extra:(NSDictionary *)extra {
-    if(!self.douyindisc_touchCaptureEnabled||CACurrentMediaTime()>self.douyindisc_touchCaptureDeadline)return;
-    if(!self.douyindisc_touchEvents)self.douyindisc_touchEvents=[NSMutableArray array];
-    if(self.douyindisc_touchEvents.count>=120)return;
-    NSMutableDictionary *entry=[@{@"t":@(CACurrentMediaTime()-self.douyindisc_touchCaptureStart),@"event":event?:@"?"} mutableCopy];if(extra)[entry addEntriesFromDictionary:extra];[self.douyindisc_touchEvents addObject:entry];
-}
-- (NSString *)douyindisc_classChain:(UIView *)view {
-    NSMutableArray *names=[NSMutableArray array];NSUInteger depth=0;for(UIView *current=view;current&&depth++<5;current=current.superview)[names addObject:NSStringFromClass(current.class)?:@"?"];return [names componentsJoinedByString:@"<"];
-}
-- (void)douyindisc_debugInstallWindowProbes {
-    if(!self.douyindisc_touchCaptureEnabled)return;
-    NSMutableArray<UIWindow *> *windows=[NSMutableArray array];for(UIScene *scene in UIApplication.sharedApplication.connectedScenes)if([scene isKindOfClass:UIWindowScene.class]&&scene.activationState==UISceneActivationStateForegroundActive)[windows addObjectsFromArray:((UIWindowScene *)scene).windows];
-    for(UIWindow *window in windows){if(window.hidden||window.alpha<=0)continue;UITapGestureRecognizer *probe=[self.douyindisc_touchProbes objectForKey:window];if(probe)continue;probe=[UITapGestureRecognizer new];probe.cancelsTouchesInView=NO;probe.delaysTouchesBegan=NO;probe.delaysTouchesEnded=NO;probe.delegate=self;[probe addTarget:self action:@selector(douyindisc_debugWindowTapped:)];[window addGestureRecognizer:probe];[self.douyindisc_touchProbes setObject:probe forKey:window];}
-}
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
-    (void)gestureRecognizer;UIWindow *touchWindow=touch.window;if(!touchWindow)return NO;CGPoint touchPoint=[touch locationInView:touchWindow];CGPoint screenPoint=[touchWindow.screen.coordinateSpace convertPoint:touchPoint fromCoordinateSpace:touchWindow.coordinateSpace];
-    NSMutableArray *targets=[NSMutableArray array];NSUInteger visits=0,windowCount=0;
-    for(UIScene *scene in UIApplication.sharedApplication.connectedScenes){if(![scene isKindOfClass:UIWindowScene.class]||scene.activationState!=UISceneActivationStateForegroundActive)continue;for(UIWindow *targetWindow in ((UIWindowScene *)scene).windows){if(++windowCount>20||targetWindow.hidden||targetWindow.alpha<=0||targetWindow.screen!=touchWindow.screen)continue;CGPoint point=[targetWindow.coordinateSpace convertPoint:screenPoint fromCoordinateSpace:targetWindow.screen.coordinateSpace];UIViewController *root=targetWindow.rootViewController;NSMutableArray *stack=[NSMutableArray array];if(root.isViewLoaded)[stack addObject:root.view];
-        while(stack.count&&visits++<1200){UIView *view=stack.lastObject;[stack removeLastObject];if([view isKindOfClass:DouyinDiscNavigationRow.class]){DouyinDiscNavigationRow *row=(DouyinDiscNavigationRow *)view;for(UIButton *button in @[row.douyindisc_imageButton,row.douyindisc_filesButton]){CGRect frame=[button convertRect:button.bounds toView:targetWindow];if(CGRectContainsPoint(CGRectInset(frame,-12,-12),point))[targets addObject:@{@"id":button.accessibilityIdentifier?:@"?",@"enabled":@(button.enabled),@"inside":@(CGRectContainsPoint(frame,point)),@"windowLevel":@(targetWindow.windowLevel),@"buttonAlpha":@(button.alpha),@"interactive":@(button.userInteractionEnabled)}];}}if(stack.count+view.subviews.count<1200)[stack addObjectsFromArray:view.subviews];
-    }}
-    if(targets.count){UIView *hit=[touchWindow hitTest:touchPoint withEvent:nil];[self douyindisc_debugRecord:@"touch-began" extra:@{@"windowLevel":@(touchWindow.windowLevel),@"windowKey":@(touchWindow.isKeyWindow),@"point":NSStringFromCGPoint(touchPoint),@"hit":hit?[self douyindisc_debugClassChain:hit]:@"none",@"hitEnabled":[hit isKindOfClass:UIControl.class]?@(((UIControl *)hit).enabled):@NO,@"targets":targets,@"phase":@(touch.phase)}];}
-    return targets.count>0;
-}
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {(void)gestureRecognizer;(void)otherGestureRecognizer;return YES;}
-- (NSString *)douyindisc_debugClassChain:(UIView *)view {NSMutableArray *names=[NSMutableArray array];NSUInteger depth=0;for(UIView *v=view;v&&depth++<5;v=v.superview)[names addObject:NSStringFromClass(v.class)?:@"?"];return [names componentsJoinedByString:@"<"];}
-- (void)douyindisc_debugWindowTapped:(UITapGestureRecognizer *)recognizer {
-    if(recognizer.state!=UIGestureRecognizerStateEnded)return;UIWindow *window=(UIWindow *)recognizer.view;CGPoint point=[recognizer locationInView:window];UIView *hit=[window hitTest:point withEvent:nil];
-    NSMutableArray *buttons=[NSMutableArray array];UIViewController *root=window.rootViewController;NSMutableArray *stack=[NSMutableArray array];if(root.isViewLoaded)[stack addObject:root.view];NSUInteger visits=0;
-    while(stack.count&&visits++<300){UIView *view=stack.lastObject;[stack removeLastObject];if([view isKindOfClass:DouyinDiscNavigationRow.class]){DouyinDiscNavigationRow *row=(DouyinDiscNavigationRow *)view;for(UIButton *button in @[row.douyindisc_imageButton,row.douyindisc_filesButton]){CGRect frame=[button convertRect:button.bounds toView:window];if(CGRectContainsPoint(CGRectInset(frame,-12,-12),point))[buttons addObject:@{@"id":button.accessibilityIdentifier?:@"?",@"enabled":@(button.enabled),@"frame":NSStringFromCGRect(frame),@"inside":@(CGRectContainsPoint(frame,point))}];}}if(stack.count+view.subviews.count<300)[stack addObjectsFromArray:view.subviews];}
-    [self douyindisc_debugRecord:@"touch-ended" extra:@{@"windowLevel":@(window.windowLevel),@"windowKey":@(window.isKeyWindow),@"point":NSStringFromCGPoint(point),@"hit":hit?[self douyindisc_debugClassChain:hit]:@"none",@"buttons":buttons,@"activePicker":NSStringFromClass(self.douyindisc_activePicker.class)?:@"none",@"presented":NSStringFromClass(window.rootViewController.presentedViewController.class)?:@"none",@"generation":@(self.douyindisc_activePickGeneration)}];
-}
-- (void)douyindisc_debugRemoveWindowProbes {
-    for(UIWindow *window in self.douyindisc_touchProbes.keyEnumerator)[window removeGestureRecognizer:[self.douyindisc_touchProbes objectForKey:window]];
-    [self.douyindisc_touchProbes removeAllObjects];
-}
-- (void)douyindisc_debugExport {
-    self.douyindisc_touchCaptureEnabled=NO;[self.douyindisc_touchProbeTimer invalidate];self.douyindisc_touchProbeTimer=nil;
-    [self douyindisc_debugRemoveWindowProbes];
-    NSData *data=[NSJSONSerialization dataWithJSONObject:@{@"schema":@1,@"events":self.douyindisc_touchEvents?:@[]} options:NSJSONWritingPrettyPrinted error:nil];
-    if(!data){self.navigationItem.rightBarButtonItem.title=@"开始诊断";return;}
-    NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"DouyinDisc-touch-trace.json"]];
-    if(![data writeToURL:url atomically:YES]){self.navigationItem.rightBarButtonItem.title=@"开始诊断";return;}
-    self.navigationItem.rightBarButtonItem.title=@"开始诊断";
-    UIActivityViewController *activity=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];
-    if(activity.popoverPresentationController)activity.popoverPresentationController.barButtonItem=self.navigationItem.rightBarButtonItem;
-    [self presentViewController:activity animated:YES completion:nil];
 }
 
-
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self douyindisc_debugRecord:@"panel-appear" extra:nil];
-    [self douyindisc_debugInstallWindowProbes];
-}
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     for (NSDictionary *item in douyindisc_navigationItems()) {
@@ -453,8 +358,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     proxy.owner=self;proxy.picker=picker;self.douyindisc_activeDismissProxy=proxy;presentation.delegate=proxy;
 }
 - (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files {
-    if(self.douyindisc_touchCaptureEnabled)[self douyindisc_debugRecord:@"picker-gate" extra:@{@"source":files?@"files":@"photos",@"main":@(NSThread.isMainThread),@"viewWindow":@(self.view.window!=nil),@"presented":NSStringFromClass(self.presentedViewController.class)?:@"none",@"activePicker":NSStringFromClass(self.douyindisc_activePicker.class)?:@"none",@"beingDismissed":@(self.isBeingDismissed),@"generation":@(self.douyindisc_activePickGeneration),@"imageEnabled":@(row.douyindisc_imageButton.enabled),@"filesEnabled":@(row.douyindisc_filesButton.enabled)}];
-    if (!NSThread.isMainThread || !self.view.window || self.presentedViewController || self.douyindisc_activePicker || self.isBeingDismissed) { [self douyindisc_debugRecord:@"picker-gate-blocked" extra:nil]; return; }
+    if (!NSThread.isMainThread || !self.view.window || self.presentedViewController || self.douyindisc_activePicker || self.isBeingDismissed) return;
     DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
     if (self.douyindisc_activePickGeneration)
         [store douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
@@ -465,7 +369,6 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_activePickGeneration=generation;
     self.douyindisc_pickerHasResult=NO;
     self.douyindisc_pickerHasProvider=NO;
-    [self douyindisc_debugRecord:@"picker-request" extra:@{@"source":files?@"files":@"photos",@"rowEnabled":@(row.douyindisc_imageButton.enabled),@"presentedExists":@(self.presentedViewController!=nil),@"stalePicker":@(self.douyindisc_activePicker!=nil)}];
     UIViewController *picker;
     if (files) {
         UIDocumentPickerViewController *document=[[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[[UTType typeWithIdentifier:douyindisc_utiImage]] asCopy:YES];
