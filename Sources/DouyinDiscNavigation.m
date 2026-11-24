@@ -396,7 +396,10 @@ static UIColor *douyindisc_color(NSString *hex) {
     __weak typeof(self) weakSelf=self;
     [self presentViewController:picker animated:YES completion:^{
         if(weakSelf.douyindisc_activePicker==picker){
-            if([picker isKindOfClass:PHPickerViewController.class]){picker.modalInPresentation=YES;[weakSelf douyindisc_installDismissProxyForPicker:picker];}
+            if([picker isKindOfClass:PHPickerViewController.class]){
+                picker.modalInPresentation=YES;[weakSelf douyindisc_installDismissProxyForPicker:picker];
+                dispatch_async(dispatch_get_main_queue(),^{if(weakSelf.douyindisc_activePicker==picker&&!picker.isBeingDismissed){picker.modalInPresentation=YES;[weakSelf douyindisc_installDismissProxyForPicker:picker];}});
+            }
             [weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
             if([picker isKindOfClass:PHPickerViewController.class])[weakSelf douyindisc_startPickerMonitor:picker generation:weakSelf.douyindisc_activePickGeneration];
         }
@@ -656,14 +659,16 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     };
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:PHPickerViewController.class])return;
-        UIPresentationController *presentation=picker.presentationController;id<UIAdaptivePresentationControllerDelegate> dismissDelegate=(id)panel.douyindisc_activeDismissProxy;
-        photoModalFlag=picker.isModalInPresentation;
-        photoDelegateVeto=[dismissDelegate respondsToSelector:@selector(presentationControllerShouldDismiss:)]&&![dismissDelegate presentationControllerShouldDismiss:presentation];
-        photoSwipeLocked=photoModalFlag||photoDelegateVeto;
-        presentation.delegate=nil;
-        PHPickerViewController *photoPicker=(PHPickerViewController *)picker;
-        id<PHPickerViewControllerDelegate> delegate=photoPicker.delegate;
-        [delegate picker:photoPicker didFinishPicking:@[]];
+        dispatch_async(dispatch_get_main_queue(),^{
+            UIPresentationController *presentation=picker.presentationController;id<UIAdaptivePresentationControllerDelegate> dismissDelegate=(id)panel.douyindisc_activeDismissProxy;
+            photoModalFlag=picker.isModalInPresentation;
+            photoDelegateVeto=[dismissDelegate respondsToSelector:@selector(presentationControllerShouldDismiss:)]&&![dismissDelegate presentationControllerShouldDismiss:presentation];
+            photoSwipeLocked=photoModalFlag||photoDelegateVeto;
+            presentation.delegate=nil;
+            PHPickerViewController *photoPicker=(PHPickerViewController *)picker;
+            id<PHPickerViewControllerDelegate> delegate=photoPicker.delegate;
+            [delegate picker:photoPicker didFinishPicking:@[]];
+        });
     };
     [panel.view layoutIfNeeded];
     [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
