@@ -627,6 +627,8 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     double brightness=douyindisc_uiTestWindowBrightness(window);
     __block BOOL completed=NO;
     __block BOOL photoSwipeLocked=NO;
+    __block BOOL photoDismissProxyBound=NO;
+    __block BOOL photoDismissVeto=NO;
     __block NSInteger source=-1;
     __block NSUInteger generation=0;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
@@ -650,7 +652,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             @"brightness":@(brightness>0&&fabs(after-brightness)<3),
             @"photoDirect":@(photoDirect),@"fileDirect":@(fileDirect),
             @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]]),
-            @"photoSwipeLocked":@(photoSwipeLocked)
+            @"photoSwipeLocked":@(photoSwipeLocked),@"photoDismissProxyBound":@(photoDismissProxyBound),@"photoDismissVeto":@(photoDismissVeto)
         } mutableCopy];
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
@@ -658,8 +660,12 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:PHPickerViewController.class])return;
         dispatch_async(dispatch_get_main_queue(),^{
+            [panel douyindisc_installDismissProxyForPicker:picker];
             UIPresentationController *presentation=picker.presentationController;
-            photoSwipeLocked=picker.modalPresentationStyle==UIModalPresentationFullScreen;
+            id<UIAdaptivePresentationControllerDelegate> proxy=(id)panel.douyindisc_activeDismissProxy;
+            photoDismissProxyBound=proxy!=nil&&presentation.delegate==proxy;
+            photoDismissVeto=[proxy respondsToSelector:@selector(presentationControllerShouldDismiss:)]&&![proxy presentationControllerShouldDismiss:presentation];
+            photoSwipeLocked=photoDismissProxyBound&&photoDismissVeto;
             presentation.delegate=nil;
             PHPickerViewController *photoPicker=(PHPickerViewController *)picker;
             id<PHPickerViewControllerDelegate> delegate=photoPicker.delegate;
