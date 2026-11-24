@@ -192,8 +192,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_clearTapped { if (self.douyindisc_clear) self.douyindisc_clear(self); }
 @end
 
-@interface DouyinDiscSettingsViewController (DouyinDiscPickerDismissHandling)
-@end
 @interface DouyinDiscSettingsViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIDocumentPickerDelegate>
 @property (nonatomic, strong) UIScrollView *douyindisc_scrollView;
 @property (nonatomic, strong) UIStackView *douyindisc_stack;
@@ -357,7 +355,6 @@ static UIColor *douyindisc_color(NSString *hex) {
     if (cancelled && !keepImportTicket) [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
     [self.douyindisc_pickerMonitor invalidate];self.douyindisc_pickerMonitor=nil;self.douyindisc_pickerWasAttached=NO;self.douyindisc_pickerMonitorDismissRequested=NO;self.douyindisc_pickerDetachedSamples=0;
     self.douyindisc_activePicker=nil;
-    self.douyindisc_activeDismissProxy=nil;
     self.douyindisc_activeRow=nil;
     self.douyindisc_activeIdentifier=nil;
     self.douyindisc_activePickGeneration=0;
