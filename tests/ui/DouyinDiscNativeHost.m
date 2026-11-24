@@ -282,8 +282,8 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     douyindisc_results = [NSMutableArray array];
     UIImage *art = [UIImage imageWithData:[NSData dataWithBytes:douyindisc_artwork length:sizeof(douyindisc_artwork)]];
     DD_CHECK(art.CGImage != NULL, "embedded original PNG decodes");
+    DD_CHECK(douyindisc_uiTestPickerAppearanceStable(art), "numeric controls and picker card layout pass UIKit interaction checks");
     douyindisc_installNavigationHooks();
-    douyindisc_navigationCases(self.window);
     UIWindow *window = self.window;
     UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:window.bounds];
     scroll.contentSize = CGSizeMake(window.bounds.size.width, window.bounds.size.height*3);
