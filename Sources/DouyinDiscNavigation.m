@@ -563,6 +563,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
     double brightness=douyindisc_uiTestWindowBrightness(window);
     __block BOOL completed=NO;
+    __block BOOL photoFullScreen=NO;
     __block NSInteger source=-1;
     __block NSUInteger generation=0;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
@@ -586,6 +587,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             @"brightness":@(brightness>0&&fabs(after-brightness)<3),
             @"photoDirect":@(photoDirect),@"fileDirect":@(fileDirect),
             @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]]),
+            @"photoFullScreen":@(photoFullScreen)
         } mutableCopy];
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
@@ -593,6 +595,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:UIImagePickerController.class])return;
         UIImagePickerController *photoPicker=(UIImagePickerController *)picker;
+        photoFullScreen=photoPicker.modalPresentationStyle==UIModalPresentationFullScreen;
         [panel imagePickerControllerDidCancel:photoPicker];
     };
     [panel.view layoutIfNeeded];
