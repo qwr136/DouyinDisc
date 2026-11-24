@@ -45,6 +45,7 @@ def main():
             run('xcrun', 'simctl', 'boot', device)
             run('xcrun', 'simctl', 'bootstatus', device, '-b', timeout=300)
             run('xcrun', 'simctl', 'install', device, str(app))
+            run('xcrun', 'simctl', 'privacy', device, 'grant', 'photos', bundle)
             try:
                 process = subprocess.run(['xcrun', 'simctl', 'launch', '--terminate-running-process', '--console', device, bundle],
                                          cwd=ROOT, capture_output=True, text=True, timeout=150)

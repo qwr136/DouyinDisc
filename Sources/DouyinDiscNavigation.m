@@ -345,10 +345,12 @@ static UIColor *douyindisc_color(NSString *hex) {
     __weak typeof(self) weakSelf=self;
     [self presentViewController:picker animated:YES completion:^{
         if(weakSelf.douyindisc_activePicker==picker)[weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
-#if defined(DOUYINDISC_UI_TEST)
-        if(weakSelf.douyindisc_uiTestPickerPresented)weakSelf.douyindisc_uiTestPickerPresented(picker);
-#endif
     }];
+#if defined(DOUYINDISC_UI_TEST)
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.0*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
+        if(self.douyindisc_activePicker==picker&&self.douyindisc_uiTestPickerPresented)self.douyindisc_uiTestPickerPresented(picker);
+    });
+#endif
 }
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket {
     if (!picker || self.douyindisc_activePicker!=picker) return;
