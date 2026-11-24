@@ -109,7 +109,7 @@ class PolicyTests(unittest.TestCase):
 ''', b'    dispatch_async(dispatch_get_main_queue(), ^{ douyindisc_startDisplay(); });\n')
                 if relative == 'scripts/build_dylib.py':
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
-                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'PhotosUI', 'UniformTypeIdentifiers')\n", b'')
+                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'UniformTypeIdentifiers')\n", b'')
                     content = content.replace(b", 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m'", b'')
                     content = content.replace(b"            '-install_name', '@loader_path/' + output.name,\n            *[value for framework in FRAMEWORKS for value in ('-framework', framework)],\n            *SOURCE_FILES, '-o', str(staged))", b"            '-install_name', '@loader_path/' + output.name, '-framework', 'Foundation',\n            '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',\n            *SOURCE_FILES, '-o', str(staged))")
                 if relative == 'tests/verify_dylib.py':

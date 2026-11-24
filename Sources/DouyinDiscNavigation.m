@@ -340,7 +340,7 @@ static UIColor *douyindisc_color(NSString *hex) {
         document.delegate=self; picker=document;
     } else {
         UIImagePickerController *photos=[UIImagePickerController new];
-        photos.sourceType=UIImagePickerControllerSourceTypePhotoLibrary;photos.mediaTypes=@[UTType.image.identifier];
+        photos.sourceType=UIImagePickerControllerSourceTypePhotoLibrary;photos.mediaTypes=@[@"public.image"];
         photos.delegate=self;photos.modalPresentationStyle=UIModalPresentationFullScreen;picker=photos;
     }
     self.douyindisc_activePicker=picker;
