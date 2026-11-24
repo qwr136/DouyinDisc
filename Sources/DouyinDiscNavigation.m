@@ -223,6 +223,12 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
 @end
 
+#if defined(DOUYINDISC_UI_TEST)
+static void douyindisc_uiTestTracePicker(NSString *event, DouyinDiscSettingsViewController *owner, UIViewController *picker) {
+    NSLog(@"DD_PICKER %@ picker=%@ style=%ld window=%d presenting=%d dismissing=%d ownerPresented=%@ active=%d", event, NSStringFromClass(picker.class), (long)picker.modalPresentationStyle, picker.viewIfLoaded.window!=nil, picker.isBeingPresented, picker.isBeingDismissed, NSStringFromClass(owner.presentedViewController.class), owner.douyindisc_activePicker==picker);
+}
+#endif
+
 @implementation DouyinDiscSettingsViewController
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -231,6 +237,9 @@ static UIColor *douyindisc_color(NSString *hex) {
         if(!self.presentedViewController&&!picker.isBeingPresented&&!picker.isBeingDismissed&&(!picker.isViewLoaded||!picker.view.window)){BOOL hasProvider=self.douyindisc_pickerHasProvider;[self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];}
         else [self douyindisc_schedulePickerRecovery:picker generation:self.douyindisc_activePickGeneration];
     }
+#if defined(DOUYINDISC_UI_TEST)
+    if(self.douyindisc_uiTestPickerReady){dispatch_block_t ready=[self.douyindisc_uiTestPickerReady copy];self.douyindisc_uiTestPickerReady=nil;dispatch_async(dispatch_get_main_queue(),ready);}
+#endif
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -354,6 +363,9 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket {
     if (!picker || self.douyindisc_activePicker!=picker) return;
+#if defined(DOUYINDISC_UI_TEST)
+    douyindisc_uiTestTracePicker(self.douyindisc_pickerHasResult?@"finish-result":@"finish-recovery",self,picker);
+#endif
     if (cancelled && !keepImportTicket) [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
     [self.douyindisc_pickerMonitor invalidate];self.douyindisc_pickerMonitor=nil;self.douyindisc_pickerWasAttached=NO;self.douyindisc_pickerMonitorDismissRequested=NO;self.douyindisc_pickerDetachedSamples=0;
     self.douyindisc_activePicker=nil;
@@ -552,7 +564,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     UIViewController *previousRoot=window.rootViewController;
     DouyinDiscSettingsViewController *panel=[DouyinDiscSettingsViewController new];
     UINavigationController *nav=[[UINavigationController alloc]initWithRootViewController:panel];
-    window.rootViewController=nav;[window makeKeyAndVisible];[panel.view layoutIfNeeded];
+    [panel loadViewIfNeeded];
     DouyinDiscNavigationRow *row=nil;
     for(UIView *view in panel.douyindisc_stack.arrangedSubviews)
         if([view isKindOfClass:DouyinDiscNavigationRow.class]&&[[(DouyinDiscNavigationRow *)view douyindisc_identifier] isEqualToString:@"top_recommend"]){row=(DouyinDiscNavigationRow *)view;break;}
@@ -561,9 +573,11 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     NSString *directory=[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES).firstObject stringByAppendingPathComponent:@"DouyinDisc/Navigation"];
     NSString *configPath=[directory stringByAppendingPathComponent:@"settings.plist"];
     NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
-    double brightness=douyindisc_uiTestWindowBrightness(window);
+    __block double brightness=-1000;
     __block BOOL completed=NO;
     __block BOOL photoFullScreen=NO;
+    __block BOOL photoVisible=NO;
+    __block BOOL cancelSent=NO;
     __block NSInteger source=-1;
     __block NSUInteger generation=0;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
@@ -587,7 +601,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             @"brightness":@(brightness>0&&fabs(after-brightness)<3),
             @"photoDirect":@(photoDirect),@"fileDirect":@(fileDirect),
             @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]]),
-            @"photoFullScreen":@(photoFullScreen)
+            @"photoFullScreen":@(photoFullScreen),@"photoVisible":@(photoVisible),@"cancelSent":@(cancelSent)
         } mutableCopy];
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
@@ -595,16 +609,29 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:UIImagePickerController.class])return;
         UIImagePickerController *photoPicker=(UIImagePickerController *)picker;
+        douyindisc_uiTestTracePicker(@"test-observed",panel,picker);
         photoFullScreen=photoPicker.modalPresentationStyle==UIModalPresentationFullScreen;
+        photoVisible=photoPicker.viewIfLoaded.window==window&&photoPicker.presentingViewController!=nil&&!photoPicker.isBeingPresented&&!photoPicker.isBeingDismissed;
+        cancelSent=YES;
         [panel imagePickerControllerDidCancel:photoPicker];
     };
-    [panel.view layoutIfNeeded];
-    [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,8*NSEC_PER_SEC),dispatch_get_main_queue(),^{
-        if(!completed&&panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==generation)[panel viewDidAppear:NO];
-    });
+    __weak DouyinDiscSettingsViewController *weakPanel=panel;
+    panel.douyindisc_uiTestPickerReady=^{
+        DouyinDiscSettingsViewController *visiblePanel=weakPanel;
+        if(!visiblePanel||completed)return;
+        [visiblePanel.view layoutIfNeeded];
+        brightness=douyindisc_uiTestWindowBrightness(window);
+        [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
+        generation=visiblePanel.douyindisc_activePickGeneration;
+        douyindisc_uiTestTracePicker(@"test-open",visiblePanel,visiblePanel.douyindisc_activePicker);
+    };
+    window.rootViewController=nav;[window makeKeyAndVisible];[panel.view layoutIfNeeded];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,15*NSEC_PER_SEC),dispatch_get_main_queue(),^{
-        if(completed)return;window.rootViewController=previousRoot;window.hidden=NO;done(@{});
+        if(completed)return;
+        completed=YES;
+        douyindisc_uiTestTracePicker(@"test-timeout",panel,panel.douyindisc_activePicker);
+        panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
+        window.rootViewController=previousRoot;[window makeKeyAndVisible];done(@{});
     });
 }
 #endif
