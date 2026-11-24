@@ -76,7 +76,7 @@ jobs:
         run: python3 scripts/run_uikit_tests.py
       - name: Verify dylib and save receipt
         run: |
-          python3 tests/verify_dylib.py --project . artifacts/DouyinDisc.dylib > reports/dylib-validation.json
+          python3 tests/verify_dylib.py --project . --verify-artwork artifacts/DouyinDisc.dylib > reports/dylib-validation.json
           python3 scripts/toolchain.py receipt --output reports/build-receipt.json
       - name: Upload verified dylib and evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

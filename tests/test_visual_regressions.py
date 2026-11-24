@@ -61,7 +61,9 @@ class VisualRegressionTests(unittest.TestCase):
         source = (ROOT / 'Sources/DouyinDiscNativeDisplay.m').read_text()
         self.assertEqual(source.count('overlay.opacity = 0.5f;'), 1)
         self.assertIn('ring.opacity=0.9f', source)
-        self.assertIn('[ring addAnimation:centerSpin forKey:douyindisc_spinKey]', source)
+        self.assertIn('[layer addAnimation:copy forKey:douyindisc_spinKey]', source)
+        self.assertIn('CALayer *spinLayers[3]={overlay,arcs,ring};', source)
+        self.assertIn('arcs.opacity=1.0f', source)
         self.assertIn('UIAccessibilityIsReduceMotionEnabled()', source)
         self.assertNotIn('control.alpha =', source)
 

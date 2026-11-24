@@ -230,7 +230,21 @@ def check_signature(data, sigoff, sigsize):
     return {"ad_hoc": True, "offset": sigoff, "size": sigsize, "code_directories": checked}
 
 
-def inspect_dylib(path, manifest=None):
+def verify_embedded_artwork(data, project):
+    """Prove the current source PNG payloads occur verbatim in this built image."""
+    root = Path(project)
+    evidence = []
+    for filename in ("DouyinDiscBaseArtwork.inc", "DouyinDiscAccentArcs.inc"):
+        source = (root / "Sources" / filename).read_text(encoding="utf-8")
+        payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9a-fA-F]{2})", source))
+        require(payload.startswith(b"\\x89PNG\\r\\n\\x1a\\n"), filename + " is not a PNG")
+        require(payload in data, filename + " PNG bytes are not embedded in dylib")
+        evidence.append({"source": filename, "size": len(payload), "sha256": hashlib.sha256(payload).hexdigest(),
+                         "embedded": True})
+    return evidence
+
+
+def inspect_dylib(path, manifest=None, artwork_project=None):
     """Return JSON-ready verification evidence for one read; raise ValueError/OSError on failure."""
     path = Path(path)
     require(path.is_file(), "dylib is not a regular file: " + str(path))
@@ -250,28 +264,33 @@ def inspect_dylib(path, manifest=None):
         identifier = signature["code_directories"][0]["identifier"]
         require(identifier == meta.get("package") == "com.minis." + name.lower(),
                 "signing identifier differs from project package")
+    artwork = verify_embedded_artwork(data, artwork_project) if artwork_project is not None else None
     return {"filename": path.name, "size": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+            "embedded_artwork": artwork,
             "architecture": "arm64", "cpu_subtype": 0, "filetype": "MH_DYLIB", "platform": "iOS",
             "minimum_ios": version_text(minimum), "sdk": version_text(sdk), "install_name": install,
             "current_version": version_text(current), "compatibility_version": version_text(compatibility),
             "dependencies": deps, "uuid": uuid, "signature": signature}
 
 
-def verify_dylib(path, *, project=None):
+def verify_dylib(path, *, project=None, verify_artwork=False):
     manifest = None
     if project is not None:
         manifest = json.loads((Path(project) / 'tweak.json').read_text(encoding='utf-8'))
         require(isinstance(manifest, dict), 'project manifest must be a JSON object')
-    return inspect_dylib(path, manifest)
+    return inspect_dylib(path, manifest, project if verify_artwork else None)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("path", type=Path)
-    parser.add_argument("--project", type=Path, help="also enforce the manifest's name, package and deployment target")
+    parser.add_argument("--verify-artwork", action="store_true", help="require current base/accent PNGs embedded from project")
+    parser.add_argument("--project", type=Path, help="also enforce manifest and optionally source assets")
     args = parser.parse_args()
+    if args.verify_artwork:
+        require(args.project is not None, "--verify-artwork requires --project")
     try:
-        print(json.dumps(verify_dylib(args.path, project=args.project), indent=2))
+        print(json.dumps(verify_dylib(args.path, project=args.project, verify_artwork=args.verify_artwork), indent=2))
         return 0
     except (ValueError, OSError) as error:
         print("ERROR: " + str(error), file=sys.stderr)

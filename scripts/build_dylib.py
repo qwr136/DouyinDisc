@@ -52,7 +52,7 @@ def build():
             *SOURCE_FILES, '-o', str(staged))
         run('/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', '--identifier', IDENTIFIER, str(staged))
         run('/usr/bin/codesign', '--verify', '--strict', str(staged))
-        run(sys.executable, 'tests/verify_dylib.py', '--project', '.', str(staged))
+        run(sys.executable, 'tests/verify_dylib.py', '--project', '.', '--verify-artwork', str(staged))
         staged.replace(output)
     print('Built and verified ' + str(output.relative_to(ROOT)))
 

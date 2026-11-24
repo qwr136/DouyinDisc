@@ -6,7 +6,7 @@
     "Sources/DouyinDiscPolicy.h": "465c53604f71a43dd06b01a942916c5518f7455da7ce3e701ed79842c0106a37",
     "Sources/DouyinDiscArtwork.inc": "f2c10c09432336d2be9b2cfa78119263312140d8087845ccc273f7e144a7d7f2",
     "toolchain-lock.json": "d73de84af53729c14fdcfa48a665dc3486d224fa49818441c761da07ba941841",
-    "scripts/build_dylib.py": "4266828e85e86eef88df5dba2620ec1c97d2b53e2ec874137da7ce23f65c4422",
-    "tests/verify_dylib.py": "d38f40179db397ac65fbd26eae67f11e682472c4cc6aa2137f6d4ab5178ec540"
+    "scripts/build_dylib.py": "e6f02acf7d47ce93b37f9e2489b62660344642864b3ed50cf835f614a50db856",
+    "tests/verify_dylib.py": "b89e5653920d370e3cd3011b11dc8acbc13112af88814d8db6edea76c39abc98"
   }
 }

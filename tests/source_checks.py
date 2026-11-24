@@ -62,7 +62,7 @@ def check_builder(project, name, domain, minimum, sdk):
         "'-install_name', '@loader_path/' + output.name, *[value for framework in FRAMEWORKS for value in ('-framework', framework)], *SOURCE_FILES, '-o', str(staged))",
         "run('/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', '--identifier', IDENTIFIER, str(staged))",
         "run('/usr/bin/codesign', '--verify', '--strict', str(staged))",
-        "run(sys.executable, 'tests/verify_dylib.py', '--project', '.', str(staged))",
+        "run(sys.executable, 'tests/verify_dylib.py', '--project', '.', '--verify-artwork', str(staged))",
     )
     require([ast.dump(call) for call in calls] == [ast.dump(ast.parse(text, mode='eval').body) for text in expected],
             'builder must verify before clang, compile the locked SDK/TARGET with Apple-only flags, then sign and verify')

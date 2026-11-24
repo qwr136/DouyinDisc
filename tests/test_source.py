@@ -168,7 +168,8 @@ class SourceContractTests(unittest.TestCase):
             (root / 'scripts').mkdir()
             build = (ROOT / 'scripts/build_dylib.py').read_text(encoding='utf-8')
             (root / 'scripts/build_dylib.py').write_text(build.replace('/usr/bin/xcrun', './mock-clang')
-                                                          .replace('/usr/bin/codesign', './mock-codesign'), encoding='utf-8')
+                                                          .replace('/usr/bin/codesign', './mock-codesign')
+                                                          .replace("'--verify-artwork', ", ''), encoding='utf-8')
             for name, text in {
                 'mock-clang': '''#!/bin/sh
 set -eu

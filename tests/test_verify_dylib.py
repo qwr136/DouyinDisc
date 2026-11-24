@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from verify_dylib import parse_version, verify_dylib, version_text
+from verify_dylib import parse_version, verify_dylib, verify_embedded_artwork, version_text
 
 TEXT_OFFSET, LINK_OFFSET, SIGN_OFFSET = 0x400, 0x4000, 0x4020
 MINIMUM = parse_version('15.0')
@@ -94,6 +94,22 @@ class VerifyDylibTests(unittest.TestCase):
     def verify(self, data, *, project=None):
         self.artifact.write_bytes(data)
         return verify_dylib(self.artifact, project=project)
+
+    def test_current_artwork_payloads_must_be_embedded(self):
+        source = self.project / 'Sources'
+        source.mkdir()
+        payloads = {
+            'DouyinDiscBaseArtwork.inc': b'\\x89PNG\\r\\n\\x1a\\nbase-new-png',
+            'DouyinDiscAccentArcs.inc': b'\\x89PNG\\r\\n\\x1a\\narcs-new-png',
+        }
+        for filename, payload in payloads.items():
+            (source / filename).write_text(','.join(f'0x{byte:02x}' for byte in payload), encoding='ascii')
+        binary = b'Mach-O-image:' + b''.join(payloads.values())
+        result = verify_embedded_artwork(binary, self.project)
+        self.assertEqual([item['source'] for item in result], list(payloads))
+        self.assertTrue(all(item['embedded'] for item in result))
+        with self.assertRaisesRegex(ValueError, 'PNG bytes are not embedded'):
+            verify_embedded_artwork(binary.replace(b'arcs-new-png', b'old-png---'), self.project)
 
     def test_arm64_deployment_and_page_evidence(self):
         for legacy in (False, True):

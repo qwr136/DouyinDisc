@@ -68,6 +68,13 @@ class PolicyTests(unittest.TestCase):
         image = bytes(int(n, 16) for n in re.findall(r'0x([0-9a-f]{2})', data))
         self.assertEqual(len(image), 11639)
         self.assertEqual(hashlib.sha256(image).hexdigest(), 'c5aac6bff1e679c638af93d240535678a87d07aed2d912327483284fe30bd4ee')
+        for name,size,sha in [('DouyinDiscBaseArtwork.inc',12039,'7a3a553ff33ba714611b1c8ac69343a714d1a9c802b967dd9d84c0cb81c89da5'),('DouyinDiscAccentArcs.inc',6161,'0aebb35205323f4851bc4abd66286200d37a29628138b65653a0b8670b196a74')]:
+            payload=bytes(int(n,16) for n in re.findall(r'0x([0-9a-f]{2})',(ROOT/'Sources'/name).read_text()))
+            self.assertEqual(len(payload),size); self.assertEqual(hashlib.sha256(payload).hexdigest(),sha)
+        display=(ROOT/'Sources/DouyinDiscNativeDisplay.m').read_text()
+        self.assertIn('douyindisc_loadArtwork()', display); self.assertIn('douyindisc_loadAccentArcs()', display)
+        self.assertIn('douyindisc_base_artwork length:sizeof(douyindisc_base_artwork)', display)
+
 
     def test_no_private_dispatch_or_input_changes(self):
         code = (ROOT / 'Sources/DouyinDiscNativeDisplay.m').read_text() + (ROOT / 'Sources/DouyinDiscNative.h').read_text()
@@ -89,7 +96,8 @@ class PolicyTests(unittest.TestCase):
         self.assertIn('if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;', code)
         self.assertIn('forMode:NSRunLoopCommonModes', code)
         self.assertIn('self.douyindisc_controls.allObjects', code)
-        self.assertIn('spin.beginTime = [overlay convertTime:self.douyindisc_epoch fromLayer:nil]', code)
+        self.assertIn('spin.beginTime=[overlay convertTime:self.douyindisc_epoch fromLayer:nil]', code)
+        self.assertIn('copy.beginTime=[layer convertTime:self.douyindisc_epoch fromLayer:nil]', code)
 
     def test_core_behavior_is_frozen_against_010(self):
         fixture = json.loads((ROOT / 'tests/fixtures/visual-retain-baseline.json').read_text())
@@ -168,6 +176,19 @@ class PolicyTests(unittest.TestCase):
                 self.assertEqual(tuple(ring[i:i+3]),tuple(before[i:i+3]))
             if outer_alpha:
                 self.assertEqual(tuple(outer[i:i+3]),tuple(before[i:i+3]))
+        base_png,base=decode('Sources/DouyinDiscBaseArtwork.inc')
+        accent_png,accents=decode('Sources/DouyinDiscAccentArcs.inc')
+        self.assertEqual(len(base_png),12039); self.assertEqual(len(accent_png),6161)
+        self.assertEqual(len(before),len(base)); self.assertEqual(len(before),len(accents))
+        self.assertEqual(sum(x>0 for x in base[3::4]),20283)
+        self.assertEqual(sum(x>0 for x in accents[3::4]),9040)
+        self.assertEqual(max(accents[3::4]),204)
+        self.assertEqual(sum(base[i+3]!=outer[i+3] for i in range(0,len(outer),4)),9040)
+        for i in range(0,len(before),4):
+            ba,aa,oa=base[i+3],accents[i+3],outer[i+3]
+            self.assertLessEqual(ba,oa); self.assertLessEqual(aa,204); self.assertLessEqual(ba+aa,oa)
+            if aa: self.assertEqual(tuple(accents[i:i+3]),(255,255,255))
+            if aa==0: self.assertEqual(ba,oa)
         self.assertEqual(sum(x>0 for x in ring[3::4]),9530)
         self.assertEqual(sum(x>0 for x in outer[3::4]),27723)
 
@@ -179,13 +200,15 @@ class PolicyTests(unittest.TestCase):
         self.assertNotIn('control.alpha =', code)
         self.assertNotIn('control.hidden =', code)
         self.assertIn('UIImage *image = douyindisc_loadArtwork()', code)
-        self.assertIn('#include "DouyinDiscCenterRing.inc"', code)
-        self.assertIn('douyindisc_center_ring length:sizeof(douyindisc_center_ring)',code)
-        self.assertNotIn('douyindisccenterring',code)
+        self.assertIn('#include "DouyinDiscAccentArcs.inc"', code)
+        self.assertIn('douyindisc_accent_arcs length:sizeof(douyindisc_accent_arcs)',code)
+        self.assertIn('arcs.opacity=1.0f',code)
+        self.assertIn('copy.beginTime=[layer convertTime:self.douyindisc_epoch fromLayer:nil]',code)
+        self.assertIn('CALayer *spinLayers[3]={overlay,arcs,ring}',code)
+        self.assertIn('douyindisc_loadAccentArcs()',code)
         self.assertIn('ring.opacity=0.9f', code)
         self.assertIn('overlay.opacity = 0.5f;', code)
-        self.assertIn('[ring addAnimation:centerSpin forKey:douyindisc_spinKey]', code)
-        self.assertIn('douyindisc_loadCenterRing()', code)
+        self.assertIn('douyindisc_accentArcs removeFromSuperlayer', code)
         startup=code.split('void douyindisc_startDisplay(void) {',1)[1]
         self.assertNotIn('douyindisc_diag_install(driver);',startup)
         self.assertNotIn('douyindisc_diag_',code)
