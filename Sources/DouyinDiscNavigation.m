@@ -396,7 +396,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     __weak typeof(self) weakSelf=self;
     [self presentViewController:picker animated:YES completion:^{
         if(weakSelf.douyindisc_activePicker==picker){
-            if([picker isKindOfClass:PHPickerViewController.class])[weakSelf douyindisc_installDismissProxyForPicker:picker];
+            if([picker isKindOfClass:PHPickerViewController.class]){picker.modalInPresentation=YES;[weakSelf douyindisc_installDismissProxyForPicker:picker];}
             [weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
             if([picker isKindOfClass:PHPickerViewController.class])[weakSelf douyindisc_startPickerMonitor:picker generation:weakSelf.douyindisc_activePickGeneration];
         }
