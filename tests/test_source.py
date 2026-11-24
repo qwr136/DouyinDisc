@@ -140,7 +140,9 @@ class SourceContractTests(unittest.TestCase):
             for relative, edit, message in (
                 (SOURCE, lambda src: '/*' + src + '*/', 'contains comments'),
                 (SOURCE, lambda src: src.replace('return;', ''), 'hard-guarded'),
-                (SOURCE, lambda src: src.replace('isEqualToString:@"399017"', 'isEqualToString:@"999999"'), 'documented target build'),
+                (SOURCE, lambda src: src.replace('!douyindisc_hostVersionAllowed()', 'NO'), 'short-version guard'),
+                (Path('Sources/DouyinDiscNativeDisplay.m'), lambda src: src.replace('!douyindisc_hostVersionAllowed()', 'NO'), 'short-version guard'),
+                (Path('Sources/DouyinDiscHostVersion.h'), lambda src: src.replace('CFBundleShortVersionString', 'CFBundleVersion'), 'invalid host version'),
                 (SOURCE, lambda src: src.replace('douyindisc_entry', 'other_entry'), 'hard-guarded'),
                 (SOURCE, lambda src: src.replace('@"com.ss.iphone.ugc.Aweme"', '@"com.example.other"'), 'hard-guarded'),
                 (SOURCE, lambda src: '#import <substrate.h>\n' + src, 'jailbreak header'),

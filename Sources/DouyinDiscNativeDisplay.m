@@ -2,7 +2,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import "DouyinDiscNative.h"
 #include <math.h>
-#include "DouyinDiscPolicy.h"
+#import "DouyinDiscHostVersion.h"
 #include "DouyinDiscArtwork.inc"
 #include "DouyinDiscBaseArtwork.inc"
 #include "DouyinDiscAccentArcs.inc"
@@ -343,8 +343,7 @@ static void douyindisc_changed(UIControl *control) {
 
 void douyindisc_startDisplay(void) {
     if (douyindisc_driver || !NSThread.isMainThread) return;
-    NSString *build = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];
-    if (![build isKindOfClass:NSString.class] || ![build isEqualToString:@"399017"]) return;
+    if (!douyindisc_hostVersionAllowed()) return;
     UIImage *image = douyindisc_loadArtwork();
     if (!image.CGImage) return;
     DouyinDiscDisplay *driver = [DouyinDiscDisplay new];

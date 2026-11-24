@@ -18,7 +18,7 @@
 
 顶部：推荐、关注、同城、精选、商城、团购、直播、热点、经验。底部：首页、朋友、消息、我。
 
-目标 App `com.ss.iphone.ugc.Aweme`，仅适配版本 `39.9.0` / build `399017`；最低 iOS 15.0。作者 Xiaofei，插件标识 `com.minis.douyindisc`。TrollFools 单文件 arm64 `.dylib`。
+目标 App `com.ss.iphone.ugc.Aweme`，按短版本数字组件放行 `39.9.0` 至 `41.2.0`（含两端），不限制 build。接受三段十进制或 `M.mp` 紧凑写法（如 `39.90`、`40.12`、`41.20` 分别为 `39.9.0`、`40.1.2`、`41.2.0`）；拒绝畸形和区间外版本。放行不等于已验证兼容；最低 iOS 15.0。作者 Xiaofei，插件标识 `com.minis.douyindisc`。TrollFools 单文件 arm64 `.dylib`。
 
 ## 图标配置
 

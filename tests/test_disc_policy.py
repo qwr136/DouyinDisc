@@ -38,10 +38,14 @@ class PolicyTests(unittest.TestCase):
 
     def test_exact_supported_versions(self):
         fn = self.lib.douyindisc_version_supported
-        for version in (b'39.90', b'39.9.0'):
-            self.assertTrue(fn(version))
-        for version in (None, b'', b'39.9', b'39.90.1', b'39.9.0beta', b'41.2.0'):
-            self.assertFalse(fn(version))
+        for version in (b'39.90', b'39.9.0', b'39.91', b'39.10.0', b'40.00', b'40.12',
+                        b'40.12.34', b'41.09', b'41.1.999', b'41.20', b'41.2.0'):
+            self.assertTrue(fn(version), version)
+        for version in (None, b'', b'39.9', b'39.89', b'39.8.99', b'41.21', b'41.2.1',
+                        b'41.10.0', b'42.00', b'40..0', b'40.0.', b'40.00.0', b'40.1.0.0',
+                        b'40.1.0beta', b' 40.10', b'40.10\n', b'+40.10', b'40.1.-1',
+                        b'40.1.999999999999999999999', '４０.10'.encode()):
+            self.assertFalse(fn(version), version)
 
     def test_disc_geometry(self):
         self.assertTrue(self.lib.douyindisc_disc_inside_rail(self.disc, self.window))
@@ -107,14 +111,21 @@ class PolicyTests(unittest.TestCase):
                 content = (ROOT / relative).read_bytes()
                 if relative == 'Sources/DouyinDiscEntry.m':
                     content = content.replace(b'#import "DouyinDiscNavigation.h"\n', b'')
-                    content = content.replace(b'    id build = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"];\n    if (![build isKindOfClass:NSString.class] || ![(NSString *)build isEqualToString:@"399017"]) return;\n',b'')
-                    content = content.replace(b'    if (![value isKindOfClass:NSString.class] || !douyindisc_version_supported([(NSString *)value UTF8String])) return;\n',b'    if (![value isKindOfClass:NSString.class] || !douyindisc_version_supported([(NSString *)value UTF8String])) return;\n')
+                    content = content.replace(b'#import "DouyinDiscHostVersion.h"', b'#include "DouyinDiscPolicy.h"')
+                    content = content.replace(b'    if (!douyindisc_hostVersionAllowed()) return;',
+                                              b'    id value = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];\n    if (![value isKindOfClass:NSString.class] || !douyindisc_version_supported([(NSString *)value UTF8String])) return;')
                     content = content.replace(b'''    dispatch_async(dispatch_get_main_queue(), ^{
         douyindisc_startDisplay();
         douyindisc_installNavigationHooks();
         [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_preloadImagesWithCompletion:nil];
     });
 ''', b'    dispatch_async(dispatch_get_main_queue(), ^{ douyindisc_startDisplay(); });\n')
+                if relative == 'Sources/DouyinDiscPolicy.c':
+                    # Only the version predicate changed. Pin both unchanged geometry regions.
+                    geometry = content.split(b'bool douyindisc_disc_inside_rail', 1)[1]
+                    helpers = content.split(b'static bool douyindisc_valid', 1)[1].split(b'// Parse canonical', 1)[0]
+                    self.assertEqual(hashlib.sha256(helpers + geometry).hexdigest(), '81f61877132c8cd8285d37d53b32f00eb5b840215d6b99d4165e432f0d673e3e')
+                    continue
                 if relative == 'scripts/build_dylib.py':
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
                     content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'UniformTypeIdentifiers')\n", b'')

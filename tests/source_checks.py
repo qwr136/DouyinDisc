@@ -86,7 +86,15 @@ def check_guard(project, name, bundle):
              r'if\s*\(\s*!\[bundleIdentifier\s+isEqualToString:@"' + re.escape(bundle) + r'"\]\s*\)\s*'
              r'\{\s*return;\s*\}\s*' + symbol + r'_initialize\(\);\s*\}\s*\}')
     require(re.search(guard, code), 'entry is not hard-guarded for the manifest App bundle')
-    require(re.search(r'\bid\s+build\s*=\s*\[NSBundle\.mainBundle\s+objectForInfoDictionaryKey:@"CFBundleVersion"\];\s*if\s*\(\s*!\[build\s+isKindOfClass:NSString\.class\]\s*\|\|\s*!\[\(NSString\s*\*\)build\s+isEqualToString:@"399017"\]\s*\)\s*return;', code), 'entry is not hard-guarded for the documented target build')
+    display = strip_comments((project / ('Sources/' + name + 'NativeDisplay.m')).read_text())
+    host = strip_comments((project / ('Sources/' + name + 'HostVersion.h')).read_text())
+    for startup, prefix in ((code, 'static void douyindisc_initialize(void) {'),
+                            (display, 'void douyindisc_startDisplay(void) { if (douyindisc_driver || !NSThread.isMainThread) return;')):
+        require(prefix + ' if (!douyindisc_hostVersionAllowed()) return;' in ' '.join(startup.split()),
+                'startup missing shared short-version guard')
+    require('CFBundleVersion' not in code + display + host and
+            'objectForInfoDictionaryKey:@"CFBundleShortVersionString"' in host and
+            'douyindisc_version_supported(bytes)' in host, 'invalid host version policy')
     require(re.search(r'\bstatic\s+void\s+' + symbol + r'_initialize\(void\)\s*\{', code), 'missing namespaced initializer')
 
 

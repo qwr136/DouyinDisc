@@ -1,6 +1,6 @@
 #include "DouyinDiscPolicy.h"
 #include <math.h>
-#include <string.h>
+#include <limits.h>
 
 static bool douyindisc_valid(DouyinDiscRect r) {
     return isfinite(r.x) && isfinite(r.y) && isfinite(r.w) && isfinite(r.h) &&
@@ -10,8 +10,32 @@ static bool douyindisc_valid(DouyinDiscRect r) {
 static double douyindisc_midx(DouyinDiscRect r) { return r.x + r.w * 0.5; }
 static double douyindisc_midy(DouyinDiscRect r) { return r.y + r.h * 0.5; }
 
+// Parse canonical ASCII decimal without accepting whitespace, signs or overflow.
+static bool douyindisc_component(const char **cursor, unsigned *result) {
+    const char *p = *cursor;
+    if (*p < '0' || *p > '9' || (*p == '0' && p[1] >= '0' && p[1] <= '9')) return false;
+    unsigned n = 0;
+    do {
+        unsigned digit = (unsigned)(*p++ - '0');
+        if (n > (UINT_MAX - digit) / 10) return false;
+        n = n * 10 + digit;
+    } while (*p >= '0' && *p <= '9');
+    *result = n;
+    *cursor = p;
+    return true;
+}
+
 bool douyindisc_version_supported(const char *version) {
-    return version && (!strcmp(version, "39.90") || !strcmp(version, "39.9.0"));
+    unsigned major, minor, patch;
+    if (!version || !douyindisc_component(&version, &major) || *version++ != '.') return false;
+    // In compact M.mp the two digits are separate minor and patch components.
+    if (version[0] >= '0' && version[0] <= '9' && version[1] >= '0' && version[1] <= '9' && !version[2]) {
+        minor = (unsigned)(version[0] - '0');
+        patch = (unsigned)(version[1] - '0');
+    } else if (!douyindisc_component(&version, &minor) || *version++ != '.' ||
+               !douyindisc_component(&version, &patch) || *version) return false;
+    return (major == 39 && minor >= 9) || major == 40 ||
+           (major == 41 && (minor < 2 || (minor == 2 && patch == 0)));
 }
 
 bool douyindisc_disc_inside_rail(DouyinDiscRect disc, DouyinDiscRect window) {
