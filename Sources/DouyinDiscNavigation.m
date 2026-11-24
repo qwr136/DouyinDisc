@@ -204,6 +204,11 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property(nonatomic,weak) UIViewController *picker;
 @end
 @implementation DouyinDiscPickerDismissProxy
+- (BOOL)presentationControllerShouldDismiss:(UIPresentationController *)pc {
+    if(pc.presentedViewController==self.picker)return NO;
+    id<UIAdaptivePresentationControllerDelegate> next=self.next;
+    return [next respondsToSelector:_cmd]?[next presentationControllerShouldDismiss:pc]:YES;
+}
 - (void)presentationControllerWillDismiss:(UIPresentationController *)pc {
     id<UIViewControllerTransitionCoordinator> transition=pc.presentedViewController.transitionCoordinator;
     if(transition){
@@ -648,8 +653,8 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     };
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:PHPickerViewController.class])return;
-        photoSwipeLocked=picker.isModalInPresentation;
-        picker.presentationController.delegate=nil;
+        UIPresentationController *presentation=picker.presentationController;id<UIAdaptivePresentationControllerDelegate> dismissDelegate=presentation.delegate;photoSwipeLocked=[dismissDelegate respondsToSelector:@selector(presentationControllerShouldDismiss:)]&&! [dismissDelegate presentationControllerShouldDismiss:presentation];
+        presentation.delegate=nil;
         PHPickerViewController *photoPicker=(PHPickerViewController *)picker;
         id<PHPickerViewControllerDelegate> delegate=photoPicker.delegate;
         [delegate picker:photoPicker didFinishPicking:@[]];
