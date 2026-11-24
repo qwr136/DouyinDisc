@@ -654,7 +654,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     };
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:PHPickerViewController.class])return;
-        UIPresentationController *presentation=picker.presentationController;id<UIAdaptivePresentationControllerDelegate> dismissDelegate=presentation.delegate;photoSwipeLocked=[dismissDelegate respondsToSelector:@selector(presentationControllerShouldDismiss:)]&&! [dismissDelegate presentationControllerShouldDismiss:presentation];
+        UIPresentationController *presentation=picker.presentationController;id<UIAdaptivePresentationControllerDelegate> dismissDelegate=(id)panel.douyindisc_activeDismissProxy;photoSwipeLocked=[dismissDelegate respondsToSelector:@selector(presentationControllerShouldDismiss:)]&&! [dismissDelegate presentationControllerShouldDismiss:presentation];
         presentation.delegate=nil;
         PHPickerViewController *photoPicker=(PHPickerViewController *)picker;
         id<PHPickerViewControllerDelegate> delegate=photoPicker.delegate;
