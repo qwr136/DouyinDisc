@@ -146,6 +146,8 @@ static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
         DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker dismissal via system cancel clears active state");
         DD_CHECK([results[@"photoSwipeLocked"] boolValue], "photo picker blocks interactive swipe dismissal");
+        DD_CHECK([results[@"photoModalFlag"] boolValue], "Photos picker retains modal dismissal lock");
+        DD_CHECK([results[@"photoDelegateVeto"] boolValue], "bound dismiss delegate explicitly vetoes photo swipe");
         DD_CHECK([results[@"ticketRevoked"] boolValue], "system photo cancel revokes the previous selection ticket");
         DD_CHECK([results[@"interactive"] boolValue], "photo file and switch controls all receive touch after picker dismissal");
         DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after system photo cancel");
