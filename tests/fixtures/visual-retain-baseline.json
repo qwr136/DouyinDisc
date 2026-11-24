@@ -7,6 +7,6 @@
     "Sources/DouyinDiscArtwork.inc": "f2c10c09432336d2be9b2cfa78119263312140d8087845ccc273f7e144a7d7f2",
     "toolchain-lock.json": "d73de84af53729c14fdcfa48a665dc3486d224fa49818441c761da07ba941841",
     "scripts/build_dylib.py": "e6f02acf7d47ce93b37f9e2489b62660344642864b3ed50cf835f614a50db856",
-    "tests/verify_dylib.py": "b89e5653920d370e3cd3011b11dc8acbc13112af88814d8db6edea76c39abc98"
+    "tests/verify_dylib.py": "6561f7a2b3387d98fee45b3f181bb780f09edb23a14b6e6ffb612c50057ee45c"
   }
 }

@@ -237,7 +237,7 @@ def verify_embedded_artwork(data, project):
     for filename in ("DouyinDiscBaseArtwork.inc", "DouyinDiscAccentArcs.inc"):
         source = (root / "Sources" / filename).read_text(encoding="utf-8")
         payload = bytes(int(value, 16) for value in re.findall(r"0x([0-9a-fA-F]{2})", source))
-        require(payload.startswith(b"\\x89PNG\\r\\n\\x1a\\n"), filename + " is not a PNG")
+        require(payload.startswith(b"\x89PNG\r\n\x1a\n"), filename + " is not a PNG")
         require(payload in data, filename + " PNG bytes are not embedded in dylib")
         evidence.append({"source": filename, "size": len(payload), "sha256": hashlib.sha256(payload).hexdigest(),
                          "embedded": True})

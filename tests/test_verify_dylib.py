@@ -98,9 +98,10 @@ class VerifyDylibTests(unittest.TestCase):
     def test_current_artwork_payloads_must_be_embedded(self):
         source = self.project / 'Sources'
         source.mkdir()
+        png = bytes((137, 80, 78, 71, 13, 10, 26, 10))
         payloads = {
-            'DouyinDiscBaseArtwork.inc': b'\\x89PNG\\r\\n\\x1a\\nbase-new-png',
-            'DouyinDiscAccentArcs.inc': b'\\x89PNG\\r\\n\\x1a\\narcs-new-png',
+            'DouyinDiscBaseArtwork.inc': png + b'base-new-png',
+            'DouyinDiscAccentArcs.inc': png + b'arcs-new-png',
         }
         for filename, payload in payloads.items():
             (source / filename).write_text(','.join(f'0x{byte:02x}' for byte in payload), encoding='ascii')
