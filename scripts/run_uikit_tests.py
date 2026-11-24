@@ -31,13 +31,13 @@ def main():
             app.mkdir()
             meta = dict(CFBundleIdentifier=bundle, CFBundleName='DouyinDiscHost', CFBundleExecutable='DouyinDiscHost',
                         CFBundlePackageType='APPL', CFBundleVersion='1', CFBundleShortVersionString='1.0',
-                        MinimumOSVersion='15.0', LSRequiresIPhoneOS=True, UIDeviceFamily=[1], UILaunchScreen={})
+                        MinimumOSVersion='15.0', LSRequiresIPhoneOS=True, UIDeviceFamily=[1], UILaunchScreen={}, NSPhotoLibraryUsageDescription='选择替换导航图标的照片')
             (app / 'Info.plist').write_bytes(plistlib.dumps(meta))
             sdk = run('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path')
             run('xcrun', '--sdk', 'iphonesimulator', 'clang', '-target', 'arm64-apple-ios15.0-simulator',
                 '-isysroot', sdk, '-fobjc-arc', '-DDOUYINDISC_UI_TEST=1', '-Wall', '-Wextra', '-framework', 'Foundation',
                 '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',
-                '-framework', 'ImageIO', '-framework', 'PhotosUI', '-framework', 'UniformTypeIdentifiers',
+                '-framework', 'ImageIO', '-framework', 'UniformTypeIdentifiers',
                 'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c',
                 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
                 '-o', str(app / 'DouyinDiscHost'))

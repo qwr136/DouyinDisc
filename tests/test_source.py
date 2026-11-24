@@ -36,10 +36,14 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('DOUYINDISC_UI_TEST=1', (ROOT/'scripts/run_uikit_tests.py').read_text(encoding='utf-8'))
         self.assertIn('entry[@"scale"] doubleValue', hooks)
         self.assertNotIn('UISlider', panel)
+        self.assertIn('UIImagePickerControllerSourceTypePhotoLibrary', panel)
         self.assertIn('photos.modalPresentationStyle=UIModalPresentationFullScreen', panel)
-        self.assertIn('photos.modalInPresentation=YES', panel)
-        self.assertIn('picker.modalInPresentation=YES;[weakSelf douyindisc_installDismissProxyForPicker:picker]', panel)
-        self.assertIn('if(self.picker&&self.owner)return NO', panel)
+        self.assertIn('UIImagePickerControllerImageURL', panel)
+        self.assertIn('UIImagePickerControllerOriginalImage', panel)
+        self.assertNotIn('PHPickerViewController', panel)
+        self.assertIn('imagePickerControllerDidCancel:', panel)
+
+
         self.assertIn('douyindisc_adjustSize:(NSInteger)delta', panel)
         self.assertIn('MAX(50,MIN(150', panel)
         self.assertIn('MAX(0,MIN(100', panel)
@@ -61,7 +65,6 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('disclosure arrow',host)
         self.assertIn('late settings data inserts DouyinDisc synchronously when the model arrives',host)
         self.assertIn('activePicker!=picker',panel)
-        self.assertIn('if(picker&&owner)',panel)
         self.assertIn('targetLongEdge=16.0*scale',hooks)
         self.assertIn('same bottom image at maximum scale has the same twenty-four point long edge',host)
         self.assertIn('businessSel', hooks)
@@ -88,40 +91,31 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('self.douyindisc_filesButton.accessibilityLabel',panel)
         self.assertIn('self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_filesButton,self.douyindisc_clearButton]]',panel)
         self.assertIn('initForOpeningContentTypes:',panel)
-        self.assertIn('photo picker dismissal via system cancel clears active state',host)
-        self.assertIn('if(self.picker&&self.owner)return NO',panel)
-        self.assertIn('picker.viewIfLoaded.window!=nil',panel)
-        self.assertIn('if(self.picker&&self.owner)return NO',panel)
-        self.assertIn('if(self.picker&&self.owner)return NO',panel)
+        self.assertIn('UIImagePickerControllerSourceTypePhotoLibrary',panel)
+        self.assertIn('UIImagePickerControllerOriginalImage',panel)
+        self.assertIn('imagePickerControllerDidCancel:',panel)
+        self.assertNotIn('PHPickerViewController',panel)
         self.assertIn('system photo cancel revokes the previous selection ticket',host)
         self.assertIn('photo file and switch controls all receive touch after picker dismissal',host)
         self.assertIn('settings-window brightness is restored after system photo cancel',host)
         self.assertNotIn('UIMenu *',panel)
         self.assertNotIn('UIAction *photos=',panel)
         self.assertNotIn('UIAlertControllerStyleActionSheet',panel)
-        self.assertIn('presentationControllerDidDismiss',panel)
-        self.assertIn('presentation.delegate=proxy',panel)
-        self.assertIn('douyindisc_startPickerMonitor',panel)
-        self.assertIn('picker.viewIfLoaded.window',panel)
-        self.assertIn('presentationControllerWillDismiss:',panel)
-        self.assertIn('@property(nonatomic,strong) id<UIAdaptivePresentationControllerDelegate> next',panel)
         self.assertIn('douyindisc_activePicker!=picker',panel)
-        self.assertIn('dismissPicker:picker completion:',panel)
-        self.assertIn('photo picker dismissal via system cancel clears active state',host)
-        self.assertIn('if(self.picker&&self.owner)return NO',panel)
-        self.assertIn('picker.viewIfLoaded.window!=nil',panel)
-        self.assertIn('if(self.picker&&self.owner)return NO',panel)
-        self.assertIn('if(self.picker&&self.owner)return NO',panel)
         self.assertIn('system photo cancel revokes the previous selection ticket',host)
         self.assertIn('sectionDataArray', hooks)
         self.assertIn('抖音图层', hooks)
         self.assertIn('root General section inserts DouyinDisc immediately after the runtime 抖音图层 anchor',host)
         self.assertIn('native tapped block opens DouyinDisc from the root row',host)
         self.assertNotIn('UISlider', panel)
+        self.assertIn('UIImagePickerControllerSourceTypePhotoLibrary', panel)
         self.assertIn('photos.modalPresentationStyle=UIModalPresentationFullScreen', panel)
-        self.assertIn('photos.modalInPresentation=YES', panel)
-        self.assertIn('picker.modalInPresentation=YES;[weakSelf douyindisc_installDismissProxyForPicker:picker]', panel)
-        self.assertIn('if(self.picker&&self.owner)return NO', panel)
+        self.assertIn('UIImagePickerControllerImageURL', panel)
+        self.assertIn('UIImagePickerControllerOriginalImage', panel)
+        self.assertNotIn('PHPickerViewController', panel)
+        self.assertIn('imagePickerControllerDidCancel:', panel)
+
+
         self.assertIn('douyindisc_adjustSize:(NSInteger)delta', panel)
         self.assertIn('MAX(50,MIN(150', panel)
         self.assertIn('MAX(0,MIN(100', panel)
@@ -152,7 +146,7 @@ class SourceContractTests(unittest.TestCase):
                 (SOURCE, lambda src: '#import <substrate.h>\n' + src, 'jailbreak header'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace('arm64-apple-ios', 'arm64e-apple-ios'), 'TARGET differs'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace("*SOURCE_FILES, '-o'", "*SOURCE_FILES, '-lsubstrate', '-o'"), 'Apple-only'),
-                (Path('scripts/build_dylib.py'), lambda src: src.replace("'PhotosUI'", "'Substrate'"), 'framework list'),
+                (Path('scripts/build_dylib.py'), lambda src: src.replace("'UniformTypeIdentifiers'", "'Substrate'"), 'framework list'),
                 (Path('build.sh'), lambda src: src.replace('\npython3 scripts/toolchain.py', '\n# python3 scripts/toolchain.py'), 'verify before'),
             ):
                 with self.subTest(file=relative, message=message):
@@ -226,7 +220,7 @@ printf '%s\\n' "$stage" >> order
                     self.assertFalse(list(artifact.parent.glob('.build.*')))
                     if phase == 'offline':
                         self.assertIn('truncated Mach-O header', proc.stderr)
-            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO','PhotosUI','UniformTypeIdentifiers') for value in ('-framework',framework)]
+            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO','UniformTypeIdentifiers') for value in ('-framework',framework)]
             expected_sources = [str(SOURCE), 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m',
                                 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
                                 'Sources/DouyinDiscNavigationHooks.m']

@@ -145,7 +145,7 @@ extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, voi
 static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
         DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker dismissal via system cancel clears active state");
-        DD_CHECK([results[@"photoFullScreen"] boolValue], "PHPicker uses full-screen presentation rather than swipe card");
+        DD_CHECK([results[@"photoFullScreen"] boolValue], "native photo picker uses full-screen presentation");
         DD_CHECK([results[@"ticketRevoked"] boolValue], "system photo cancel revokes the previous selection ticket");
         DD_CHECK([results[@"interactive"] boolValue], "photo file and switch controls all receive touch after picker dismissal");
         DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after system photo cancel");
