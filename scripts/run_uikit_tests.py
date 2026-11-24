@@ -64,6 +64,10 @@ def main():
                 raise RuntimeError('UIKit host timed out; partial report and console retained') from error
             (REPORTS / 'uikit-console.txt').write_text(process.stdout + '\n' + process.stderr)
             data = Path(run('xcrun', 'simctl', 'get_app_container', device, bundle, 'data'))
+            for name in ('picker-visible.png', 'picker-not-visible.png', 'picker-timeout.png'):
+                snapshot = data / 'Documents' / name
+                if snapshot.is_file():
+                    (REPORTS / name).write_bytes(snapshot.read_bytes())
             source = data / 'Documents/uikit-report.txt'
             if not source.is_file():
                 raise RuntimeError('UIKit host did not produce its completion report; see uikit-console.txt')

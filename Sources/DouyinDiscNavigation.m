@@ -4,6 +4,9 @@
 #import <math.h>
 #import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#if defined(DOUYINDISC_UI_TEST)
+#import <dlfcn.h>
+#endif
 static NSString * const douyindisc_utiPNG = @"public.png";
 static NSString * const douyindisc_utiJPEG = @"public.jpeg";
 static NSString * const douyindisc_utiHEIC = @"public.heic";
@@ -211,6 +214,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerFinished)(BOOL cancelled);
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerPresented)(UIViewController *picker);
 @property (nonatomic, copy) dispatch_block_t douyindisc_uiTestPickerReady;
+@property (nonatomic) BOOL douyindisc_uiTestPresentationCompleted;
 #endif
 - (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files;
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket;
@@ -225,7 +229,37 @@ static UIColor *douyindisc_color(NSString *hex) {
 
 #if defined(DOUYINDISC_UI_TEST)
 static void douyindisc_uiTestTracePicker(NSString *event, DouyinDiscSettingsViewController *owner, UIViewController *picker) {
-    NSLog(@"DD_PICKER %@ picker=%@ style=%ld window=%d presenting=%d dismissing=%d ownerPresented=%@ active=%d", event, NSStringFromClass(picker.class), (long)picker.modalPresentationStyle, picker.viewIfLoaded.window!=nil, picker.isBeingPresented, picker.isBeingDismissed, NSStringFromClass(owner.presentedViewController.class), owner.douyindisc_activePicker==picker);
+    UIWindow *window=owner.viewIfLoaded.window;
+    UINavigationController *nav=owner.navigationController;
+    UIViewController *root=window.rootViewController;
+    NSLog(@"DD_PICKER %@ picker=%@/%p style=%ld window=%p presenting=%d dismissing=%d presenter=%p owner=%p ownerPresented=%p active=%d completion=%d ownerWindow=%p key=%d root=%@/%p rootPresented=%p nav=%p navPresented=%p navTop=%d ownerTransition=%d rootTransition=%d appState=%ld", event, NSStringFromClass(picker.class), (__bridge void *)picker, (long)picker.modalPresentationStyle, (__bridge void *)picker.viewIfLoaded.window, picker.isBeingPresented, picker.isBeingDismissed, (__bridge void *)picker.presentingViewController, (__bridge void *)owner, (__bridge void *)owner.presentedViewController, owner.douyindisc_activePicker==picker, owner.douyindisc_uiTestPresentationCompleted, (__bridge void *)window, window.isKeyWindow, NSStringFromClass(root.class), (__bridge void *)root, (__bridge void *)root.presentedViewController, (__bridge void *)nav, (__bridge void *)nav.presentedViewController, nav.topViewController==owner, owner.transitionCoordinator!=nil, root.transitionCoordinator!=nil, (long)UIApplication.sharedApplication.applicationState);
+    if([event isEqualToString:@"present-before"]){
+        for(Class cls in @[UIViewController.class,UINavigationController.class,DouyinDiscSettingsViewController.class]){
+            Method method=class_getInstanceMethod(cls,@selector(presentViewController:animated:completion:));
+            IMP imp=method_getImplementation(method);Dl_info image={0};dladdr((const void *)imp,&image);
+            NSLog(@"DD_PICKER_IMP class=%@ imp=%p encoding=%s image=%s symbol=%s",NSStringFromClass(cls),imp,method_getTypeEncoding(method),image.dli_fname?:"?",image.dli_sname?:"?");
+        }
+        NSLog(@"DD_PICKER_CLASS image=%s sourceAvailable=%d",class_getImageName(object_getClass(picker))?:"?",[UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary]);
+    }
+}
+static void douyindisc_uiTestCapturePickerWindow(UIWindow *window, NSString *name) {
+    if(!window)return;
+    UIGraphicsImageRenderer *renderer=[[UIGraphicsImageRenderer alloc]initWithSize:window.bounds.size];
+    UIImage *image=[renderer imageWithActions:^(UIGraphicsImageRendererContext *context){(void)context;[window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];}];
+    NSString *directory=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES).firstObject;
+    [UIImagePNGRepresentation(image) writeToFile:[directory stringByAppendingPathComponent:name] atomically:YES];
+}
+static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *owner, UIViewController *picker, NSUInteger remaining) {
+    if(owner.douyindisc_activePicker!=picker||!owner.douyindisc_uiTestPickerPresented)return;
+    UIWindow *window=picker.viewIfLoaded.window;
+    BOOL visible=window&&picker.presentingViewController&&!picker.isBeingPresented&&!picker.isBeingDismissed&&owner.douyindisc_uiTestPresentationCompleted;
+    if(visible||remaining==0){
+        douyindisc_uiTestTracePicker(visible?@"observe-visible":@"observe-timeout",owner,picker);
+        douyindisc_uiTestCapturePickerWindow(window?:owner.viewIfLoaded.window,visible?@"picker-visible.png":@"picker-not-visible.png");
+        owner.douyindisc_uiTestPickerPresented(picker);return;
+    }
+    __weak DouyinDiscSettingsViewController *weakOwner=owner;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.25*NSEC_PER_SEC)),dispatch_get_main_queue(),^{douyindisc_uiTestObservePicker(weakOwner,picker,remaining-1);});
 }
 #endif
 
@@ -352,13 +386,20 @@ static void douyindisc_uiTestTracePicker(NSString *event, DouyinDiscSettingsView
     }
     self.douyindisc_activePicker=picker;
     __weak typeof(self) weakSelf=self;
+#if defined(DOUYINDISC_UI_TEST)
+    self.douyindisc_uiTestPresentationCompleted=NO;
+    douyindisc_uiTestTracePicker(@"present-before",self,picker);
+#endif
     [self presentViewController:picker animated:YES completion:^{
+#if defined(DOUYINDISC_UI_TEST)
+        weakSelf.douyindisc_uiTestPresentationCompleted=YES;
+        douyindisc_uiTestTracePicker(@"present-completion",weakSelf,picker);
+#endif
         if(weakSelf.douyindisc_activePicker==picker)[weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
     }];
 #if defined(DOUYINDISC_UI_TEST)
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.0*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
-        if(self.douyindisc_activePicker==picker&&self.douyindisc_uiTestPickerPresented)self.douyindisc_uiTestPickerPresented(picker);
-    });
+    douyindisc_uiTestTracePicker(@"present-returned",self,picker);
+    douyindisc_uiTestObservePicker(self,picker,40);
 #endif
 }
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket {
@@ -612,8 +653,11 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         douyindisc_uiTestTracePicker(@"test-observed",panel,picker);
         photoFullScreen=photoPicker.modalPresentationStyle==UIModalPresentationFullScreen;
         photoVisible=photoPicker.viewIfLoaded.window==window&&photoPicker.presentingViewController!=nil&&!photoPicker.isBeingPresented&&!photoPicker.isBeingDismissed;
+        if(!photoVisible||!panel.douyindisc_uiTestPresentationCompleted)return;
+        id<UIImagePickerControllerDelegate> delegate=photoPicker.delegate;
+        if(delegate!=panel||![delegate respondsToSelector:@selector(imagePickerControllerDidCancel:)])return;
         cancelSent=YES;
-        [panel imagePickerControllerDidCancel:photoPicker];
+        [delegate imagePickerControllerDidCancel:photoPicker];
     };
     __weak DouyinDiscSettingsViewController *weakPanel=panel;
     panel.douyindisc_uiTestPickerReady=^{
@@ -630,8 +674,10 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         if(completed)return;
         completed=YES;
         douyindisc_uiTestTracePicker(@"test-timeout",panel,panel.douyindisc_activePicker);
+        douyindisc_uiTestCapturePickerWindow(window,@"picker-timeout.png");
+        NSDictionary *failure=@{@"photoFullScreen":@(photoFullScreen),@"photoVisible":@(photoVisible),@"cancelSent":@(cancelSent)};
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
-        window.rootViewController=previousRoot;[window makeKeyAndVisible];done(@{});
+        window.rootViewController=previousRoot;[window makeKeyAndVisible];done(failure);
     });
 }
 #endif
