@@ -19,11 +19,15 @@ static UIColor *douyindisc_color(NSString *hex) {
 @interface DouyinDiscNavigationRow : UIView
 @property (nonatomic, copy) NSString *douyindisc_identifier;
 @property (nonatomic, strong) UISwitch *douyindisc_switch;
-@property (nonatomic, strong) UISlider *douyindisc_slider;
-@property (nonatomic, strong) UILabel *douyindisc_value;
+@property (nonatomic, strong) UITextField *douyindisc_value;
+@property (nonatomic, strong) UIButton *douyindisc_opacityMinus;
+@property (nonatomic, strong) UIButton *douyindisc_opacityPlus;
+@property (nonatomic) CGFloat douyindisc_opacity;
 @property (nonatomic, strong) UILabel *douyindisc_opacityTitle;
-@property (nonatomic, strong) UISlider *douyindisc_sizeSlider;
-@property (nonatomic, strong) UILabel *douyindisc_sizeValue;
+@property (nonatomic, strong) UITextField *douyindisc_sizeValue;
+@property (nonatomic, strong) UIButton *douyindisc_sizeMinus;
+@property (nonatomic, strong) UIButton *douyindisc_sizePlus;
+@property (nonatomic) CGFloat douyindisc_scale;
 @property (nonatomic, strong) UILabel *douyindisc_sizeTitle;
 @property (nonatomic, strong) UIImageView *douyindisc_thumbnail;
 @property (nonatomic, strong) UIButton *douyindisc_imageButton;
@@ -35,11 +39,18 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, copy) void (^douyindisc_changeScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_previewScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_pick)(DouyinDiscNavigationRow *, BOOL);
-@property (nonatomic, copy) void (^douyindisc_touchTrace)(NSString *);
 @property (nonatomic, copy) void (^douyindisc_clear)(DouyinDiscNavigationRow *);
-- (void)douyindisc_sliderChanged;
-- (void)douyindisc_sizeSliderChanged;
-- (void)douyindisc_sizeSliderEnded;
+- (void)douyindisc_changeOpacityByMinus;
+- (void)douyindisc_changeOpacityByPlus;
+- (void)douyindisc_changeSizeByMinus;
+- (void)douyindisc_changeSizeByPlus;
+- (void)douyindisc_editingOpacityInput;
+- (void)douyindisc_editingSizeInput;
+- (void)douyindisc_commitOpacityInput;
+- (void)douyindisc_commitSizeInput;
+- (void)douyindisc_inputAccessoryDone;
+- (void)douyindisc_adjustOpacity:(NSInteger)delta;
+- (void)douyindisc_adjustSize:(NSInteger)delta;
 - (void)douyindisc_switchChanged;
 - (void)douyindisc_photoTapped;
 - (void)douyindisc_filesTapped;
@@ -54,10 +65,10 @@ static UIColor *douyindisc_color(NSString *hex) {
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
     self.translatesAutoresizingMaskIntoConstraints = NO;
-    self.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
-    self.layer.cornerRadius = 10;
+    self.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    self.layer.cornerRadius = 16;
     self.layer.cornerCurve = kCACornerCurveContinuous;
-    self.layer.masksToBounds = YES;
+    self.layer.masksToBounds = YES;self.layer.borderWidth=.5;self.layer.borderColor=UIColor.separatorColor.CGColor;
     self.douyindisc_identifier = item[@"identifier"];
 
     UIView *content = [UIView new]; content.translatesAutoresizingMaskIntoConstraints = NO;
@@ -77,7 +88,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     [content addSubview:self.douyindisc_switch];
 
     self.douyindisc_imageButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.douyindisc_imageButton.translatesAutoresizingMaskIntoConstraints=NO;
-    [self.douyindisc_imageButton setTitle:@"选择图标" forState:UIControlStateNormal];
+    [self.douyindisc_imageButton setTitle:@"照片" forState:UIControlStateNormal];
     self.douyindisc_imageButton.titleLabel.font=[UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     [self.douyindisc_imageButton setImage:[UIImage systemImageNamed:@"photo"] forState:UIControlStateNormal];
     self.douyindisc_imageButton.tintColor=douyindisc_color(@"#1557C0");
@@ -89,18 +100,14 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_imageButton.imageView.contentMode=UIViewContentModeScaleAspectFit;
     self.douyindisc_imageButton.titleEdgeInsets=UIEdgeInsetsMake(0,6,0,0);
     self.douyindisc_imageButton.contentVerticalAlignment=UIControlContentVerticalAlignmentCenter;
-    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTouchCancelled) forControlEvents:UIControlEventTouchUpOutside|UIControlEventTouchCancel];
     self.douyindisc_filesButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_filesButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_filesButton setImage:[UIImage systemImageNamed:@"folder"] forState:UIControlStateNormal];
-    self.douyindisc_filesButton.tintColor=douyindisc_color(@"#1557C0");
+    self.douyindisc_filesButton.tintColor=douyindisc_color(@"#1557C0");[self.douyindisc_filesButton setTitle:@"文件" forState:UIControlStateNormal];self.douyindisc_filesButton.titleLabel.font=[UIFont systemFontOfSize:12 weight:UIFontWeightMedium];self.douyindisc_filesButton.titleEdgeInsets=UIEdgeInsetsMake(0,4,0,0);
     self.douyindisc_filesButton.accessibilityLabel=@"从文件选择图标";
     self.douyindisc_filesButton.enabled=[entry[@"enabled"] boolValue];
     self.douyindisc_filesButton.accessibilityIdentifier=[@"douyindisc.files." stringByAppendingString:self.douyindisc_identifier];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTouchCancelled) forControlEvents:UIControlEventTouchUpOutside|UIControlEventTouchCancel];
     self.douyindisc_clearButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.douyindisc_clearButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_clearButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
     self.douyindisc_clearButton.accessibilityLabel=@"移除此项自定义图标"; self.douyindisc_clearButton.enabled=image!=nil;
@@ -113,85 +120,74 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_thumbnail.clipsToBounds=YES; self.douyindisc_thumbnail.contentMode=UIViewContentModeScaleAspectFit;
     self.douyindisc_thumbnail.image=image; [content addSubview:self.douyindisc_thumbnail];
     self.douyindisc_thumbnail.accessibilityIdentifier=[@"douyindisc.preview." stringByAppendingString:self.douyindisc_identifier];
-    self.douyindisc_value=[UILabel new]; self.douyindisc_value.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_value.font=[UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular]; self.douyindisc_value.textColor=UIColor.secondaryLabelColor;
-    self.douyindisc_value.accessibilityIdentifier=@"douyindisc.opacity.value";
-    [content addSubview:self.douyindisc_value];
     self.douyindisc_opacityTitle=[UILabel new];self.douyindisc_opacityTitle.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_opacityTitle.text=@"透明度";self.douyindisc_opacityTitle.font=[UIFont systemFontOfSize:12 weight:UIFontWeightMedium];self.douyindisc_opacityTitle.textColor=UIColor.secondaryLabelColor;
-    self.douyindisc_opacityTitle.accessibilityIdentifier=@"douyindisc.opacity.title";
-    [content addSubview:self.douyindisc_opacityTitle];
-    self.douyindisc_slider=[UISlider new]; self.douyindisc_slider.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_slider.accessibilityLabel=@"图标透明度";
-    self.douyindisc_slider.minimumValue=0; self.douyindisc_slider.maximumValue=1; self.douyindisc_slider.value=[entry[@"opacity"] floatValue];
-    self.douyindisc_slider.minimumTrackTintColor=douyindisc_color(item[@"accentColor"]);
-    [self.douyindisc_slider addTarget:self action:@selector(douyindisc_sliderChanged) forControlEvents:UIControlEventValueChanged];
-    [self.douyindisc_slider addTarget:self action:@selector(douyindisc_sliderEnded) forControlEvents:UIControlEventTouchUpInside|UIControlEventTouchUpOutside|UIControlEventEditingDidEnd];
-    [content addSubview:self.douyindisc_slider]; [self douyindisc_updateValue];
-    self.douyindisc_sizeValue=[UILabel new]; self.douyindisc_sizeValue.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_sizeValue.font=[UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular]; self.douyindisc_sizeValue.textColor=UIColor.secondaryLabelColor;
-    self.douyindisc_sizeValue.accessibilityIdentifier=@"douyindisc.size.value";
-    [content addSubview:self.douyindisc_sizeValue];
-    self.douyindisc_sizeTitle=[UILabel new];self.douyindisc_sizeTitle.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_sizeTitle.text=@"图标大小";self.douyindisc_sizeTitle.font=[UIFont systemFontOfSize:12 weight:UIFontWeightMedium];self.douyindisc_sizeTitle.textColor=UIColor.secondaryLabelColor;
-    self.douyindisc_sizeTitle.accessibilityIdentifier=@"douyindisc.size.title";
-    [content addSubview:self.douyindisc_sizeTitle];
-    self.douyindisc_sizeSlider=[UISlider new]; self.douyindisc_sizeSlider.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_sizeSlider.accessibilityLabel=@"图标大小";
-    self.douyindisc_sizeSlider.minimumValue=.5; self.douyindisc_sizeSlider.maximumValue=1.5; self.douyindisc_sizeSlider.value=[entry[@"scale"] respondsToSelector:@selector(floatValue)]?[entry[@"scale"] floatValue]:1;
-    self.douyindisc_sizeSlider.minimumTrackTintColor=douyindisc_color(item[@"accentColor"]);
-    [self.douyindisc_sizeSlider addTarget:self action:@selector(douyindisc_sizeSliderChanged) forControlEvents:UIControlEventValueChanged];
-    [self.douyindisc_sizeSlider addTarget:self action:@selector(douyindisc_sizeSliderEnded) forControlEvents:UIControlEventTouchUpInside|UIControlEventTouchUpOutside|UIControlEventEditingDidEnd];
-    [content addSubview:self.douyindisc_sizeSlider]; [self douyindisc_updateSizeValue];
+    self.douyindisc_opacityTitle.text=@"透明度";self.douyindisc_opacityTitle.font=[UIFont systemFontOfSize:13 weight:UIFontWeightMedium];self.douyindisc_opacityTitle.textColor=UIColor.secondaryLabelColor;self.douyindisc_opacityTitle.accessibilityIdentifier=@"douyindisc.opacity.title";[content addSubview:self.douyindisc_opacityTitle];
+    self.douyindisc_opacity=MAX(0,MIN(1,[entry[@"opacity"] doubleValue]));
+    self.douyindisc_value=[UITextField new];self.douyindisc_value.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_value.textAlignment=NSTextAlignmentCenter;self.douyindisc_value.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_value.textColor=UIColor.labelColor;
+    self.douyindisc_value.keyboardType=UIKeyboardTypeNumberPad;self.douyindisc_value.accessibilityIdentifier=@"douyindisc.opacity.value";self.douyindisc_value.accessibilityLabel=@"透明度百分比";self.douyindisc_value.backgroundColor=UIColor.tertiarySystemGroupedBackgroundColor;self.douyindisc_value.layer.cornerRadius=8;self.douyindisc_value.layer.masksToBounds=YES;self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];
+    [self.douyindisc_value addTarget:self action:@selector(douyindisc_editingOpacityInput) forControlEvents:UIControlEventEditingDidBegin];[self.douyindisc_value addTarget:self action:@selector(douyindisc_commitOpacityInput) forControlEvents:UIControlEventEditingDidEnd];[content addSubview:self.douyindisc_value];
+    self.douyindisc_opacityMinus=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_opacityMinus.translatesAutoresizingMaskIntoConstraints=NO;[self.douyindisc_opacityMinus setTitle:@"−" forState:UIControlStateNormal];self.douyindisc_opacityMinus.accessibilityLabel=@"降低透明度";
+    self.douyindisc_opacityPlus=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_opacityPlus.translatesAutoresizingMaskIntoConstraints=NO;[self.douyindisc_opacityPlus setTitle:@"＋" forState:UIControlStateNormal];self.douyindisc_opacityPlus.accessibilityLabel=@"提高透明度";
+    for(UIButton *button in @[self.douyindisc_opacityMinus,self.douyindisc_opacityPlus]){button.titleLabel.font=[UIFont systemFontOfSize:19 weight:UIFontWeightMedium];button.tintColor=douyindisc_color(item[@"accentColor"]);button.backgroundColor=UIColor.tertiarySystemGroupedBackgroundColor;button.layer.cornerRadius=8;[content addSubview:button];}
+    [self.douyindisc_opacityMinus addTarget:self action:@selector(douyindisc_changeOpacityByMinus) forControlEvents:UIControlEventTouchUpInside];[self.douyindisc_opacityPlus addTarget:self action:@selector(douyindisc_changeOpacityByPlus) forControlEvents:UIControlEventTouchUpInside];
+    UIToolbar *opacityToolbar=[[UIToolbar alloc]initWithFrame:CGRectMake(0,0,0,44)];UIBarButtonItem *opacitySpace=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];UIBarButtonItem *opacityDone=[[UIBarButtonItem alloc]initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(douyindisc_inputAccessoryDone)];opacityToolbar.items=@[opacitySpace,opacityDone];self.douyindisc_value.inputAccessoryView=opacityToolbar;
+    self.douyindisc_sizeTitle=[UILabel new];self.douyindisc_sizeTitle.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_sizeTitle.text=@"图标大小";self.douyindisc_sizeTitle.font=[UIFont systemFontOfSize:13 weight:UIFontWeightMedium];self.douyindisc_sizeTitle.textColor=UIColor.secondaryLabelColor;self.douyindisc_sizeTitle.accessibilityIdentifier=@"douyindisc.size.title";[content addSubview:self.douyindisc_sizeTitle];
+    self.douyindisc_scale=MAX(.5,MIN(1.5,[entry[@"scale"] respondsToSelector:@selector(doubleValue)]?[entry[@"scale"] doubleValue]:1));
+    self.douyindisc_sizeValue=[UITextField new];self.douyindisc_sizeValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_sizeValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_sizeValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_sizeValue.textColor=UIColor.labelColor;
+    self.douyindisc_sizeValue.keyboardType=UIKeyboardTypeNumberPad;self.douyindisc_sizeValue.accessibilityIdentifier=@"douyindisc.size.value";self.douyindisc_sizeValue.accessibilityLabel=@"图标大小百分比";self.douyindisc_sizeValue.backgroundColor=UIColor.tertiarySystemGroupedBackgroundColor;self.douyindisc_sizeValue.layer.cornerRadius=8;self.douyindisc_sizeValue.layer.masksToBounds=YES;self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];
+    [self.douyindisc_sizeValue addTarget:self action:@selector(douyindisc_editingSizeInput) forControlEvents:UIControlEventEditingDidBegin];[self.douyindisc_sizeValue addTarget:self action:@selector(douyindisc_commitSizeInput) forControlEvents:UIControlEventEditingDidEnd];[content addSubview:self.douyindisc_sizeValue];
+    self.douyindisc_sizeMinus=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_sizeMinus.translatesAutoresizingMaskIntoConstraints=NO;[self.douyindisc_sizeMinus setTitle:@"−" forState:UIControlStateNormal];self.douyindisc_sizeMinus.accessibilityLabel=@"缩小图标";
+    self.douyindisc_sizePlus=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_sizePlus.translatesAutoresizingMaskIntoConstraints=NO;[self.douyindisc_sizePlus setTitle:@"＋" forState:UIControlStateNormal];self.douyindisc_sizePlus.accessibilityLabel=@"放大图标";
+    for(UIButton *button in @[self.douyindisc_sizeMinus,self.douyindisc_sizePlus]){button.titleLabel.font=[UIFont systemFontOfSize:19 weight:UIFontWeightMedium];button.tintColor=douyindisc_color(item[@"accentColor"]);button.backgroundColor=UIColor.tertiarySystemGroupedBackgroundColor;button.layer.cornerRadius=8;[content addSubview:button];}
+    [self.douyindisc_sizeMinus addTarget:self action:@selector(douyindisc_changeSizeByMinus) forControlEvents:UIControlEventTouchUpInside];[self.douyindisc_sizePlus addTarget:self action:@selector(douyindisc_changeSizeByPlus) forControlEvents:UIControlEventTouchUpInside];
+    UIToolbar *sizeToolbar=[[UIToolbar alloc]initWithFrame:CGRectMake(0,0,0,44)];UIBarButtonItem *sizeSpace=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];UIBarButtonItem *sizeDone=[[UIBarButtonItem alloc]initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(douyindisc_inputAccessoryDone)];sizeToolbar.items=@[sizeSpace,sizeDone];self.douyindisc_sizeValue.inputAccessoryView=sizeToolbar;
     [NSLayoutConstraint activateConstraints:@[
         [content.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14], [content.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
         [content.topAnchor constraintEqualToAnchor:self.topAnchor constant:9], [content.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-9],
-        [swatch.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [swatch.topAnchor constraintEqualToAnchor:content.topAnchor], [swatch.widthAnchor constraintEqualToConstant:28], [swatch.heightAnchor constraintEqualToConstant:28],
+        [swatch.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [swatch.topAnchor constraintEqualToAnchor:content.topAnchor], [swatch.widthAnchor constraintEqualToConstant:36], [swatch.heightAnchor constraintEqualToConstant:36],
         [symbol.centerXAnchor constraintEqualToAnchor:swatch.centerXAnchor], [symbol.centerYAnchor constraintEqualToAnchor:swatch.centerYAnchor], [symbol.widthAnchor constraintEqualToConstant:16], [symbol.heightAnchor constraintEqualToConstant:16],
         [title.leadingAnchor constraintEqualToAnchor:swatch.trailingAnchor constant:10], [title.centerYAnchor constraintEqualToAnchor:swatch.centerYAnchor], [title.trailingAnchor constraintLessThanOrEqualToAnchor:self.douyindisc_switch.leadingAnchor constant:-6],
         [self.douyindisc_switch.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_switch.centerYAnchor constraintEqualToAnchor:swatch.centerYAnchor],
-        [self.douyindisc_thumbnail.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_thumbnail.topAnchor constraintEqualToAnchor:swatch.bottomAnchor constant:8], [self.douyindisc_thumbnail.widthAnchor constraintEqualToConstant:38], [self.douyindisc_thumbnail.heightAnchor constraintEqualToConstant:38],
+        [self.douyindisc_thumbnail.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_thumbnail.topAnchor constraintEqualToAnchor:swatch.bottomAnchor constant:8], [self.douyindisc_thumbnail.widthAnchor constraintEqualToConstant:42], [self.douyindisc_thumbnail.heightAnchor constraintEqualToConstant:42],
         [self.douyindisc_actions.leadingAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.trailingAnchor constant:8], [self.douyindisc_actions.centerYAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.centerYAnchor], [self.douyindisc_actions.trailingAnchor constraintLessThanOrEqualToAnchor:content.trailingAnchor],
-        [self.douyindisc_imageButton.widthAnchor constraintEqualToConstant:92], [self.douyindisc_imageButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_filesButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_filesButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.heightAnchor constraintEqualToConstant:36],
-        [self.douyindisc_opacityTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_opacityTitle.topAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.bottomAnchor constant:4], [self.douyindisc_opacityTitle.heightAnchor constraintEqualToConstant:16],
-        [self.douyindisc_slider.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_slider.trailingAnchor constraintEqualToAnchor:self.douyindisc_value.leadingAnchor constant:-10], [self.douyindisc_slider.topAnchor constraintEqualToAnchor:self.douyindisc_opacityTitle.bottomAnchor constant:0],
-        [self.douyindisc_value.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_value.centerYAnchor constraintEqualToAnchor:self.douyindisc_slider.centerYAnchor], [self.douyindisc_value.widthAnchor constraintEqualToConstant:44],
-        [self.douyindisc_sizeTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_sizeTitle.topAnchor constraintEqualToAnchor:self.douyindisc_slider.bottomAnchor constant:0], [self.douyindisc_sizeTitle.heightAnchor constraintEqualToConstant:16],
-        [self.douyindisc_sizeSlider.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_sizeSlider.trailingAnchor constraintEqualToAnchor:self.douyindisc_sizeValue.leadingAnchor constant:-10], [self.douyindisc_sizeSlider.topAnchor constraintEqualToAnchor:self.douyindisc_sizeTitle.bottomAnchor constant:0],
-        [self.douyindisc_sizeValue.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_sizeValue.centerYAnchor constraintEqualToAnchor:self.douyindisc_sizeSlider.centerYAnchor], [self.douyindisc_sizeValue.widthAnchor constraintEqualToConstant:44],
-        [self.douyindisc_sizeSlider.bottomAnchor constraintEqualToAnchor:content.bottomAnchor],
+        [self.douyindisc_imageButton.widthAnchor constraintEqualToConstant:88], [self.douyindisc_imageButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_filesButton.widthAnchor constraintEqualToConstant:76], [self.douyindisc_filesButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.heightAnchor constraintEqualToConstant:36],
+        [self.douyindisc_opacityTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_opacityTitle.centerYAnchor constraintEqualToAnchor:self.douyindisc_value.centerYAnchor],
+        [self.douyindisc_opacityMinus.leadingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-148], [self.douyindisc_opacityMinus.centerYAnchor constraintEqualToAnchor:self.douyindisc_value.centerYAnchor], [self.douyindisc_opacityMinus.widthAnchor constraintEqualToConstant:34], [self.douyindisc_opacityMinus.heightAnchor constraintEqualToConstant:30],
+        [self.douyindisc_value.leadingAnchor constraintEqualToAnchor:self.douyindisc_opacityMinus.trailingAnchor constant:2], [self.douyindisc_value.trailingAnchor constraintEqualToAnchor:self.douyindisc_opacityPlus.leadingAnchor constant:-2], [self.douyindisc_value.widthAnchor constraintEqualToConstant:74], [self.douyindisc_value.heightAnchor constraintEqualToConstant:30], [self.douyindisc_value.topAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.bottomAnchor constant:8],
+        [self.douyindisc_opacityPlus.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_opacityPlus.centerYAnchor constraintEqualToAnchor:self.douyindisc_value.centerYAnchor], [self.douyindisc_opacityPlus.widthAnchor constraintEqualToConstant:34], [self.douyindisc_opacityPlus.heightAnchor constraintEqualToConstant:30],
+        [self.douyindisc_sizeTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_sizeTitle.centerYAnchor constraintEqualToAnchor:self.douyindisc_sizeValue.centerYAnchor],
+        [self.douyindisc_sizeMinus.leadingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-148], [self.douyindisc_sizeMinus.topAnchor constraintEqualToAnchor:self.douyindisc_value.bottomAnchor constant:8], [self.douyindisc_sizeMinus.widthAnchor constraintEqualToConstant:34], [self.douyindisc_sizeMinus.heightAnchor constraintEqualToConstant:30],
+        [self.douyindisc_sizeValue.leadingAnchor constraintEqualToAnchor:self.douyindisc_sizeMinus.trailingAnchor constant:2], [self.douyindisc_sizeValue.trailingAnchor constraintEqualToAnchor:self.douyindisc_sizePlus.leadingAnchor constant:-2], [self.douyindisc_sizeValue.widthAnchor constraintEqualToConstant:74], [self.douyindisc_sizeValue.heightAnchor constraintEqualToConstant:30],
+        [self.douyindisc_sizePlus.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_sizePlus.centerYAnchor constraintEqualToAnchor:self.douyindisc_sizeValue.centerYAnchor], [self.douyindisc_sizePlus.widthAnchor constraintEqualToConstant:34], [self.douyindisc_sizePlus.heightAnchor constraintEqualToConstant:30],
+        [self.douyindisc_sizeValue.topAnchor constraintEqualToAnchor:self.douyindisc_sizeMinus.topAnchor], [self.douyindisc_sizeValue.bottomAnchor constraintEqualToAnchor:content.bottomAnchor constant:-18],
         [self.heightAnchor constraintEqualToConstant:198]
     ]];
     return self;
 }
-- (void)douyindisc_updateValue { self.douyindisc_value.text = [NSString stringWithFormat:@"%d%%", (int)lrintf(self.douyindisc_slider.value*100)]; }
-- (void)douyindisc_updateSizeValue { self.douyindisc_sizeValue.text = [NSString stringWithFormat:@"%d%%", (int)lrintf(self.douyindisc_sizeSlider.value*100)]; }
-- (void)douyindisc_sizeSliderChanged {
-    [self douyindisc_updateSizeValue];
-    if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_sizeSlider.value);
-}
-- (void)douyindisc_sizeSliderEnded { if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_sizeSlider.value); }
 - (void)douyindisc_setImagePickingEnabled:(BOOL)enabled { self.douyindisc_imageButton.enabled=enabled;self.douyindisc_filesButton.enabled=enabled; }
 - (void)douyindisc_setHasImage:(BOOL)hasImage {
-    NSString *title=hasImage?@"更换图标":@"选择图标";
+    NSString *title=hasImage?@"更换图标":@"照片";
     [self.douyindisc_imageButton setTitle:title forState:UIControlStateNormal];
     [self.douyindisc_imageButton setImage:[UIImage systemImageNamed:@"photo"] forState:UIControlStateNormal];
     self.douyindisc_imageButton.tintColor=douyindisc_color(@"#1557C0");
     self.douyindisc_imageButton.accessibilityLabel=title;
     self.douyindisc_clearButton.enabled=hasImage;
 }
-- (void)douyindisc_sliderChanged {
-    [self douyindisc_updateValue];
-    if(self.douyindisc_preview)self.douyindisc_preview(self,self.douyindisc_slider.value);
-}
-- (void)douyindisc_sliderEnded { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
-- (void)douyindisc_switchChanged { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
-- (void)douyindisc_photoTouchDown { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-down"); }
-- (void)douyindisc_photoTouchCancelled { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-cancel"); }
-- (void)douyindisc_filesTouchDown { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-down"); }
-- (void)douyindisc_filesTouchCancelled { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-cancel"); }
-- (void)douyindisc_photoTapped { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-up");if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
-- (void)douyindisc_filesTapped { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-up");if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
+- (void)douyindisc_inputAccessoryDone {if(self.douyindisc_value.isFirstResponder)[self.douyindisc_value resignFirstResponder];else [self.douyindisc_sizeValue resignFirstResponder];}
+- (void)douyindisc_changeOpacityByMinus {[self douyindisc_adjustOpacity:-1];}
+- (void)douyindisc_changeOpacityByPlus {[self douyindisc_adjustOpacity:1];}
+- (void)douyindisc_changeSizeByMinus {[self douyindisc_adjustSize:-1];}
+- (void)douyindisc_changeSizeByPlus {[self douyindisc_adjustSize:1];}
+- (void)douyindisc_editingOpacityInput {self.douyindisc_value.text=[self.douyindisc_value.text stringByReplacingOccurrencesOfString:@"%" withString:@""];}
+- (void)douyindisc_editingSizeInput {self.douyindisc_sizeValue.text=[self.douyindisc_sizeValue.text stringByReplacingOccurrencesOfString:@"%" withString:@""];}
+- (BOOL)douyindisc_validPercentText:(NSString *)text {NSString *trim=[text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];return trim.length>0&&[trim rangeOfCharacterFromSet:NSCharacterSet.decimalDigitCharacterSet.invertedSet].location==NSNotFound;}
+- (void)douyindisc_adjustOpacity:(NSInteger)delta {[self.douyindisc_value resignFirstResponder];NSInteger v=MAX(0,MIN(100,(NSInteger)lrint(self.douyindisc_opacity*100)+delta));self.douyindisc_opacity=v/100.0;self.douyindisc_value.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_preview)self.douyindisc_preview(self,self.douyindisc_opacity);if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
+- (void)douyindisc_adjustSize:(NSInteger)delta {[self.douyindisc_sizeValue resignFirstResponder];NSInteger v=MAX(50,MIN(150,(NSInteger)lrint(self.douyindisc_scale*100)+delta));self.douyindisc_scale=v/100.0;self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_scale);if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_scale);}
+- (void)douyindisc_commitOpacityInput {NSString *raw=[self.douyindisc_value.text stringByReplacingOccurrencesOfString:@"%" withString:@""];if(![self douyindisc_validPercentText:raw]){self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];return;}double parsed=raw.doubleValue;if(!isfinite(parsed)){self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];return;}NSInteger v=(NSInteger)lrint(MIN(100.0,MAX(0.0,parsed)));self.douyindisc_opacity=v/100.0;self.douyindisc_value.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_preview)self.douyindisc_preview(self,self.douyindisc_opacity);if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
+- (void)douyindisc_commitSizeInput {NSString *raw=[self.douyindisc_sizeValue.text stringByReplacingOccurrencesOfString:@"%" withString:@""];if(![self douyindisc_validPercentText:raw]){self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];return;}double parsed=raw.doubleValue;if(!isfinite(parsed)){self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];return;}NSInteger v=(NSInteger)lrint(MIN(150.0,MAX(50.0,parsed)));self.douyindisc_scale=v/100.0;self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_scale);if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_scale);}
+- (void)douyindisc_switchChanged {if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
+- (void)douyindisc_photoTapped { if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
+- (void)douyindisc_filesTapped { if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
 - (void)douyindisc_setEnabledAfterCommit:(BOOL)enabled { self.douyindisc_switch.on=enabled; [self douyindisc_setImagePickingEnabled:enabled]; }
 - (void)douyindisc_clearTapped { if (self.douyindisc_clear) self.douyindisc_clear(self); }
 @end
@@ -238,12 +234,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic) NSUInteger douyindisc_activePickGeneration;
 @property (nonatomic, strong) UIViewController *douyindisc_activePicker;
 @property (nonatomic, strong) NSObject<UIAdaptivePresentationControllerDelegate> *douyindisc_activeDismissProxy;
-@property (nonatomic, strong) NSMutableArray<NSDictionary *> *douyindisc_touchTraceEvents;
-@property (nonatomic, strong) UIButton *douyindisc_touchTraceButton;
-@property (nonatomic) BOOL douyindisc_touchTraceEnabled;
-@property (nonatomic) NSTimeInterval douyindisc_touchTraceStart;
-@property (nonatomic) NSTimeInterval douyindisc_touchTraceDeadline;
-@property (nonatomic, strong) NSTimer *douyindisc_touchTraceTimer;
 @property (nonatomic, strong) NSTimer *douyindisc_pickerMonitor;
 @property (nonatomic) BOOL douyindisc_pickerWasAttached;
 @property (nonatomic) BOOL douyindisc_pickerMonitorDismissRequested;
@@ -266,9 +256,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
-- (void)douyindisc_touchTraceToggle;
-- (void)douyindisc_touchTraceRecord:(NSString *)event row:(DouyinDiscNavigationRow *)row files:(BOOL)files;
-- (void)douyindisc_touchTraceExport;
 @end
 
 @implementation DouyinDiscSettingsViewController
@@ -299,13 +286,10 @@ static UIColor *douyindisc_color(NSString *hex) {
         [self.douyindisc_stack.bottomAnchor constraintEqualToAnchor:self.douyindisc_scrollView.contentLayoutGuide.bottomAnchor constant:-24],
         [self.douyindisc_stack.widthAnchor constraintEqualToAnchor:self.douyindisc_scrollView.frameLayoutGuide.widthAnchor constant:-32]
     ]];
-    UILabel *notice = [UILabel new]; notice.numberOfLines = 0; notice.font = [UIFont systemFontOfSize:13]; notice.textColor = UIColor.secondaryLabelColor;
-    notice.text = @"每项独立启用图标替换。未选择图片或关闭开关时保留抖音原文字。图片从照片或文件导入，保存于抖音沙盒。";
-    [self.douyindisc_stack addArrangedSubview:notice];
-    self.douyindisc_touchTraceButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_touchTraceButton.translatesAutoresizingMaskIntoConstraints=NO;
-    [self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];self.douyindisc_touchTraceButton.accessibilityIdentifier=@"douyindisc.touch-diagnostics";self.douyindisc_touchTraceButton.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
-    self.douyindisc_touchTraceButton.titleLabel.font=[UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];[self.douyindisc_touchTraceButton addTarget:self action:@selector(douyindisc_touchTraceToggle) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_stack addArrangedSubview:self.douyindisc_touchTraceButton];[self.douyindisc_touchTraceButton.heightAnchor constraintGreaterThanOrEqualToConstant:40].active=YES;
+    UIStackView *intro=[UIStackView new];intro.axis=UILayoutConstraintAxisVertical;intro.spacing=4;
+    UILabel *title=[UILabel new];title.text=@"首页导航图标";title.font=[UIFont systemFontOfSize:24 weight:UIFontWeightBold];
+    UILabel *notice=[UILabel new];notice.numberOfLines=0;notice.font=[UIFont systemFontOfSize:12];notice.textColor=UIColor.secondaryLabelColor;notice.text=@"自定义首页分类与底部导航。关闭开关或未选图时保留抖音原样。";
+    [intro addArrangedSubview:title];[intro addArrangedSubview:notice];[self.douyindisc_stack addArrangedSubview:intro];
     for (NSDictionary *item in douyindisc_navigationItems()) {
         NSString *group = [item[@"identifier"] hasPrefix:@"top_"] ? @"首页顶部分类" : @"底部导航";
         BOOL needsHeader = self.douyindisc_stack.arrangedSubviews.count == 1 ||
@@ -325,7 +309,7 @@ static UIColor *douyindisc_color(NSString *hex) {
         };
         row.douyindisc_change = ^(DouyinDiscNavigationRow *changed, BOOL enabled, CGFloat opacity) {
             NSDictionary *current=[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_entryForIdentifier:changed.douyindisc_identifier];NSError *error=nil;
-            if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:enabled opacity:opacity scale:[current[@"scale"] doubleValue] identifier:changed.douyindisc_identifier error:&error]){[changed douyindisc_setEnabledAfterCommit:[current[@"enabled"] boolValue]];[weakSelf douyindisc_showError:error];return;}
+            if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:enabled opacity:opacity scale:[current[@"scale"] doubleValue] identifier:changed.douyindisc_identifier error:&error]){changed.douyindisc_opacity=[current[@"opacity"] doubleValue];changed.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(changed.douyindisc_opacity*100)];[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearOpacityPreviewForIdentifier:changed.douyindisc_identifier];[changed douyindisc_setEnabledAfterCommit:[current[@"enabled"] boolValue]];[weakSelf douyindisc_showError:error];return;}
             [changed douyindisc_setEnabledAfterCommit:enabled];
             [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearOpacityPreviewForIdentifier:changed.douyindisc_identifier];
         };
@@ -334,11 +318,10 @@ static UIColor *douyindisc_color(NSString *hex) {
         };
         row.douyindisc_changeScale = ^(DouyinDiscNavigationRow *changed, CGFloat scale) {
             NSDictionary *entry=[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_entryForIdentifier:changed.douyindisc_identifier];NSError *error=nil;
-            if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:[entry[@"enabled"] boolValue] opacity:[entry[@"opacity"] doubleValue] scale:scale identifier:changed.douyindisc_identifier error:&error]){[weakSelf douyindisc_showError:error];return;}
+            if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:[entry[@"enabled"] boolValue] opacity:[entry[@"opacity"] doubleValue] scale:scale identifier:changed.douyindisc_identifier error:&error]){changed.douyindisc_scale=[entry[@"scale"] doubleValue];changed.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(changed.douyindisc_scale*100)];[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:changed.douyindisc_identifier];[weakSelf douyindisc_showError:error];return;}
             [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:changed.douyindisc_identifier];
         };
-        row.douyindisc_touchTrace=^(NSString *event){[weakSelf douyindisc_touchTraceRecord:event row:row files:[event hasPrefix:@"files-"]];};
-        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_touchTraceRecord:files?@"files-action":@"photo-action" row:selected files:files];[weakSelf douyindisc_presentPickerForRow:selected files:files]; };
+        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_presentPickerForRow:selected files:files]; };
         row.douyindisc_clear = ^(DouyinDiscNavigationRow *selected) {
             NSError *error = nil;
             if (![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearImageForIdentifier:selected.douyindisc_identifier error:&error]) { [weakSelf douyindisc_showError:error]; return; }
@@ -360,30 +343,6 @@ static UIColor *douyindisc_color(NSString *hex) {
     }];
 }
 
-- (void)douyindisc_touchTraceToggle {
-    if(self.douyindisc_touchTraceEnabled){[self douyindisc_touchTraceRecord:@"capture-stop" row:nil files:NO];[self douyindisc_touchTraceExport];return;}
-    if(self.douyindisc_touchTraceEvents.count){[self douyindisc_touchTraceExport];return;}
-    self.douyindisc_touchTraceEvents=[NSMutableArray array];self.douyindisc_touchTraceEnabled=YES;self.douyindisc_touchTraceStart=CACurrentMediaTime();self.douyindisc_touchTraceDeadline=self.douyindisc_touchTraceStart+20;
-    self.douyindisc_touchTraceButton.enabled=YES;[self.douyindisc_touchTraceButton setTitle:@"结束并导出" forState:UIControlStateNormal];[self douyindisc_touchTraceRecord:@"capture-start" row:nil files:NO];
-    __weak typeof(self) weakSelf=self;self.douyindisc_touchTraceTimer=[NSTimer timerWithTimeInterval:.25 repeats:YES block:^(NSTimer *timer){if(!weakSelf||!weakSelf.douyindisc_touchTraceEnabled){[timer invalidate];return;}if(CACurrentMediaTime()>=weakSelf.douyindisc_touchTraceDeadline){[weakSelf douyindisc_touchTraceRecord:@"capture-timeout" row:nil files:NO];weakSelf.douyindisc_touchTraceEnabled=NO;[weakSelf.douyindisc_touchTraceButton setTitle:@"导出诊断" forState:UIControlStateNormal];[weakSelf.douyindisc_touchTraceTimer invalidate];weakSelf.douyindisc_touchTraceTimer=nil;}}];[[NSRunLoop mainRunLoop] addTimer:self.douyindisc_touchTraceTimer forMode:NSRunLoopCommonModes];
-}
-- (void)douyindisc_touchTraceRecord:(NSString *)event row:(DouyinDiscNavigationRow *)row files:(BOOL)files {
-    if(!self.douyindisc_touchTraceEnabled||self.douyindisc_touchTraceEvents.count>=80)return;
-    NSMutableDictionary *entry=[@{@"t":@(CACurrentMediaTime()-self.douyindisc_touchTraceStart),@"event":event?:@"?",@"files":@(files)} mutableCopy];
-    if(row){entry[@"enabled"]=@((files?row.douyindisc_filesButton:row.douyindisc_imageButton).enabled);entry[@"rowInWindow"]=@(row.window!=nil);entry[@"imageAlpha"]=@(row.douyindisc_imageButton.alpha);entry[@"filesAlpha"]=@(row.douyindisc_filesButton.alpha);}
-    entry[@"presentedClass"]=NSStringFromClass(self.presentedViewController.class)?:@"none";entry[@"activePickerClass"]=NSStringFromClass(self.douyindisc_activePicker.class)?:@"none";entry[@"generation"]=@(self.douyindisc_activePickGeneration);entry[@"pickerGateBlocked"]=@(self.douyindisc_activePicker!=nil||self.presentedViewController!=nil||self.isBeingDismissed);
-    [self.douyindisc_touchTraceEvents addObject:entry];
-}
-- (void)douyindisc_touchTraceExport {
-    self.douyindisc_touchTraceEnabled=NO;[self.douyindisc_touchTraceTimer invalidate];self.douyindisc_touchTraceTimer=nil;
-    NSData *data=[NSJSONSerialization dataWithJSONObject:@{@"schema":@1,@"events":self.douyindisc_touchTraceEvents?:@[]} options:NSJSONWritingPrettyPrinted error:nil];if(!data){[self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];return;}
-    NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"DouyinDisc-button-trace.json"]];if(![data writeToURL:url atomically:YES]){[self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];return;}
-    [self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];UIActivityViewController *activity=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];if(activity.popoverPresentationController)activity.popoverPresentationController.sourceView=self.douyindisc_touchTraceButton;[self presentViewController:activity animated:YES completion:nil];
-}
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self douyindisc_touchTraceRecord:@"settings-appeared" row:nil files:NO];
-}
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     for (NSDictionary *item in douyindisc_navigationItems()) {
@@ -424,7 +383,7 @@ static UIColor *douyindisc_color(NSString *hex) {
         PHPickerConfiguration *config=[PHPickerConfiguration new];
         config.filter=[PHPickerFilter imagesFilter]; config.selectionLimit=1;
         PHPickerViewController *photos=[[PHPickerViewController alloc] initWithConfiguration:config];
-        photos.delegate=self; picker=photos;
+        photos.delegate=self; photos.isModalInPresentation=YES; picker=photos;
     }
     self.douyindisc_activePicker=picker;
     if([picker isKindOfClass:PHPickerViewController.class])[self douyindisc_installDismissProxyForPicker:picker];
@@ -610,36 +569,16 @@ static UIColor *douyindisc_color(NSString *hex) {
 
 #if defined(DOUYINDISC_UI_TEST)
 BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
-    NSDictionary *item=douyindisc_navigationItems().firstObject;
-    DouyinDiscNavigationRow *row=[[DouyinDiscNavigationRow alloc] initWithItem:item entry:@{@"enabled":@NO,@"opacity":@1} image:nil];row.frame=CGRectMake(0,0,390,198);[row setNeedsLayout];[row layoutIfNeeded];
-    BOOL opacityTitle=[row.douyindisc_opacityTitle.text isEqualToString:@"透明度"];
-    BOOL sizeTitle=[row.douyindisc_sizeTitle.text isEqualToString:@"图标大小"];
-    BOOL opacityAccess=[row.douyindisc_slider.accessibilityLabel isEqualToString:@"图标透明度"];
-    BOOL sizeAccess=[row.douyindisc_sizeSlider.accessibilityLabel isEqualToString:@"图标大小"];
-    BOOL opacityFrame=fabs(CGRectGetMinY(row.douyindisc_slider.frame)-CGRectGetMaxY(row.douyindisc_opacityTitle.frame))<1;
-    BOOL sizeFrame=fabs(CGRectGetMinY(row.douyindisc_sizeSlider.frame)-CGRectGetMaxY(row.douyindisc_sizeTitle.frame))<1;
-    BOOL sliderLabels=opacityTitle&&sizeTitle&&opacityAccess&&sizeAccess&&opacityFrame&&sizeFrame;
-    BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"选择图标"] && row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==nil && !row.douyindisc_imageButton.enabled;
-    [row douyindisc_setImagePickingEnabled:YES];
-    BOOL opened=row.douyindisc_imageButton.enabled;
-    __block NSInteger source=-1;
-    row.douyindisc_pick=^(DouyinDiscNavigationRow *selected,BOOL files){(void)selected;source=files?1:0;};
-    [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL photoDirect=source==0;
-    source=-1;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL filesDirect=source==1;
-    [row douyindisc_setEnabledAfterCommit:NO];source=-1;
-    [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL disabledBoth=source==-1&&!row.douyindisc_imageButton.enabled&&!row.douyindisc_filesButton.enabled;
-    __block CGFloat previewed=0,committed=0;
-    row.douyindisc_previewScale=^(DouyinDiscNavigationRow *changed,CGFloat scale){(void)changed;previewed=scale;};
-    row.douyindisc_changeScale=^(DouyinDiscNavigationRow *changed,CGFloat scale){(void)changed;committed=scale;};
-    row.douyindisc_sizeSlider.value=1.25;[row.douyindisc_sizeSlider sendActionsForControlEvents:UIControlEventValueChanged];
-    BOOL previewWorks=fabs(previewed-1.25)<.001;
-    [row.douyindisc_sizeSlider sendActionsForControlEvents:UIControlEventTouchUpInside];
-    BOOL saveWorks=fabs(committed-1.25)<.001;
-    row.douyindisc_thumbnail.image=image;
-    [row douyindisc_setHasImage:YES];
-    [row douyindisc_setEnabledAfterCommit:NO];
-    return sliderLabels&&photoDirect&&filesDirect&&disabledBoth&&row.bounds.size.height==198&&row.douyindisc_filesButton!=nil&&[row.douyindisc_filesButton.accessibilityLabel isEqualToString:@"从文件选择图标"]&&row.douyindisc_actions.arrangedSubviews.count==3&&noImage && opened && previewWorks && saveWorks && [[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"] &&
-        row.douyindisc_imageButton.currentImage!=nil && row.douyindisc_thumbnail.image==image && !row.douyindisc_imageButton.enabled && row.douyindisc_clearButton.enabled && row.douyindisc_actions.spacing<=4 && row.douyindisc_imageButton.bounds.size.width==92 && fabs(row.douyindisc_sizeSlider.minimumValue-.5)<.001 && fabs(row.douyindisc_sizeSlider.maximumValue-1.5)<.001 && fabs(row.douyindisc_sizeSlider.value-1.25)<.001;
+ NSDictionary *item=douyindisc_navigationItems().firstObject;DouyinDiscNavigationRow *row=[[DouyinDiscNavigationRow alloc]initWithItem:item entry:@{@"enabled":@NO,@"opacity":@.99,@"scale":@.89} image:nil];row.frame=CGRectMake(0,0,390,198);[row setNeedsLayout];[row layoutIfNeeded];
+ BOOL labels=[row.douyindisc_opacityTitle.text isEqualToString:@"透明度"]&&[row.douyindisc_sizeTitle.text isEqualToString:@"图标大小"];
+ BOOL controls=[row.douyindisc_value isKindOfClass:UITextField.class]&&[row.douyindisc_sizeValue isKindOfClass:UITextField.class]&&row.douyindisc_opacityMinus&&row.douyindisc_opacityPlus&&row.douyindisc_sizeMinus&&row.douyindisc_sizePlus;
+ BOOL rangeControls=row.douyindisc_value.keyboardType==UIKeyboardTypeNumberPad&&row.douyindisc_sizeValue.keyboardType==UIKeyboardTypeNumberPad;
+ __block CGFloat preview=-1,committed=-1;row.douyindisc_previewScale=^(DouyinDiscNavigationRow *r,CGFloat x){(void)r;preview=x;};row.douyindisc_changeScale=^(DouyinDiscNavigationRow *r,CGFloat x){(void)r;committed=x;};row.douyindisc_sizeValue.text=@"125";[row douyindisc_commitSizeInput];BOOL typed=fabs(preview-1.25)<.001&&fabs(committed-1.25)<.001&&[row.douyindisc_sizeValue.text isEqualToString:@"125%"];
+ [row.douyindisc_sizePlus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL plusTapped=fabs(row.douyindisc_scale-1.26)<.001;[row.douyindisc_sizeMinus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL minusTapped=fabs(row.douyindisc_scale-1.25)<.001;[row douyindisc_adjustSize:100];BOOL maxClamp=fabs(row.douyindisc_scale-1.5)<.001;[row.douyindisc_adjustSize:-200];BOOL minClamp=fabs(row.douyindisc_scale-.5)<.001;
+ __block CGFloat opacity=-1;row.douyindisc_change=^(DouyinDiscNavigationRow *r,BOOL on,CGFloat x){(void)r;(void)on;opacity=x;};row.douyindisc_value.text=@"120";[row douyindisc_commitOpacityInput];BOOL opacityClamp=fabs(opacity-1)<.001&&[row.douyindisc_value.text isEqualToString:@"100%"];
+ BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"照片"]&&row.douyindisc_imageButton.currentImage!=nil&&row.douyindisc_thumbnail.image==nil&&!row.douyindisc_imageButton.enabled;[row douyindisc_setImagePickingEnabled:YES];__block NSInteger source=-1;row.douyindisc_pick=^(DouyinDiscNavigationRow *r,BOOL files){(void)r;source=files?1:0;};[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL photo=source==0;source=-1;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL files=source==1;
+ row.douyindisc_thumbnail.image=image;[row douyindisc_setHasImage:YES];[row douyindisc_setEnabledAfterCommit:NO];
+ return labels&&controls&&rangeControls&&typed&&plusTapped&&minusTapped&&maxClamp&&minClamp&&opacityClamp&&noImage&&photo&&files&&row.bounds.size.height==198&&row.douyindisc_actions.arrangedSubviews.count==3&&row.douyindisc_clearButton.enabled&&row.douyindisc_imageButton.bounds.size.width==88;
 }
 
 extern void douyindisc_uiTestSetNavigationImage(NSString *, UIImage *, BOOL);
@@ -678,6 +617,7 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     NSData *beforeConfig=[NSData dataWithContentsOfFile:configPath];
     double brightness=douyindisc_uiTestWindowBrightness(window);
     __block BOOL completed=NO;
+    __block BOOL photoSwipeLocked=NO;
     __block NSInteger source=-1;
     __block NSUInteger generation=0;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
@@ -700,15 +640,18 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
             @"interactive":@(cancelled&&touches&&row.douyindisc_imageButton.enabled&&row.douyindisc_filesButton.enabled&&row.douyindisc_switch.enabled),
             @"brightness":@(brightness>0&&fabs(after-brightness)<3),
             @"photoDirect":@(photoDirect),@"fileDirect":@(fileDirect),
-            @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]])
+            @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]]),
+            @"photoSwipeLocked":@(photoSwipeLocked)
         } mutableCopy];
         panel.douyindisc_uiTestPickerPresented=nil;panel.douyindisc_uiTestPickerFinished=nil;panel.douyindisc_uiTestPickerReady=nil;
         window.rootViewController=previousRoot;[window makeKeyAndVisible];done([results copy]);
     };
     panel.douyindisc_uiTestPickerPresented=^(UIViewController *picker){
         if(![picker isKindOfClass:PHPickerViewController.class])return;
+        photoSwipeLocked=picker.isModalInPresentation;
         picker.presentationController.delegate=nil;
-        [picker dismissViewControllerAnimated:NO completion:nil];
+        id<PHPickerViewControllerDelegate> delegate=(id<PHPickerViewControllerDelegate>)picker.delegate;
+        [delegate picker:(PHPickerViewController *)picker didFinishPicking:@[]];
     };
     [panel.view layoutIfNeeded];
     [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];

@@ -74,7 +74,7 @@ static void douyindisc_navigationCases(UIWindow *window) {
     douyindisc_apply(textView);
     DD_CHECK(textLease.douyindisc_overlay.superview==nil && textView->_label.alpha==originalLabelAlpha && [textView->_label.text isEqualToString:@"首页"],"disabling image restores original label visibility and glyph content");
     [feed removeFromSuperview];
-    DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"slider labels, image selection title and preview remain independently visible");
+    DD_CHECK(douyindisc_uiTestPickerAppearanceStable(testIcon),"numeric steppers, typed percentages and picker cancel behavior remain available");
 
     UIImage *rootPlaceholder=[UIImage imageWithData:douyindisc_navCaseImage(UIColor.systemGrayColor)];
     douyindisc_rootPlaceholderFixture=rootPlaceholder;
@@ -144,10 +144,11 @@ static void douyindisc_navigationCases(UIWindow *window) {
 extern void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^done)(NSDictionary *));
 static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
     douyindisc_uiTestPickerCancellationInteractive(window, ^(NSDictionary *results) {
-        DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker dismissal without adaptive callback clears active state");
-        DD_CHECK([results[@"ticketRevoked"] boolValue], "photo picker down-swipe revokes the previous selection ticket");
+        DD_CHECK([results[@"swipeRecovery"] boolValue], "photo picker dismissal via system cancel clears active state");
+        DD_CHECK([results[@"photoSwipeLocked"] boolValue], "photo picker blocks interactive swipe dismissal");
+        DD_CHECK([results[@"ticketRevoked"] boolValue], "system photo cancel revokes the previous selection ticket");
         DD_CHECK([results[@"interactive"] boolValue], "photo file and switch controls all receive touch after picker dismissal");
-        DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after down-swipe");
+        DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after system photo cancel");
         DD_CHECK([results[@"photoDirect"] boolValue]&&[results[@"fileDirect"] boolValue], "independent photo and file buttons route directly to their own picker");
         DD_CHECK([results[@"unchanged"] boolValue], "picker cancellation leaves existing image and configuration intact");
         if(done)done();

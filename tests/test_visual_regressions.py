@@ -12,14 +12,7 @@ class VisualRegressionTests(unittest.TestCase):
         self.assertFalse((ROOT / 'Sources/DouyinDiscDiagnostics.inc').exists())
         for forbidden in ('douyindisc_diag_', 'DouyinDiscDiagnostics', 'visual-trace', '圆盘取证', '导出取证'):
             self.assertNotIn(forbidden, production)
-        panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text(encoding='utf-8')
-        if 'douyindisc_touchTraceToggle' in panel:
-            self.assertIn('douyindisc_touchTraceDeadline=self.douyindisc_touchTraceStart+20',panel)
-            self.assertIn('douyindisc_touchTraceEvents.count>=80',panel)
-            self.assertIn('douyindisc_touchTraceButton=[UIButton buttonWithType:UIButtonTypeSystem]',panel)
-            self.assertIn('[self.douyindisc_stack addArrangedSubview:self.douyindisc_touchTraceButton]',panel)
-            self.assertNotIn('navigationItem.rightBarButtonItem',panel)
-
+        self.assertNotIn('UIActivityViewController', production)
 
     def test_caption_allowlist_stays_exact_and_local(self):
         caption = (ROOT / 'Sources/DouyinDiscLocalCaption.inc').read_text()
