@@ -216,16 +216,14 @@ static UIColor *douyindisc_color(NSString *hex) {
 @implementation DouyinDiscPickerDismissProxy
 - (void)presentationControllerWillDismiss:(UIPresentationController *)pc {
     UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
-    if(owner)[owner douyindisc_debugRecord:@"adaptive-will-dismiss" extra:@{@"boundPickerClass":NSStringFromClass(picker.class)?:@"?",@"pickerIsPresented":@(owner.presentedViewController==picker)}];
-    id<UIViewControllerTransitionCoordinator> transition=pc.presentedViewController.transitionCoordinator;
-    if(transition){
-        __weak UIViewController *picker=self.picker;
-        __weak DouyinDiscSettingsViewController *owner=self.owner;
-        [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context){
-            if(context.isCancelled)[owner douyindisc_installDismissProxyForPicker:picker];
-        }];
-    }
     id<UIAdaptivePresentationControllerDelegate> next=self.next;
+    if(picker&&owner)[owner douyindisc_debugRecord:@"adaptive-will-dismiss" extra:@{@"boundPickerClass":NSStringFromClass(picker.class)?:@"?",@"pickerIsPresented":@(pc.presentedViewController==picker)}];
+    id<UIViewControllerTransitionCoordinator> transition=pc.presentedViewController.transitionCoordinator;
+    id<UIAdaptivePresentationControllerDelegate> next=self.next;
+    if(transition){
+        __weak UIViewController *picker=self.picker;__weak DouyinDiscSettingsViewController *weakOwner=self.owner;__weak typeof(self) weakProxy=self;
+        [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context){if(context.isCancelled){[weakOwner douyindisc_debugRecord:@"dismiss-transition-cancelled" extra:@{@"pickerClass":NSStringFromClass(picker.class)?:@"?"}];weakProxy.picker=picker;}else if(picker)[weakOwner douyindisc_debugRecord:@"dismiss-transition-completed" extra:@{@"pickerClass":NSStringFromClass(picker.class)?:@"?"}];}];
+    }
     if([next respondsToSelector:_cmd]&&next!=(id)self)[next presentationControllerWillDismiss:pc];
 }
 - (void)presentationControllerDidDismiss:(UIPresentationController *)pc {
@@ -372,6 +370,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_debugTapped {
     if(self.douyindisc_touchCaptureEnabled){[self douyindisc_debugRecord:@"capture-stop" extra:nil];[self douyindisc_debugExport];return;}
+    if(self.douyindisc_touchEvents.count){[self douyindisc_debugExport];return;}
     self.douyindisc_touchEvents=[NSMutableArray array];self.douyindisc_touchProbes=[NSMapTable weakToStrongObjectsMapTable];self.douyindisc_touchCaptureEnabled=YES;
     self.douyindisc_touchCaptureStart=CACurrentMediaTime();self.douyindisc_touchCaptureDeadline=self.douyindisc_touchCaptureStart+30;
     self.navigationItem.rightBarButtonItem.title=@"结束并导出";[self douyindisc_debugRecord:@"capture-start" extra:nil];[self douyindisc_debugInstallWindowProbes];
@@ -383,9 +382,6 @@ static UIColor *douyindisc_color(NSString *hex) {
     if(!self.douyindisc_touchEvents)self.douyindisc_touchEvents=[NSMutableArray array];
     if(self.douyindisc_touchEvents.count>=120)return;
     NSMutableDictionary *entry=[@{@"t":@(CACurrentMediaTime()-self.douyindisc_touchCaptureStart),@"event":event?:@"?"} mutableCopy];if(extra)[entry addEntriesFromDictionary:extra];[self.douyindisc_touchEvents addObject:entry];
-}
-- (NSString *)douyindisc_classChain:(UIView *)view {
-    NSMutableArray *names=[NSMutableArray array];NSUInteger depth=0;for(UIView *current=view;current&&depth++<5;current=current.superview)[names addObject:NSStringFromClass(current.class)?:@"?"];return [names componentsJoinedByString:@"<"];
 }
 - (void)douyindisc_debugInstallWindowProbes {
     if(!self.douyindisc_touchCaptureEnabled)return;
