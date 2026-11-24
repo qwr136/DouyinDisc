@@ -1,8 +1,12 @@
 # DouyinDisc · TrollFools
 
-## 3.80：照片下滑按钮触摸诊断版
+## 3.70.1：修复照片选择器下滑卡死
 
-照片选择器的交互式下滑关闭使用绑定到当前 picker 的关闭代理；转场完成回调校验取消/完成，并在取消时重绑代理。另在照片选择器展示期间运行主线程轻量窗口状态监测：仅当同一 picker 曾进入窗口、随后连续脱离且仍属于当前展示会话时才回收取消状态；有效导入票据保留。文件选择器及其他导航行为不改。设置根入口的首屏插入和原生右箭头沿用3.60实现。
+3.70 把系统 presentation controller 的 delegate 换成了自带代理，PHPicker 是远程视图服务，delegate 被顶掉后收不到自己的退场回调，模态交接停在半途：设置页的 `presentedViewController` 一直悬着，行内按钮和开关随之全部无响应。3.70.1 删除该代理，不再改写任何系统 delegate，也不再从定时器里强制 dismiss。
+
+改为被动观察：0.2 秒轮询只在 picker 不处于 presenting/dismissing 时读取 `presentingViewController` 与窗口归属，一旦 picker 已脱离宿主就回收会话并撤销空票据；只有连续 1 秒确认有 presentation 却完全没有窗口时才做一次无动画清理，清理后仍不恢复则直接放行状态。选择入口增加门禁 `douyindisc_canPresentPicker`，只有真正可见的模态才阻挡新一次选择，僵尸模态会被释放并允许重试。用户点击“完成”后走同一条路径，若此刻正在被手指下滑则不再二次 dismiss。
+
+UIKit 回归继续模拟“没有 adaptive 回调”的 picker 退场，检查两个素材按钮和开关可再次点击、票据撤销、配置不变；源码契约新增断言，禁止 `presentation.delegate=`、`presentationControllerWillDismiss:`、`presentationControllerDidDismiss` 和整块 `DouyinDiscPickerDismissProxy` 回到工程。真机上手势轨迹与遮挡层销毁仍需你实测。
 
 UIKit回归模拟没有adaptive回调的picker退出并检查两个素材按钮和开关可再次点击；它不模拟真实手指轨迹，也不能证明PhotosUI移除的遮挡层全部销毁。照片下滑暗屏仍必须由用户真机验收，不能把CI通过等同于真机通过。
 

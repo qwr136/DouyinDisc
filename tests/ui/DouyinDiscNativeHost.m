@@ -283,6 +283,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     UIImage *art = [UIImage imageWithData:[NSData dataWithBytes:douyindisc_artwork length:sizeof(douyindisc_artwork)]];
     DD_CHECK(art.CGImage != NULL, "embedded original PNG decodes");
     douyindisc_installNavigationHooks();
+    douyindisc_navigationCases(self.window);
     UIWindow *window = self.window;
     UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:window.bounds];
     scroll.contentSize = CGSizeMake(window.bounds.size.width, window.bounds.size.height*3);

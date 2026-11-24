@@ -35,7 +35,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, copy) void (^douyindisc_changeScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_previewScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_pick)(DouyinDiscNavigationRow *, BOOL);
-@property (nonatomic, copy) void (^douyindisc_touchTrace)(NSString *);
 @property (nonatomic, copy) void (^douyindisc_clear)(DouyinDiscNavigationRow *);
 - (void)douyindisc_sliderChanged;
 - (void)douyindisc_sizeSliderChanged;
@@ -89,18 +88,14 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_imageButton.imageView.contentMode=UIViewContentModeScaleAspectFit;
     self.douyindisc_imageButton.titleEdgeInsets=UIEdgeInsetsMake(0,6,0,0);
     self.douyindisc_imageButton.contentVerticalAlignment=UIControlContentVerticalAlignmentCenter;
-    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTouchCancelled) forControlEvents:UIControlEventTouchUpOutside|UIControlEventTouchCancel];
     self.douyindisc_filesButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_filesButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_filesButton setImage:[UIImage systemImageNamed:@"folder"] forState:UIControlStateNormal];
     self.douyindisc_filesButton.tintColor=douyindisc_color(@"#1557C0");
     self.douyindisc_filesButton.accessibilityLabel=@"从文件选择图标";
     self.douyindisc_filesButton.enabled=[entry[@"enabled"] boolValue];
     self.douyindisc_filesButton.accessibilityIdentifier=[@"douyindisc.files." stringByAppendingString:self.douyindisc_identifier];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTouchCancelled) forControlEvents:UIControlEventTouchUpOutside|UIControlEventTouchCancel];
     self.douyindisc_clearButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.douyindisc_clearButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_clearButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
     self.douyindisc_clearButton.accessibilityLabel=@"移除此项自定义图标"; self.douyindisc_clearButton.enabled=image!=nil;
@@ -186,72 +181,25 @@ static UIColor *douyindisc_color(NSString *hex) {
 }
 - (void)douyindisc_sliderEnded { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
 - (void)douyindisc_switchChanged { if (self.douyindisc_change) self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_slider.value); }
-- (void)douyindisc_photoTouchDown { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-down"); }
-- (void)douyindisc_photoTouchCancelled { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-cancel"); }
-- (void)douyindisc_filesTouchDown { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-down"); }
-- (void)douyindisc_filesTouchCancelled { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-cancel"); }
-- (void)douyindisc_photoTapped { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"photo-up");if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
-- (void)douyindisc_filesTapped { if(self.douyindisc_touchTrace)self.douyindisc_touchTrace(@"files-up");if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
+- (void)douyindisc_photoTapped { if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
+- (void)douyindisc_filesTapped { if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
 - (void)douyindisc_setEnabledAfterCommit:(BOOL)enabled { self.douyindisc_switch.on=enabled; [self douyindisc_setImagePickingEnabled:enabled]; }
 - (void)douyindisc_clearTapped { if (self.douyindisc_clear) self.douyindisc_clear(self); }
 @end
 
-@interface DouyinDiscSettingsViewController (DouyinDiscPickerDismissHandling)
-- (void)presentationControllerWillDismiss:(UIPresentationController *)presentationController;
-- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController;
-- (void)douyindisc_installDismissProxyForPicker:(UIViewController *)picker;
-- (void)douyindisc_finishAdaptiveDismissForPicker:(UIViewController *)picker;
-@end
-@interface DouyinDiscPickerDismissProxy : NSObject <UIAdaptivePresentationControllerDelegate>
-@property(nonatomic,strong) id<UIAdaptivePresentationControllerDelegate> next;
-@property(nonatomic,weak) DouyinDiscSettingsViewController *owner;
-@property(nonatomic,weak) UIViewController *picker;
-@end
-@implementation DouyinDiscPickerDismissProxy
-- (void)presentationControllerWillDismiss:(UIPresentationController *)pc {
-    id<UIViewControllerTransitionCoordinator> transition=pc.presentedViewController.transitionCoordinator;
-    if(transition){
-        __weak UIViewController *picker=self.picker;
-        __weak DouyinDiscSettingsViewController *owner=self.owner;
-        [transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context){
-            if(context.isCancelled)[owner douyindisc_installDismissProxyForPicker:picker];
-        }];
-    }
-    id<UIAdaptivePresentationControllerDelegate> next=self.next;
-    if([next respondsToSelector:_cmd]&&next!=(id)self)[next presentationControllerWillDismiss:pc];
-}
-- (void)presentationControllerDidDismiss:(UIPresentationController *)pc {
-    UIViewController *picker=self.picker;DouyinDiscSettingsViewController *owner=self.owner;
-    id<UIAdaptivePresentationControllerDelegate> next=self.next;
-    if(picker&&owner)[owner douyindisc_finishAdaptiveDismissForPicker:picker];
-    if([next respondsToSelector:_cmd]&&next!=(id)self)[next presentationControllerDidDismiss:pc];
-    self.next=nil;self.picker=nil;self.owner=nil;
-}
-- (BOOL)respondsToSelector:(SEL)selector{return [super respondsToSelector:selector]||[self.next respondsToSelector:selector];}
-- (id)forwardingTargetForSelector:(SEL)selector{return [self.next respondsToSelector:selector]?self.next:[super forwardingTargetForSelector:selector];}
-@end
-@interface DouyinDiscSettingsViewController () <PHPickerViewControllerDelegate, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate>
+@interface DouyinDiscSettingsViewController () <PHPickerViewControllerDelegate, UIDocumentPickerDelegate>
 @property (nonatomic, strong) UIScrollView *douyindisc_scrollView;
 @property (nonatomic, strong) UIStackView *douyindisc_stack;
 @property (nonatomic, weak) DouyinDiscNavigationRow *douyindisc_activeRow;
 @property (nonatomic, copy) NSString *douyindisc_activeIdentifier;
 @property (nonatomic) NSUInteger douyindisc_activePickGeneration;
 @property (nonatomic, strong) UIViewController *douyindisc_activePicker;
-@property (nonatomic, strong) NSObject<UIAdaptivePresentationControllerDelegate> *douyindisc_activeDismissProxy;
-@property (nonatomic, strong) NSMutableArray<NSDictionary *> *douyindisc_touchTraceEvents;
-@property (nonatomic, strong) UIButton *douyindisc_touchTraceButton;
-@property (nonatomic) BOOL douyindisc_touchTraceEnabled;
-@property (nonatomic) NSTimeInterval douyindisc_touchTraceStart;
-@property (nonatomic) NSTimeInterval douyindisc_touchTraceDeadline;
-@property (nonatomic, strong) NSTimer *douyindisc_touchTraceTimer;
-@property (nonatomic, strong) NSTimer *douyindisc_pickerMonitor;
-@property (nonatomic) BOOL douyindisc_pickerWasAttached;
-@property (nonatomic) BOOL douyindisc_pickerMonitorDismissRequested;
+@property (nonatomic, strong) NSTimer *douyindisc_pickerWatch;
+@property (nonatomic) NSUInteger douyindisc_pickerWatchTicks;
 @property (nonatomic) NSUInteger douyindisc_pickerDetachedSamples;
+@property (nonatomic) BOOL douyindisc_pickerDetachCleanupRequested;
 @property (nonatomic) BOOL douyindisc_pickerHasResult;
 @property (nonatomic) BOOL douyindisc_pickerHasProvider;
-@property (nonatomic) NSUInteger douyindisc_pickerRecoveryGeneration;
-@property (nonatomic) NSUInteger douyindisc_pickerRecoveryAttempts;
 #if defined(DOUYINDISC_UI_TEST)
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerFinished)(BOOL cancelled);
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerPresented)(UIViewController *picker);
@@ -260,25 +208,20 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files;
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket;
 - (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation;
+- (BOOL)douyindisc_canPresentPicker;
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion;
-- (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation;
-- (void)douyindisc_startPickerMonitor:(UIViewController *)picker generation:(NSUInteger)generation;
-- (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
+- (void)douyindisc_startPickerWatch:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
-- (void)douyindisc_touchTraceToggle;
-- (void)douyindisc_touchTraceRecord:(NSString *)event row:(DouyinDiscNavigationRow *)row files:(BOOL)files;
-- (void)douyindisc_touchTraceExport;
 @end
 
 @implementation DouyinDiscSettingsViewController
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     UIViewController *picker=self.douyindisc_activePicker;
-    if(picker){
-        if(!self.presentedViewController&&!picker.isBeingPresented&&!picker.isBeingDismissed&&(!picker.isViewLoaded||!picker.view.window)){BOOL hasProvider=self.douyindisc_pickerHasProvider;[self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];}
-        else [self douyindisc_schedulePickerRecovery:picker generation:self.douyindisc_activePickGeneration];
-    }
+    if(!picker||picker.isBeingPresented||picker.isBeingDismissed)return;
+    if(self.presentedViewController==picker){[self douyindisc_startPickerWatch:picker generation:self.douyindisc_activePickGeneration];return;}
+    [self douyindisc_finishPickerUI:picker cancelled:!self.douyindisc_pickerHasProvider keepImportTicket:self.douyindisc_pickerHasProvider];
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -302,10 +245,6 @@ static UIColor *douyindisc_color(NSString *hex) {
     UILabel *notice = [UILabel new]; notice.numberOfLines = 0; notice.font = [UIFont systemFontOfSize:13]; notice.textColor = UIColor.secondaryLabelColor;
     notice.text = @"每项独立启用图标替换。未选择图片或关闭开关时保留抖音原文字。图片从照片或文件导入，保存于抖音沙盒。";
     [self.douyindisc_stack addArrangedSubview:notice];
-    self.douyindisc_touchTraceButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_touchTraceButton.translatesAutoresizingMaskIntoConstraints=NO;
-    [self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];self.douyindisc_touchTraceButton.accessibilityIdentifier=@"douyindisc.touch-diagnostics";self.douyindisc_touchTraceButton.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
-    self.douyindisc_touchTraceButton.titleLabel.font=[UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];[self.douyindisc_touchTraceButton addTarget:self action:@selector(douyindisc_touchTraceToggle) forControlEvents:UIControlEventTouchUpInside];
-    [self.douyindisc_stack addArrangedSubview:self.douyindisc_touchTraceButton];[self.douyindisc_touchTraceButton.heightAnchor constraintGreaterThanOrEqualToConstant:40].active=YES;
     for (NSDictionary *item in douyindisc_navigationItems()) {
         NSString *group = [item[@"identifier"] hasPrefix:@"top_"] ? @"首页顶部分类" : @"底部导航";
         BOOL needsHeader = self.douyindisc_stack.arrangedSubviews.count == 1 ||
@@ -337,8 +276,7 @@ static UIColor *douyindisc_color(NSString *hex) {
             if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:[entry[@"enabled"] boolValue] opacity:[entry[@"opacity"] doubleValue] scale:scale identifier:changed.douyindisc_identifier error:&error]){[weakSelf douyindisc_showError:error];return;}
             [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:changed.douyindisc_identifier];
         };
-        row.douyindisc_touchTrace=^(NSString *event){[weakSelf douyindisc_touchTraceRecord:event row:row files:[event hasPrefix:@"files-"]];};
-        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_touchTraceRecord:files?@"files-action":@"photo-action" row:selected files:files];[weakSelf douyindisc_presentPickerForRow:selected files:files]; };
+        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_presentPickerForRow:selected files:files]; };
         row.douyindisc_clear = ^(DouyinDiscNavigationRow *selected) {
             NSError *error = nil;
             if (![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearImageForIdentifier:selected.douyindisc_identifier error:&error]) { [weakSelf douyindisc_showError:error]; return; }
@@ -360,30 +298,6 @@ static UIColor *douyindisc_color(NSString *hex) {
     }];
 }
 
-- (void)douyindisc_touchTraceToggle {
-    if(self.douyindisc_touchTraceEnabled){[self douyindisc_touchTraceRecord:@"capture-stop" row:nil files:NO];[self douyindisc_touchTraceExport];return;}
-    if(self.douyindisc_touchTraceEvents.count){[self douyindisc_touchTraceExport];return;}
-    self.douyindisc_touchTraceEvents=[NSMutableArray array];self.douyindisc_touchTraceEnabled=YES;self.douyindisc_touchTraceStart=CACurrentMediaTime();self.douyindisc_touchTraceDeadline=self.douyindisc_touchTraceStart+20;
-    self.douyindisc_touchTraceButton.enabled=YES;[self.douyindisc_touchTraceButton setTitle:@"结束并导出" forState:UIControlStateNormal];[self douyindisc_touchTraceRecord:@"capture-start" row:nil files:NO];
-    __weak typeof(self) weakSelf=self;self.douyindisc_touchTraceTimer=[NSTimer timerWithTimeInterval:.25 repeats:YES block:^(NSTimer *timer){if(!weakSelf||!weakSelf.douyindisc_touchTraceEnabled){[timer invalidate];return;}if(CACurrentMediaTime()>=weakSelf.douyindisc_touchTraceDeadline){[weakSelf douyindisc_touchTraceRecord:@"capture-timeout" row:nil files:NO];weakSelf.douyindisc_touchTraceEnabled=NO;[weakSelf.douyindisc_touchTraceButton setTitle:@"导出诊断" forState:UIControlStateNormal];[weakSelf.douyindisc_touchTraceTimer invalidate];weakSelf.douyindisc_touchTraceTimer=nil;}}];[[NSRunLoop mainRunLoop] addTimer:self.douyindisc_touchTraceTimer forMode:NSRunLoopCommonModes];
-}
-- (void)douyindisc_touchTraceRecord:(NSString *)event row:(DouyinDiscNavigationRow *)row files:(BOOL)files {
-    if(!self.douyindisc_touchTraceEnabled||self.douyindisc_touchTraceEvents.count>=80)return;
-    NSMutableDictionary *entry=[@{@"t":@(CACurrentMediaTime()-self.douyindisc_touchTraceStart),@"event":event?:@"?",@"files":@(files)} mutableCopy];
-    if(row){entry[@"enabled"]=@((files?row.douyindisc_filesButton:row.douyindisc_imageButton).enabled);entry[@"rowInWindow"]=@(row.window!=nil);entry[@"imageAlpha"]=@(row.douyindisc_imageButton.alpha);entry[@"filesAlpha"]=@(row.douyindisc_filesButton.alpha);}
-    entry[@"presentedClass"]=NSStringFromClass(self.presentedViewController.class)?:@"none";entry[@"activePickerClass"]=NSStringFromClass(self.douyindisc_activePicker.class)?:@"none";entry[@"generation"]=@(self.douyindisc_activePickGeneration);entry[@"pickerGateBlocked"]=@(self.douyindisc_activePicker!=nil||self.presentedViewController!=nil||self.isBeingDismissed);
-    [self.douyindisc_touchTraceEvents addObject:entry];
-}
-- (void)douyindisc_touchTraceExport {
-    self.douyindisc_touchTraceEnabled=NO;[self.douyindisc_touchTraceTimer invalidate];self.douyindisc_touchTraceTimer=nil;
-    NSData *data=[NSJSONSerialization dataWithJSONObject:@{@"schema":@1,@"events":self.douyindisc_touchTraceEvents?:@[]} options:NSJSONWritingPrettyPrinted error:nil];if(!data){[self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];return;}
-    NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"DouyinDisc-button-trace.json"]];if(![data writeToURL:url atomically:YES]){[self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];return;}
-    [self.douyindisc_touchTraceButton setTitle:@"开始诊断" forState:UIControlStateNormal];UIActivityViewController *activity=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];if(activity.popoverPresentationController)activity.popoverPresentationController.sourceView=self.douyindisc_touchTraceButton;[self presentViewController:activity animated:YES completion:nil];
-}
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self douyindisc_touchTraceRecord:@"settings-appeared" row:nil files:NO];
-}
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     for (NSDictionary *item in douyindisc_navigationItems()) {
@@ -396,16 +310,26 @@ static UIColor *douyindisc_color(NSString *hex) {
     [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
-- (void)douyindisc_installDismissProxyForPicker:(UIViewController *)picker {
-    if (!picker || self.douyindisc_activePicker != picker) return;
-    UIPresentationController *presentation=picker.presentationController;if(!presentation)return;
-    DouyinDiscPickerDismissProxy *proxy=[self.douyindisc_activeDismissProxy isKindOfClass:DouyinDiscPickerDismissProxy.class]?(DouyinDiscPickerDismissProxy *)self.douyindisc_activeDismissProxy:[DouyinDiscPickerDismissProxy new];
-    id<UIAdaptivePresentationControllerDelegate> current=presentation.delegate;
-    if(current!=(id)proxy)proxy.next=current;
-    proxy.owner=self;proxy.picker=picker;self.douyindisc_activeDismissProxy=proxy;presentation.delegate=proxy;
+- (BOOL)douyindisc_canPresentPicker {
+    if(!NSThread.isMainThread||!self.view.window||self.isBeingDismissed)return NO;
+    UIViewController *presented=self.presentedViewController;
+    if(presented){
+        if(presented.isBeingPresented||presented.isBeingDismissed)return NO;
+        if(presented.viewIfLoaded.window)return NO;
+        NSLog(@"[DouyinDisc] picker presentation left no window; releasing it");
+        [presented dismissViewControllerAnimated:NO completion:nil];
+        return NO;
+    }
+    UIViewController *active=self.douyindisc_activePicker;
+    if(active){
+        if(active.isBeingPresented||active.isBeingDismissed)return NO;
+        if(active.viewIfLoaded.window)return NO;
+        [self douyindisc_finishPickerUI:active cancelled:!self.douyindisc_pickerHasProvider keepImportTicket:self.douyindisc_pickerHasProvider];
+    }
+    return YES;
 }
 - (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files {
-    if (!NSThread.isMainThread || !self.view.window || self.presentedViewController || self.douyindisc_activePicker || self.isBeingDismissed) return;
+    if (![self douyindisc_canPresentPicker]) return;
     DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
     if (self.douyindisc_activePickGeneration)
         [store douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
@@ -427,14 +351,9 @@ static UIColor *douyindisc_color(NSString *hex) {
         photos.delegate=self; picker=photos;
     }
     self.douyindisc_activePicker=picker;
-    if([picker isKindOfClass:PHPickerViewController.class])[self douyindisc_installDismissProxyForPicker:picker];
     __weak typeof(self) weakSelf=self;
     [self presentViewController:picker animated:YES completion:^{
-        if(weakSelf.douyindisc_activePicker==picker){
-            if([picker isKindOfClass:PHPickerViewController.class])[weakSelf douyindisc_installDismissProxyForPicker:picker];
-            [weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
-            if([picker isKindOfClass:PHPickerViewController.class])[weakSelf douyindisc_startPickerMonitor:picker generation:weakSelf.douyindisc_activePickGeneration];
-        }
+        if(weakSelf.douyindisc_activePicker==picker)[weakSelf douyindisc_startPickerWatch:picker generation:weakSelf.douyindisc_activePickGeneration];
 #if defined(DOUYINDISC_UI_TEST)
         if(weakSelf.douyindisc_uiTestPickerPresented)weakSelf.douyindisc_uiTestPickerPresented(picker);
 #endif
@@ -443,9 +362,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket {
     if (!picker || self.douyindisc_activePicker!=picker) return;
     if (cancelled && !keepImportTicket) [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_finishImagePickingForIdentifier:self.douyindisc_activeIdentifier generation:self.douyindisc_activePickGeneration];
-    [self.douyindisc_pickerMonitor invalidate];self.douyindisc_pickerMonitor=nil;self.douyindisc_pickerWasAttached=NO;self.douyindisc_pickerMonitorDismissRequested=NO;self.douyindisc_pickerDetachedSamples=0;
+    [self.douyindisc_pickerWatch invalidate];self.douyindisc_pickerWatch=nil;self.douyindisc_pickerWatchTicks=0;self.douyindisc_pickerDetachedSamples=0;self.douyindisc_pickerDetachCleanupRequested=NO;
     self.douyindisc_activePicker=nil;
-    self.douyindisc_activeDismissProxy=nil;
     self.douyindisc_activeRow=nil;
     self.douyindisc_activeIdentifier=nil;
     self.douyindisc_activePickGeneration=0;
@@ -463,70 +381,32 @@ static UIColor *douyindisc_color(NSString *hex) {
     }
 }
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion {
+    if (!picker || self.douyindisc_activePicker!=picker) return;
     if (!picker.presentingViewController) { if (completion) completion(); return; }
-    id<UIViewControllerTransitionCoordinator> transition=picker.transitionCoordinator;
-    if (picker.isBeingDismissed && transition) {
-        __weak typeof(self) weakSelf=self;
-        BOOL registered=[transition animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-            if (context.isCancelled) {
-                if (weakSelf.douyindisc_activePicker==picker) {
-                    weakSelf.douyindisc_pickerHasResult=NO;
-                    weakSelf.douyindisc_pickerHasProvider=NO;
-                    [weakSelf douyindisc_schedulePickerRecovery:picker generation:weakSelf.douyindisc_activePickGeneration];
-                }
-            } else if (completion) completion();
-        }];
-        if (registered) return;
-    }
+    if (picker.isBeingDismissed) return;
     [picker dismissViewControllerAnimated:YES completion:completion];
 }
-- (void)douyindisc_startPickerMonitor:(UIViewController *)picker generation:(NSUInteger)generation {
-    if(!NSThread.isMainThread||!picker||self.douyindisc_activePicker!=picker||self.douyindisc_activePickGeneration!=generation)return;
-    [self.douyindisc_pickerMonitor invalidate];self.douyindisc_pickerDetachedSamples=0;self.douyindisc_pickerWasAttached=picker.viewIfLoaded.window!=nil;
+- (void)douyindisc_startPickerWatch:(UIViewController *)picker generation:(NSUInteger)generation {
+    if(!NSThread.isMainThread||!picker||!generation||self.douyindisc_activePicker!=picker||self.douyindisc_activePickGeneration!=generation)return;
+    [self.douyindisc_pickerWatch invalidate];self.douyindisc_pickerWatchTicks=0;self.douyindisc_pickerDetachedSamples=0;self.douyindisc_pickerDetachCleanupRequested=NO;
     __weak typeof(self) weakSelf=self;__weak UIViewController *weakPicker=picker;
-    NSTimer *monitor=[NSTimer timerWithTimeInterval:.2 repeats:YES block:^(NSTimer *timer){
+    NSTimer *watch=[NSTimer timerWithTimeInterval:.2 repeats:YES block:^(NSTimer *timer){
         DouyinDiscSettingsViewController *owner=weakSelf;UIViewController *active=weakPicker;
         if(!owner||!active||owner.douyindisc_activePicker!=active||owner.douyindisc_activePickGeneration!=generation){[timer invalidate];return;}
         if(UIApplication.sharedApplication.applicationState!=UIApplicationStateActive)return;
-        if(active.isBeingPresented||active.isBeingDismissed||owner.douyindisc_pickerMonitorDismissRequested)return;
-        BOOL attached=active.viewIfLoaded.window!=nil;
-        if(attached){owner.douyindisc_pickerWasAttached=YES;owner.douyindisc_pickerDetachedSamples=0;return;}
-        if(!owner.douyindisc_pickerWasAttached)return;
-        if(++owner.douyindisc_pickerDetachedSamples<3)return;
-        BOOL hasProvider=owner.douyindisc_pickerHasProvider;
-        if(owner.presentedViewController==active&&active.presentingViewController){owner.douyindisc_pickerMonitorDismissRequested=YES;[active dismissViewControllerAnimated:NO completion:^{[weakSelf douyindisc_finishPickerUI:active cancelled:!hasProvider keepImportTicket:hasProvider];}];}
-        else if(owner.presentedViewController!=active||!active.presentingViewController){[owner douyindisc_finishPickerUI:active cancelled:!hasProvider keepImportTicket:hasProvider];}
+        if(active.isBeingPresented||active.isBeingDismissed)return;
+        UIViewController *presented=owner.presentedViewController;
+        if(presented==active){
+            owner.douyindisc_pickerWatchTicks=0;
+            if(active.viewIfLoaded.window!=nil){owner.douyindisc_pickerDetachedSamples=0;return;}
+            if(++owner.douyindisc_pickerDetachedSamples<5)return;
+            if(!owner.douyindisc_pickerDetachCleanupRequested){owner.douyindisc_pickerDetachCleanupRequested=YES;NSLog(@"[DouyinDisc] picker sheet lost its window; releasing");[active dismissViewControllerAnimated:NO completion:nil];return;}
+            [owner douyindisc_finishPickerUI:active cancelled:!owner.douyindisc_pickerHasProvider keepImportTicket:owner.douyindisc_pickerHasProvider];return;
+        }
+        if(active.presentingViewController==nil){[owner douyindisc_finishPickerUI:active cancelled:!owner.douyindisc_pickerHasProvider keepImportTicket:owner.douyindisc_pickerHasProvider];return;}
+        if(++owner.douyindisc_pickerWatchTicks>=25&&!presented)[owner douyindisc_finishPickerUI:active cancelled:!owner.douyindisc_pickerHasProvider keepImportTicket:owner.douyindisc_pickerHasProvider];
     }];
-    self.douyindisc_pickerMonitor=monitor;[[NSRunLoop mainRunLoop] addTimer:monitor forMode:NSRunLoopCommonModes];
-}
-- (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery {
-    if(self.douyindisc_pickerRecoveryGeneration!=recovery||self.douyindisc_activePicker!=picker||self.douyindisc_activePickGeneration!=generation)return;
-    if(UIApplication.sharedApplication.applicationState!=UIApplicationStateActive)return;
-    UIViewController *presented=self.presentedViewController;
-    BOOL transitional=picker.isBeingPresented||picker.isBeingDismissed||(presented&&presented!=picker);
-    if(transitional){
-        if(++self.douyindisc_pickerRecoveryAttempts<=5){__weak typeof(self) weakSelf=self;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.2*NSEC_PER_SEC)),dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});}
-        return;
-    }
-    if(presented==picker&&picker.isViewLoaded&&picker.view.window){self.douyindisc_pickerDetachedSamples=0;return;}
-    if(presented==picker&&++self.douyindisc_pickerDetachedSamples<3){__weak typeof(self) weakSelf=self;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.2*NSEC_PER_SEC)),dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});return;}
-    BOOL hasProvider=self.douyindisc_pickerHasProvider;__weak typeof(self) weakSelf=self;
-    if(presented==picker){[picker dismissViewControllerAnimated:NO completion:^{[weakSelf douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];}];return;}
-    if(!presented&&!picker.presentingViewController)[self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
-}
-- (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation {
-    if(!NSThread.isMainThread||!picker||self.douyindisc_activePicker!=picker||!generation||self.douyindisc_activePickGeneration!=generation)return;
-    NSUInteger recovery=++self.douyindisc_pickerRecoveryGeneration;self.douyindisc_pickerRecoveryAttempts=0;self.douyindisc_pickerDetachedSamples=0;__weak typeof(self) weakSelf=self;
-    dispatch_async(dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});
-}
-- (void)douyindisc_finishAdaptiveDismissForPicker:(UIViewController *)picker {
-    if(!picker||self.douyindisc_activePicker!=picker)return;
-    BOOL hasProvider=self.douyindisc_pickerHasProvider;
-    [self douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
-}
-- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController {
-    UIViewController *picker=presentationController.presentedViewController;
-    [self douyindisc_finishAdaptiveDismissForPicker:picker];
+    self.douyindisc_pickerWatch=watch;[[NSRunLoop mainRunLoop] addTimer:watch forMode:NSRunLoopCommonModes];
 }
 - (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError {
     if(index>=types.count){
