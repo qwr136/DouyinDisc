@@ -574,11 +574,11 @@ BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
  BOOL controls=[row.douyindisc_value isKindOfClass:UITextField.class]&&[row.douyindisc_sizeValue isKindOfClass:UITextField.class]&&row.douyindisc_opacityMinus&&row.douyindisc_opacityPlus&&row.douyindisc_sizeMinus&&row.douyindisc_sizePlus;
  BOOL rangeControls=row.douyindisc_value.keyboardType==UIKeyboardTypeNumberPad&&row.douyindisc_sizeValue.keyboardType==UIKeyboardTypeNumberPad&&fabs(CGRectGetHeight(row.douyindisc_value.frame)-30)<1&&fabs(CGRectGetHeight(row.douyindisc_sizeValue.frame)-30)<1&&fabs(CGRectGetMidY(row.douyindisc_sizeValue.frame)-CGRectGetMidY(row.douyindisc_sizeMinus.frame))<1;
  __block CGFloat preview=-1,committed=-1;row.douyindisc_previewScale=^(DouyinDiscNavigationRow *r,CGFloat x){(void)r;preview=x;};row.douyindisc_changeScale=^(DouyinDiscNavigationRow *r,CGFloat x){(void)r;committed=x;};row.douyindisc_sizeValue.text=@"125";[row douyindisc_commitSizeInput];BOOL typed=fabs(preview-1.25)<.001&&fabs(committed-1.25)<.001&&[row.douyindisc_sizeValue.text isEqualToString:@"125%"];
- [row.douyindisc_sizePlus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL plusTapped=fabs(row.douyindisc_scale-1.26)<.001;[row.douyindisc_sizeMinus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL minusTapped=fabs(row.douyindisc_scale-1.25)<.001;[row douyindisc_adjustSize:100];BOOL maxClamp=fabs(row.douyindisc_scale-1.5)<.001;[row.douyindisc_adjustSize:-200];BOOL minClamp=fabs(row.douyindisc_scale-.5)<.001;
+ [row.douyindisc_sizePlus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL plusTapped=fabs(row.douyindisc_scale-1.26)<.001;[row.douyindisc_sizeMinus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL minusTapped=fabs(row.douyindisc_scale-1.25)<.001;row.douyindisc_sizeValue.text=@"999";[row douyindisc_commitSizeInput];BOOL maxClamp=fabs(row.douyindisc_scale-1.5)<.001;row.douyindisc_sizeValue.text=@"1";[row douyindisc_commitSizeInput];BOOL minClamp=fabs(row.douyindisc_scale-.5)<.001;
  __block CGFloat opacity=-1;row.douyindisc_change=^(DouyinDiscNavigationRow *r,BOOL on,CGFloat x){(void)r;(void)on;opacity=x;};row.douyindisc_value.text=@"120";[row douyindisc_commitOpacityInput];BOOL opacityClamp=fabs(opacity-1)<.001&&[row.douyindisc_value.text isEqualToString:@"100%"];
  BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"照片"]&&row.douyindisc_imageButton.currentImage!=nil&&row.douyindisc_thumbnail.image==nil&&!row.douyindisc_imageButton.enabled;[row douyindisc_setImagePickingEnabled:YES];__block NSInteger source=-1;row.douyindisc_pick=^(DouyinDiscNavigationRow *r,BOOL files){(void)r;source=files?1:0;};[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL photo=source==0;source=-1;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL files=source==1;
  row.douyindisc_thumbnail.image=image;[row douyindisc_setHasImage:YES];[row douyindisc_setEnabledAfterCommit:NO];
- return labels&&controls&&rangeControls&&typed&&plusTapped&&minusTapped&&maxClamp&&minClamp&&opacityClamp&&noImage&&photo&&files&&row.bounds.size.height==198&&row.douyindisc_actions.arrangedSubviews.count==3&&row.douyindisc_clearButton.enabled&&row.douyindisc_imageButton.bounds.size.width==88;
+ return labels&&controls&&rangeControls&&typed&&plusTapped&&minusTapped&&maxClamp&&minClamp&&minClamp&&opacityClamp&&noImage&&photo&&files&&row.bounds.size.height==198&&row.douyindisc_actions.arrangedSubviews.count==3&&row.douyindisc_clearButton.enabled&&row.douyindisc_imageButton.bounds.size.width==88;
 }
 
 extern void douyindisc_uiTestSetNavigationImage(NSString *, UIImage *, BOOL);
@@ -650,8 +650,9 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         if(![picker isKindOfClass:PHPickerViewController.class])return;
         photoSwipeLocked=picker.isModalInPresentation;
         picker.presentationController.delegate=nil;
-        id<PHPickerViewControllerDelegate> delegate=(id<PHPickerViewControllerDelegate>)picker.delegate;
-        [delegate picker:(PHPickerViewController *)picker didFinishPicking:@[]];
+        PHPickerViewController *photoPicker=(PHPickerViewController *)picker;
+        id<PHPickerViewControllerDelegate> delegate=photoPicker.delegate;
+        [delegate picker:photoPicker didFinishPicking:@[]];
     };
     [panel.view layoutIfNeeded];
     [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
