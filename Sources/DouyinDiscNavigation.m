@@ -205,7 +205,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 @end
 @implementation DouyinDiscPickerDismissProxy
 - (BOOL)presentationControllerShouldDismiss:(UIPresentationController *)pc {
-    if(pc.presentedViewController==self.picker)return NO;
+    (void)pc;
+    if(self.picker&&self.owner)return NO;
     id<UIAdaptivePresentationControllerDelegate> next=self.next;
     return [next respondsToSelector:_cmd]?[next presentationControllerShouldDismiss:pc]:YES;
 }
