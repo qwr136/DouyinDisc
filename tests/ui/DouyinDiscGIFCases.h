@@ -60,9 +60,14 @@ static void douyindisc_gifCases(UIWindow *window,dispatch_block_t done) {
                 [store douyindisc_saveImageData:invalid identifier:identifier pickingGeneration:ticket completion:^(NSError *badError){
                     DD_CHECK_NS(badError!=nil&&[store douyindisc_imageForIdentifier:identifier]==first,@"malformed GIF keeps previous icon untouched");
                 [store douyindisc_clearImageForIdentifier:identifier error:nil];
-                BOOL cleared=![store douyindisc_entryForIdentifier:identifier][@"hasImage"] && [store douyindisc_animationForIdentifier:identifier]==nil;
+                BOOL clearedReference=![[store douyindisc_entryForIdentifier:identifier][@"hasImage"] boolValue];
+                BOOL clearedAnimation=[store douyindisc_animationForIdentifier:identifier]==nil;
+                BOOL removedSidecar=![NSFileManager.defaultManager fileExistsAtPath:gifURL.path];
                 [store douyindisc_saveEnabled:NO opacity:1 scale:1 identifier:identifier error:nil];douyindisc_apply(inner);[button removeFromSuperview];
-                DD_CHECK_NS(cleared&&![NSFileManager.defaultManager fileExistsAtPath:gifURL.path],@"clearing icon deletes paired GIF and releases decoded frames");if(done)done();
+                DD_CHECK_NS(clearedReference,@"clearing GIF icon clears the stored image reference");
+                DD_CHECK_NS(clearedAnimation,@"clearing GIF icon releases decoded frames");
+                DD_CHECK_NS(removedSidecar,@"clearing GIF icon removes its paired resource");
+                if(done)done();
                 }];
             });
         }];
