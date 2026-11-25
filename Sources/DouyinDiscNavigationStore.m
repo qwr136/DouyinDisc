@@ -1,8 +1,21 @@
 #import "DouyinDiscNavigation.h"
 #import <math.h>
 #import <ImageIO/ImageIO.h>
+#import <string.h>
 
 static NSString * const douyindisc_utiPNG = @"public.png";
+static NSString * const douyindisc_utiGIF = @"com.compuserve.gif";
+static const NSUInteger douyindisc_gifByteLimit = 2 * 1024 * 1024;
+static const NSUInteger douyindisc_gifFrameLimit = 24;
+static const NSUInteger douyindisc_gifCanvasLimit = 4096;
+static const NSUInteger douyindisc_gifDecodeEdge = 96;
+
+@interface DouyinDiscGIFAnimation ()
+@property(nonatomic,copy,readwrite) NSArray<UIImage *> *frames;
+@property(nonatomic,copy,readwrite) NSArray<NSNumber *> *keyTimes;
+@property(nonatomic,readwrite) NSTimeInterval duration;
+@end
+@implementation DouyinDiscGIFAnimation @end
 
 static NSArray<NSDictionary<NSString *, id> *> *douyindisc_itemTable(void) {
     static NSArray *items;
@@ -48,7 +61,61 @@ static BOOL douyindisc_validImageName(NSString *name) {
         [uuid characterAtIndex:8] == '-' && [uuid characterAtIndex:13] == '-' &&
         [uuid characterAtIndex:18] == '-' && [uuid characterAtIndex:23] == '-';
 }
+static NSString *douyindisc_gifNameForImageName(NSString *imageName) {
+    if(!douyindisc_validImageName(imageName))return nil;
+    return [[imageName stringByDeletingPathExtension] stringByAppendingPathExtension:@"gif"];
+}
 
+static BOOL douyindisc_hasGIFSignature(NSData *data) {
+    if(data.length<6)return NO;const uint8_t *bytes=data.bytes;
+    return !memcmp(bytes,"GIF87a",6)||!memcmp(bytes,"GIF89a",6);
+}
+
+static size_t douyindisc_frameCount(NSData *data) {
+    CGImageSourceRef source=CGImageSourceCreateWithData((__bridge CFDataRef)data,NULL);
+    if(!source)return 0;size_t count=CGImageSourceGetCount(source);CFRelease(source);return count;
+}
+
+static BOOL douyindisc_dataIsAnimatedGIF(NSData *data) {
+    if(!data.length||data.length>douyindisc_gifByteLimit)return NO;
+    CGImageSourceRef source=CGImageSourceCreateWithData((__bridge CFDataRef)data,NULL);
+    if(!source)return NO;
+    CFStringRef type=CGImageSourceGetType(source);
+    BOOL result=type&&CFEqual(type,(__bridge CFStringRef)douyindisc_utiGIF)&&CGImageSourceGetCount(source)>1;
+    CFRelease(source);return result;
+}
+
+static DouyinDiscGIFAnimation *douyindisc_decodeGIF(NSData *data,NSError **error) {
+    if(!data.length||data.length>douyindisc_gifByteLimit){if(error)*error=douyindisc_error(2,@"GIF动画必须小于2 MiB。");return nil;}
+    CGImageSourceRef source=CGImageSourceCreateWithData((__bridge CFDataRef)data,NULL);
+    if(!source){if(error)*error=douyindisc_error(2,@"GIF动画数据损坏。");return nil;}
+    CFStringRef type=CGImageSourceGetType(source);size_t count=CGImageSourceGetCount(source);
+    if(!type||!CFEqual(type,(__bridge CFStringRef)douyindisc_utiGIF)||count<2||count>douyindisc_gifFrameLimit||CGImageSourceGetStatus(source)!=kCGImageStatusComplete){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF动画不完整或超过24帧限制。");return nil;}
+    NSMutableArray<UIImage *> *frames=[NSMutableArray arrayWithCapacity:count];NSMutableArray<NSNumber *> *keyTimes=[NSMutableArray arrayWithCapacity:count];NSTimeInterval duration=0;
+    NSDictionary *options=@{(__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways:@YES,(__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize:@(douyindisc_gifDecodeEdge),(__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform:@YES,(__bridge NSString *)kCGImageSourceShouldCacheImmediately:@YES};
+    for(size_t i=0;i<count;i++){
+        if(CGImageSourceGetStatusAtIndex(source,i)!=kCGImageStatusComplete){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF存在不完整帧。");return nil;}
+        NSDictionary *props=CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source,i,NULL));
+        NSNumber *w=props[(__bridge NSString *)kCGImagePropertyPixelWidth],*h=props[(__bridge NSString *)kCGImagePropertyPixelHeight];
+        if(!w||!h||!w.unsignedIntegerValue||!h.unsignedIntegerValue||w.unsignedIntegerValue>douyindisc_gifCanvasLimit||h.unsignedIntegerValue>douyindisc_gifCanvasLimit){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF画布超过4096像素限制。");return nil;}
+        NSDictionary *gif=props[(__bridge NSString *)kCGImagePropertyGIFDictionary];
+        NSNumber *n=gif[(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime]?:gif[(__bridge NSString *)kCGImagePropertyGIFDelayTime];
+        double delay=n?[n doubleValue]:.1;if(!isfinite(delay))delay=.1;delay=fmin(.5,fmax(.04,delay));
+        if(duration+delay>8){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF动画时长超过8秒。");return nil;}
+        CGImageRef frame=CGImageSourceCreateThumbnailAtIndex(source,i,(__bridge CFDictionaryRef)options);
+        if(!frame){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF帧解码失败。");return nil;}
+        [frames addObject:[UIImage imageWithCGImage:frame scale:1 orientation:UIImageOrientationUp]];CGImageRelease(frame);
+        [keyTimes addObject:@(duration)];duration+=delay;
+    }
+    CFRelease(source);for(NSUInteger i=0;i<keyTimes.count;i++)keyTimes[i]=@([keyTimes[i] doubleValue]/duration);
+    DouyinDiscGIFAnimation *animation=[DouyinDiscGIFAnimation new];animation.frames=frames.copy;animation.keyTimes=keyTimes.copy;animation.duration=duration;return animation;
+}
+
+static NSUInteger douyindisc_gifDecodedCost(DouyinDiscGIFAnimation *animation) {
+    NSUInteger total=0;if(!animation)return 0;
+    for(UIImage *image in animation.frames){CGImageRef cg=image.CGImage;if(!cg)return NSUIntegerMax;size_t row=CGImageGetBytesPerRow(cg),height=CGImageGetHeight(cg);if(row>NSUIntegerMax/height||total>NSUIntegerMax-row*height)return NSUIntegerMax;total+=row*height;}
+    return total;
+}
 static BOOL douyindisc_validConfig(id value) {
     if (![value isKindOfClass:NSDictionary.class]) return NO;
     NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"scale", @"image"]];
@@ -116,6 +183,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 @interface DouyinDiscNavigationStore ()
 @property (nonatomic, copy) NSDictionary<NSString *, NSDictionary<NSString *, id> *> *douyindisc_config;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIImage *> *douyindisc_images;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, DouyinDiscGIFAnimation *> *douyindisc_animations;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_previewOpacity;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_previewScale;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *douyindisc_imageGeneration;
@@ -147,6 +215,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSAssert(NSThread.isMainThread, @"Navigation store initialization must be on main thread");
     _douyindisc_storeDirectory = directory;
     _douyindisc_images = [NSMutableDictionary dictionary];
+    _douyindisc_animations = [NSMutableDictionary dictionary];
     _douyindisc_previewOpacity = [NSMutableDictionary dictionary];
     _douyindisc_previewScale = [NSMutableDictionary dictionary];
     _douyindisc_imageGeneration = [NSMutableDictionary dictionary];
@@ -233,9 +302,18 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     return douyindisc_decodeImage(data,NO,&error);
 }
 
+- (BOOL)douyindisc_isAnimatedGIFData:(NSData *)data {
+    return douyindisc_dataIsAnimatedGIF(data);
+}
+
 - (UIImage *)douyindisc_imageForIdentifier:(NSString *)identifier {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
     return douyindisc_validIdentifier(identifier) ? self.douyindisc_images[identifier] : nil;
+}
+
+- (DouyinDiscGIFAnimation *)douyindisc_animationForIdentifier:(NSString *)identifier {
+    NSAssert(NSThread.isMainThread, @"Navigation animation access must be on main thread");
+    return douyindisc_validIdentifier(identifier)?self.douyindisc_animations[identifier]:nil;
 }
 
 - (void)douyindisc_preloadImagesWithCompletion:(void (^)(void))completion {
@@ -247,9 +325,14 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
         generations[key] = self.douyindisc_imageGeneration[key] ?: @0;
     }
     NSUInteger preloadGeneration = ++self.douyindisc_preloadGeneration;
+    NSDictionary<NSString *,DouyinDiscGIFAnimation *> *animationSnapshot=[self.douyindisc_animations copy];
+    NSUInteger reservedAnimationBytes=0;for(DouyinDiscGIFAnimation *animation in animationSnapshot.allValues){NSUInteger cost=douyindisc_gifDecodedCost(animation);reservedAnimationBytes=cost>NSUIntegerMax-reservedAnimationBytes?NSUIntegerMax:reservedAnimationBytes+cost;}
     NSURL *directory = self.douyindisc_storeDirectory;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSMutableDictionary<NSString *, UIImage *> *images = [NSMutableDictionary dictionary];
+        NSMutableDictionary<NSString *, DouyinDiscGIFAnimation *> *animations = [NSMutableDictionary dictionary];
+        NSMutableSet<NSString *> *animationCandidates=[NSMutableSet set];
+        NSUInteger decodedAnimationBytes=reservedAnimationBytes;
         for (NSDictionary *item in douyindisc_itemTable()) {
             NSString *key = item[@"identifier"];
             NSString *name = configSnapshot[key][@"image"];
@@ -259,18 +342,30 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             if (!data.length || data.length > 6 * 1024 * 1024) continue;
             UIImage *image = douyindisc_decodeImage(data, YES, nil);
             if (image.CGImage) images[key] = image;
+            if(![configSnapshot[key][@"enabled"] boolValue])continue;
+            [animationCandidates addObject:key];
+            NSString *gifName=douyindisc_gifNameForImageName(name);
+            NSURL *gifURL=gifName?[directory URLByAppendingPathComponent:gifName]:nil;
+            DouyinDiscGIFAnimation *cached=animationSnapshot[key];
+            if(cached&&gifURL&&[NSFileManager.defaultManager fileExistsAtPath:gifURL.path]){animations[key]=cached;continue;}
+            NSNumber *gifSize=nil;if(gifURL)[gifURL getResourceValue:&gifSize forKey:NSURLFileSizeKey error:nil];
+            NSData *gif=(gifSize&&gifSize.unsignedLongLongValue>0&&gifSize.unsignedLongLongValue<=douyindisc_gifByteLimit)?[NSData dataWithContentsOfURL:gifURL options:NSDataReadingMappedIfSafe error:nil]:nil;
+            if(gif.length<=douyindisc_gifByteLimit){DouyinDiscGIFAnimation *animation=douyindisc_decodeGIF(gif,nil);NSUInteger cost=douyindisc_gifDecodedCost(animation);if(animation&&decodedAnimationBytes<=8*1024*1024&&cost<=8*1024*1024-decodedAnimationBytes){animations[key]=animation;decodedAnimationBytes+=cost;}}
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             NSAssert(NSThread.isMainThread, @"Navigation store merge must be on main thread");
             BOOL changed = NO;
             if (self.douyindisc_preloadGeneration == preloadGeneration) {
-                for (NSString *key in images) {
-                    NSString *name = configSnapshot[key][@"image"];
-                    if ([self.douyindisc_config[key][@"image"] isEqualToString:name] &&
-                        [self.douyindisc_imageGeneration[key] unsignedIntegerValue] == [generations[key] unsignedIntegerValue]) {
-                        self.douyindisc_images[key] = images[key];
-                        changed = YES;
-                    }
+                for(NSDictionary *item in douyindisc_itemTable()){
+                    NSString *key=item[@"identifier"],*name=configSnapshot[key][@"image"];
+                    if(![self.douyindisc_config[key][@"image"] isEqualToString:name]||[self.douyindisc_imageGeneration[key] unsignedIntegerValue]!=[generations[key] unsignedIntegerValue])continue;
+                    UIImage *image=images[key];if(image&&self.douyindisc_images[key]!=image){self.douyindisc_images[key]=image;changed=YES;}
+                }
+                for(NSString *key in animationCandidates){
+                    NSString *name=configSnapshot[key][@"image"];
+                    if(![self.douyindisc_config[key][@"image"] isEqualToString:name]||[self.douyindisc_imageGeneration[key] unsignedIntegerValue]!=[generations[key] unsignedIntegerValue])continue;
+                    DouyinDiscGIFAnimation *animation=animations[key];
+                    if(self.douyindisc_animations[key]!=animation){if(animation)self.douyindisc_animations[key]=animation;else [self.douyindisc_animations removeObjectForKey:key];changed=YES;}
                 }
             }
             if (changed) [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:self];
@@ -317,6 +412,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     }
     opacity = fmin(1, fmax(0, opacity));
     scale = fmin(1.5, fmax(.5, scale));
+    BOOL wasEnabled=[self.douyindisc_config[identifier][@"enabled"] boolValue];
     NSMutableDictionary *config = [self.douyindisc_config mutableCopy];
     NSMutableDictionary *entry = [config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
     entry[@"enabled"] = @(enabled);
@@ -324,7 +420,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     entry[@"scale"] = @(scale);
     config[identifier] = entry;
     BOOL committed=[self douyindisc_commitLatestConfig:config beforeNotify:nil error:error];
-    if(committed&&!enabled)[self douyindisc_cancelImagePickingForIdentifier:identifier];
+    if(committed&&!enabled){[self douyindisc_cancelImagePickingForIdentifier:identifier];self.douyindisc_preloadGeneration++;[self.douyindisc_animations removeObjectForKey:identifier];}
+    else if(committed&&enabled&&!wasEnabled){NSString *name=self.douyindisc_config[identifier][@"image"];NSString *gifName=douyindisc_gifNameForImageName(name);if(gifName&&[NSFileManager.defaultManager fileExistsAtPath:[self.douyindisc_storeDirectory URLByAppendingPathComponent:gifName].path])[self douyindisc_preloadImagesWithCompletion:nil];}
     return committed;
 }
 
@@ -348,11 +445,15 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSURL *directory = self.douyindisc_storeDirectory;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *error = nil;
-        UIImage *image = douyindisc_decodeImage(snapshot, NO, &error);
+        BOOL gifSignature=douyindisc_hasGIFSignature(snapshot);
+        size_t sourceFrames=gifSignature&&snapshot.length<=douyindisc_gifByteLimit?douyindisc_frameCount(snapshot):0;
+        DouyinDiscGIFAnimation *animation=nil;
+        if(gifSignature&&(!sourceFrames||snapshot.length>douyindisc_gifByteLimit))error=douyindisc_error(2,@"GIF动画数据损坏或超过2 MiB限制。");
+        else if(gifSignature&&sourceFrames>1)animation=douyindisc_decodeGIF(snapshot,&error);
+        UIImage *image=error?nil:douyindisc_decodeImage(snapshot,NO,&error);
         NSData *png = image.CGImage ? douyindisc_PNGData(image.CGImage, &error) : nil;
-        NSString *name = nil;
-        NSURL *newURL = nil;
-        if (png.length) {
+        NSString *name = nil;NSURL *newURL = nil;NSURL *newGIFURL=nil;
+        if (png.length && (!gifSignature||sourceFrames<=1||animation)) {
             NSError *writeError = nil;
             if (![NSFileManager.defaultManager createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&writeError]) {
                 error = writeError;
@@ -360,39 +461,52 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
                 name = [NSString stringWithFormat:@"%@.png", NSUUID.UUID.UUIDString];
                 newURL = [directory URLByAppendingPathComponent:name];
                 if (![png writeToURL:newURL options:NSDataWritingAtomic error:&writeError]) { error = writeError; name = nil; newURL = nil; }
+                if(name&&animation){newGIFURL=[directory URLByAppendingPathComponent:douyindisc_gifNameForImageName(name)];if(![snapshot writeToURL:newGIFURL options:NSDataWritingAtomic error:&writeError]){[NSFileManager.defaultManager removeItemAtURL:newURL error:nil];error=writeError;name=nil;newURL=nil;newGIFURL=nil;}}
             }
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             NSAssert(NSThread.isMainThread, @"Navigation store merge must be on main thread");
-            if (!name || !image.CGImage) {
+            if (!name || !image.CGImage || (animation&&!newGIFURL)) {
+                if(newURL)[NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
+                if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil];
                 [self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
                 if (completion) completion(error ?: douyindisc_error(2, @"图片无法读取或保存。"));
                 return;
             }
             if ([self.douyindisc_imageGeneration[key] unsignedIntegerValue] != generation) {
                 [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
+                if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil];
                 if([self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)])[self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
                 if (completion) completion(douyindisc_error(5, @"该图片导入已被更新操作取消。"));
                 return;
             }
             if (![self.douyindisc_activePickGeneration[key] isEqualToNumber:@(authorizedGeneration)] || ![self douyindisc_imagePickingEnabledForIdentifier:key]) {
                 [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
+                if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil];
                 [self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
                 if (completion) completion(douyindisc_error(6, @"此项图标替换已关闭，导入已取消，原图保留。"));
                 return;
             }
             NSString *oldName = self.douyindisc_config[key][@"image"];
+            if(animation){
+                NSUInteger total=douyindisc_gifDecodedCost(animation);
+                for(NSString *cachedKey in self.douyindisc_animations)if(![cachedKey isEqualToString:key]){NSUInteger cost=douyindisc_gifDecodedCost(self.douyindisc_animations[cachedKey]);total=cost>NSUIntegerMax-total?NSUIntegerMax:total+cost;}
+                if(total>8*1024*1024){[NSFileManager.defaultManager removeItemAtURL:newURL error:nil];if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil];[self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];if(completion)completion(douyindisc_error(2,@"GIF动画缓存已达8 MiB上限，原图未更改。"));return;}
+            }
             NSMutableDictionary *config = [self.douyindisc_config mutableCopy];
             NSMutableDictionary *entry = [config[key] mutableCopy] ?: [NSMutableDictionary dictionary];
             entry[@"image"] = name;
             config[key] = entry;
             __block NSError *commitError = nil;
-            BOOL saved = [self douyindisc_commitLatestConfig:config beforeNotify:^{ self.douyindisc_images[key] = image; } error:&commitError];
+            BOOL saved = [self douyindisc_commitLatestConfig:config beforeNotify:^{
+                self.douyindisc_images[key]=image;
+                if(animation)self.douyindisc_animations[key]=animation;else [self.douyindisc_animations removeObjectForKey:key];
+            } error:&commitError];
             [self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];
-            if (!saved) [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];
-            else {
-                if (douyindisc_validImageName(oldName) && ![oldName isEqualToString:name])
-                    [NSFileManager.defaultManager removeItemAtURL:[directory URLByAppendingPathComponent:oldName] error:nil];
+            if (!saved) { [NSFileManager.defaultManager removeItemAtURL:newURL error:nil];if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil]; }
+            else if(douyindisc_validImageName(oldName)&&![oldName isEqualToString:name]){
+                [NSFileManager.defaultManager removeItemAtURL:[directory URLByAppendingPathComponent:oldName] error:nil];
+                NSString *oldGIF=douyindisc_gifNameForImageName(oldName);if(oldGIF)[NSFileManager.defaultManager removeItemAtURL:[directory URLByAppendingPathComponent:oldGIF] error:nil];
             }
             if (completion) completion(saved ? nil : (error ?: douyindisc_error(4, @"图片配置提交失败。")));
         });
@@ -411,10 +525,12 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSMutableDictionary *entry = [config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
     [entry removeObjectForKey:@"image"];
     config[identifier] = entry;
-    BOOL cleared = [self douyindisc_commitLatestConfig:config beforeNotify:^{ [self.douyindisc_images removeObjectForKey:identifier]; } error:error];
+    BOOL cleared = [self douyindisc_commitLatestConfig:config beforeNotify:^{ [self.douyindisc_images removeObjectForKey:identifier];[self.douyindisc_animations removeObjectForKey:identifier]; } error:error];
     if (!cleared) return NO;
-    if (douyindisc_validImageName(oldName))
+    if (douyindisc_validImageName(oldName)) {
         [NSFileManager.defaultManager removeItemAtURL:[self.douyindisc_storeDirectory URLByAppendingPathComponent:oldName] error:nil];
+        NSString *gifName=douyindisc_gifNameForImageName(oldName);if(gifName)[NSFileManager.defaultManager removeItemAtURL:[self.douyindisc_storeDirectory URLByAppendingPathComponent:gifName] error:nil];
+    }
     return YES;
 }
 @end

@@ -40,6 +40,13 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('[row douyindisc_setHasImage:YES]',panel)
         self.assertIn('[self.douyindisc_imageButton setImage:[UIImage systemImageNamed:@"photo"] forState:UIControlStateNormal]',panel)
         self.assertIn('douyindisc_decodeImageData:data',panel)
+        self.assertIn('PHAssetResourceManager.defaultManager',panel)
+        self.assertIn('requestDataForAssetResource:',panel)
+        self.assertIn('douyindisc_importGIFResource:',panel)
+        self.assertIn('douyindisc_isAnimatedGIFData:data',panel)
+        self.assertIn('UIImagePickerControllerPHAsset',panel)
+        self.assertNotIn('UIDocumentPickerViewController',panel)
+        self.assertNotIn('UniformTypeIdentifiers',panel)
         self.assertNotIn('UIDocumentPicker',panel)
         self.assertNotIn('NSFileCoordinator',panel)
         self.assertNotIn('SecurityScopedResource',panel)
@@ -234,7 +241,7 @@ printf '%s\\n' "$stage" >> order
                     self.assertFalse(list(artifact.parent.glob('.build.*')))
                     if phase == 'offline':
                         self.assertIn('truncated Mach-O header', proc.stderr)
-            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO') for value in ('-framework',framework)]
+            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO','Photos') for value in ('-framework',framework)]
             expected_sources = [str(SOURCE), 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m',
                                 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
                                 'Sources/DouyinDiscNavigationHooks.m']

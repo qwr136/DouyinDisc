@@ -128,9 +128,11 @@ class PolicyTests(unittest.TestCase):
                     continue
                 if relative == 'scripts/build_dylib.py':
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
-                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO')\n", b'')
+                    content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'Photos')\n", b'')
                     content = content.replace(b", 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m'", b'')
                     content = content.replace(b"            '-install_name', '@loader_path/' + output.name,\n            *[value for framework in FRAMEWORKS for value in ('-framework', framework)],\n            *SOURCE_FILES, '-o', str(staged))", b"            '-install_name', '@loader_path/' + output.name, '-framework', 'Foundation',\n            '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',\n            *SOURCE_FILES, '-o', str(staged))")
+                if relative == 'tests/verify_dylib.py':
+                    content = content.replace(b'"Metal", "VideoToolbox",\n                 "Photos")', b'"Metal", "VideoToolbox")')
                 self.assertEqual(hashlib.sha256(content).hexdigest(), expected)
 
     def test_clarity_artwork_changes_only_alpha(self):

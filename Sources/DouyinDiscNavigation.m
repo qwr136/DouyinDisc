@@ -2,9 +2,31 @@
 #import <objc/runtime.h>
 #import <math.h>
 #import <ImageIO/ImageIO.h>
+#import <Photos/Photos.h>
 #if defined(DOUYINDISC_UI_TEST)
 #import <dlfcn.h>
 #endif
+static BOOL douyindisc_navigationIsGIFUTI(NSString *uti) {
+    return [uti isEqualToString:@"com.compuserve.gif"]||[uti isEqualToString:@"public.gif"];
+}
+static BOOL douyindisc_navigationDataHasGIFSignature(NSData *data) {
+    if(data.length<6)return NO;const uint8_t *bytes=data.bytes;
+    return !memcmp(bytes,"GIF87a",6)||!memcmp(bytes,"GIF89a",6);
+}
+static NSData *douyindisc_readSelectedPhotoURL(NSURL *url,BOOL declaredGIF,NSError **error) {
+    if(!url.isFileURL){if(error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片库返回了无效的图片地址。"}];return nil;}
+    NSFileHandle *handle=[NSFileHandle fileHandleForReadingFromURL:url error:error];if(!handle)return nil;
+    NSMutableData *data=[NSMutableData data];BOOL isGIF=declaredGIF||[url.pathExtension caseInsensitiveCompare:@"gif"]==NSOrderedSame;
+    @try{
+        NSData *prefix=[handle readDataOfLength:6];[data appendData:prefix];isGIF=isGIF||douyindisc_navigationDataHasGIFSignature(data);
+        NSUInteger limit=isGIF?2*1024*1024:64*1024*1024;
+        NSDictionary *attributes=[NSFileManager.defaultManager attributesOfItemAtPath:url.path error:error];NSNumber *size=attributes[NSFileSize];
+        if(!size||size.unsignedLongLongValue>limit){if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:isGIF?@"GIF文件超过2 MiB限制。":@"图片文件超过64 MiB。"}];[handle closeFile];return nil;}
+        while(data.length<size.unsignedIntegerValue){NSUInteger remaining=size.unsignedIntegerValue-data.length;NSData *chunk=[handle readDataOfLength:MIN(256*1024,remaining)];if(!chunk.length)break;[data appendData:chunk];}
+        [handle closeFile];if(data.length!=size.unsignedIntegerValue){if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"图片读取不完整。"}];return nil;}
+    }@catch(NSException *exception){(void)exception;@try{[handle closeFile];}@catch(NSException *ignored){(void)ignored;}if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片读取失败。"}];return nil;}
+    return data;
+}
 static UIColor *douyindisc_color(NSString *hex) {
     unsigned value = 0;
     NSScanner *scanner = [NSScanner scannerWithString:[hex stringByReplacingOccurrencesOfString:@"#" withString:@""]];
@@ -202,6 +224,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_presentPhotoPickerForRow:(DouyinDiscNavigationRow *)row;
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket;
 - (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation;
+- (void)douyindisc_importGIFResource:(PHAssetResource *)resource identifier:(NSString *)identifier pickingGeneration:(NSUInteger)generation;
+- (void)douyindisc_failImagePickingIdentifier:(NSString *)identifier generation:(NSUInteger)generation error:(NSError *)error;
 - (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_startPickerMonitor:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
@@ -401,6 +425,25 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
         self.douyindisc_activeIdentifier=nil;self.douyindisc_activePickGeneration=0;self.douyindisc_activeRow=nil;
     }
 }
+- (void)douyindisc_failImagePickingIdentifier:(NSString *)identifier generation:(NSUInteger)generation error:(NSError *)error {
+    [self douyindisc_finishImportSessionIdentifier:identifier generation:generation];
+    if(self.isViewLoaded&&self.view.window)[self douyindisc_showError:error?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"GIF导入失败，原图保留。"}]];
+}
+- (void)douyindisc_importGIFResource:(PHAssetResource *)resource identifier:(NSString *)identifier pickingGeneration:(NSUInteger)generation {
+    if(!resource||!douyindisc_navigationIsGIFUTI(resource.uniformTypeIdentifier)){[self douyindisc_failImagePickingIdentifier:identifier generation:generation error:nil];return;}
+    PHAssetResourceRequestOptions *options=[PHAssetResourceRequestOptions new];options.networkAccessAllowed=YES;
+    PHAssetResourceManager *manager=PHAssetResourceManager.defaultManager;NSMutableData *buffer=[NSMutableData data];NSLock *lock=[NSLock new];
+    __block PHAssetResourceDataRequestID requestID=PHInvalidAssetResourceDataRequestID;__block BOOL exceeded=NO;
+    PHAssetResourceDataRequestID issued=[manager requestDataForAssetResource:resource options:options dataReceivedHandler:^(NSData *chunk){
+        [lock lock];BOOL cancel=NO;if(exceeded)cancel=YES;else if(chunk.length>2*1024*1024-buffer.length){exceeded=YES;[buffer setLength:0];cancel=YES;}else [buffer appendData:chunk];PHAssetResourceDataRequestID current=requestID;[lock unlock];if(cancel&&current!=PHInvalidAssetResourceDataRequestID)[manager cancelDataRequest:current];
+    } completionHandler:^(NSError *readError){
+        [lock lock];BOOL tooLarge=exceeded;NSData *data=tooLarge?nil:[buffer copy];[lock unlock];dispatch_async(dispatch_get_main_queue(),^{
+            if(readError||tooLarge||!data.length||![[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_isAnimatedGIFData:data]){NSError *failure=readError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:tooLarge?@"GIF超过2 MiB限制，原图未更改。":@"无法读取完整GIF动画，原图未更改。"}];[self douyindisc_failImagePickingIdentifier:identifier generation:generation error:failure];return;}
+            [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_saveImageData:data identifier:identifier pickingGeneration:generation completion:^(NSError *error){if(error&&self.isViewLoaded&&self.view.window)[self douyindisc_showError:error];}];
+        });
+    }];
+    [lock lock];requestID=issued;BOOL cancel=exceeded;[lock unlock];if(cancel&&issued!=PHInvalidAssetResourceDataRequestID)[manager cancelDataRequest:issued];
+}
 - (void)douyindisc_startPickerMonitor:(UIViewController *)picker generation:(NSUInteger)generation {
     if(!NSThread.isMainThread||!picker||self.douyindisc_activePicker!=picker||self.douyindisc_activePickGeneration!=generation)return;
     [self.douyindisc_pickerMonitor invalidate];self.douyindisc_pickerDetachedSamples=0;self.douyindisc_pickerWasAttached=picker.viewIfLoaded.window!=nil;
@@ -463,13 +506,28 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info {
     if(self.douyindisc_activePicker!=picker||self.douyindisc_pickerHasResult)return;
     NSString *identifier=[self.douyindisc_activeIdentifier copy];NSUInteger generation=self.douyindisc_activePickGeneration;
-    NSURL *url=info[UIImagePickerControllerImageURL];UIImage *image=info[UIImagePickerControllerOriginalImage];
-    self.douyindisc_pickerHasResult=YES;self.douyindisc_pickerHasProvider=(url!=nil||image!=nil);
+    NSURL *url=info[UIImagePickerControllerImageURL];UIImage *image=info[UIImagePickerControllerOriginalImage];PHAsset *asset=info[UIImagePickerControllerPHAsset];NSString *mediaType=info[UIImagePickerControllerMediaType];
+    PHAssetResource *gifResource=nil;
+    if(asset){NSArray<PHAssetResource *> *resources=[PHAssetResource assetResourcesForAsset:asset];for(NSNumber *wanted in @[@(PHAssetResourceTypeFullSizePhoto),@(PHAssetResourceTypePhoto)]){for(PHAssetResource *resource in resources)if(resource.type==wanted.integerValue&&douyindisc_navigationIsGIFUTI(resource.uniformTypeIdentifier)){gifResource=resource;break;}if(gifResource)break;}}
+    BOOL declaredGIF=[mediaType isKindOfClass:NSString.class]&&douyindisc_navigationIsGIFUTI(mediaType);
+    BOOL hasProvider=url||image||asset;
+    self.douyindisc_pickerHasResult=YES;self.douyindisc_pickerHasProvider=hasProvider;
     __weak typeof(self) weakSelf=self;
     [picker dismissViewControllerAnimated:YES completion:^{
-        [weakSelf douyindisc_finishPickerUI:picker cancelled:(url==nil&&image==nil) keepImportTicket:(url!=nil||image!=nil)];
-        if(url){NSData *data=[NSData dataWithContentsOfURL:url options:NSDataReadingMappedIfSafe error:nil];if(data&&[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_decodeImageData:data])[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];else if(image){NSData *fallback=UIImagePNGRepresentation(image);if(fallback)[weakSelf douyindisc_commitImageData:fallback identifier:identifier pickingGeneration:generation];}}
-        else if(image){NSData *data=UIImagePNGRepresentation(image);if(data)[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];}
+        [weakSelf douyindisc_finishPickerUI:picker cancelled:!hasProvider keepImportTicket:hasProvider];
+        if(gifResource){[weakSelf douyindisc_importGIFResource:gifResource identifier:identifier pickingGeneration:generation];return;}
+        if(declaredGIF&&!url){[weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:nil];return;}
+        if(url){
+            NSError *readError=nil;NSData *data=douyindisc_readSelectedPhotoURL(url,declaredGIF,&readError);
+            if(data.length&&[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_decodeImageData:data]){
+                if(douyindisc_navigationDataHasGIFSignature(data)&&![[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_isAnimatedGIFData:data]){
+                    if(image){NSData *still=UIImagePNGRepresentation(image);if(still)[weakSelf douyindisc_commitImageData:still identifier:identifier pickingGeneration:generation];else [weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:nil];}
+                    else [weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:nil];
+                }else [weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];
+            }else if(image&&!declaredGIF){NSData *still=UIImagePNGRepresentation(image);if(still)[weakSelf douyindisc_commitImageData:still identifier:identifier pickingGeneration:generation];else [weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:readError];}
+            else [weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:readError];
+        }else if(image&&!declaredGIF){NSData *still=UIImagePNGRepresentation(image);if(still)[weakSelf douyindisc_commitImageData:still identifier:identifier pickingGeneration:generation];else [weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:nil];}
+        else [weakSelf douyindisc_failImagePickingIdentifier:identifier generation:generation error:nil];
     }];
 }
 @end

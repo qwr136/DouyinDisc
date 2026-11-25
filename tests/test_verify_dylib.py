@@ -177,7 +177,8 @@ class VerifyDylibTests(unittest.TestCase):
 
     def test_navigation_dependencies_exclude_unused_picker_frameworks(self):
         from verify_dylib import inspect_dylib
-        approved=("/System/Library/Frameworks/ImageIO.framework/ImageIO",)
+        approved=("/System/Library/Frameworks/ImageIO.framework/ImageIO",
+                 "/System/Library/Frameworks/Photos.framework/Photos")
         for name in approved:
             with self.subTest(name=name):
                 data=specimen(deps=((0xC,LIB_SYSTEM),(0xC,FOUNDATION),(0xC,name)))

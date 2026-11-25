@@ -203,6 +203,7 @@ static void douyindisc_writeProgress(void) {
 #include "DouyinDiscCaptionCases.h"
 #if defined(DOUYINDISC_UI_TEST)
 #include "DouyinDiscNavigationStoreCases.h"
+#include "DouyinDiscGIFCases.h"
 #endif
 #include "DouyinDiscNavigationCases.h"
 
@@ -275,11 +276,14 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     (void)application;
     if (self.douyindisc_running) return;
     self.douyindisc_running = YES;
-    dispatch_async(dispatch_get_main_queue(), ^{ [self douyindisc_run]; });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        douyindisc_results=[NSMutableArray array];
+        douyindisc_installNavigationHooks();
+        douyindisc_gifCases(self.window, ^{[self douyindisc_run];});
+    });
 }
 - (void)douyindisc_nativeTap:(id)sender { (void)sender; ++self.douyindisc_clicks; }
 - (void)douyindisc_run {
-    douyindisc_results = [NSMutableArray array];
     UIImage *art = [UIImage imageWithData:[NSData dataWithBytes:douyindisc_artwork length:sizeof(douyindisc_artwork)]];
     DD_CHECK(art.CGImage != NULL, "embedded original PNG decodes");
     DD_CHECK(douyindisc_uiTestPickerAppearanceStable(art), "numeric controls and picker card layout pass UIKit interaction checks");

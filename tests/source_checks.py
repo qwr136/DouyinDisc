@@ -36,7 +36,7 @@ def check_builder(project, name, domain, minimum, sdk):
     require(inputs == sources,
             'builder must compile every approved entry, policy and feature source')
     frameworks = literal_assignments(builder, {'FRAMEWORKS'}).get('FRAMEWORKS')
-    require(frameworks == ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO'),
+    require(frameworks == ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'Photos'),
             'builder framework list must match the explicitly approved Apple APIs')
     for path in inputs:
         if path.endswith('DouyinDiscNavigationHooks.m'):
