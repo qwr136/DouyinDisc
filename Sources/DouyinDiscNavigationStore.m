@@ -124,6 +124,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 @property (nonatomic, strong) NSURL *douyindisc_storeDirectory;
 @property (nonatomic) NSUInteger douyindisc_preloadGeneration;
 @property (nonatomic) BOOL douyindisc_loadFailed;
+@property (nonatomic) BOOL douyindisc_glassPreference;
+@property (nonatomic) BOOL douyindisc_glassLoadFailed;
 #if defined(DOUYINDISC_UI_TEST)
 @property (nonatomic) BOOL douyindisc_testFailNextCommit;
 #endif
@@ -160,7 +162,36 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
         if (douyindisc_validConfig(value)) _douyindisc_config = [value copy];
         else { _douyindisc_config = @{}; _douyindisc_loadFailed = YES; }
     }
+    NSURL *glassURL=[directory URLByAppendingPathComponent:@"glass.plist"];
+    if ([NSFileManager.defaultManager fileExistsAtPath:glassURL.path]) {
+        NSDictionary *glass=[NSDictionary dictionaryWithContentsOfURL:glassURL];
+        id enabled=glass[@"enabled"];
+        if ([glass isKindOfClass:NSDictionary.class] && glass.count==1 && [enabled isKindOfClass:NSNumber.class] && CFGetTypeID((__bridge CFTypeRef)enabled)==CFBooleanGetTypeID())
+            _douyindisc_glassPreference=[enabled boolValue];
+        else _douyindisc_glassLoadFailed=YES;
+    }
     return self;
+}
+
+- (BOOL)douyindisc_glassEnabled {
+    NSAssert(NSThread.isMainThread, @"Glass preference read must be on main thread");
+    return self.douyindisc_glassPreference && !self.douyindisc_glassLoadFailed;
+}
+
+- (BOOL)douyindisc_saveGlassEnabled:(BOOL)enabled error:(NSError **)error {
+    NSAssert(NSThread.isMainThread, @"Glass preference commit must be on main thread");
+    if(self.douyindisc_glassLoadFailed){if(error)*error=douyindisc_error(1,@"玻璃底栏配置损坏，未覆盖 glass.plist。");return NO;}
+#if defined(DOUYINDISC_UI_TEST)
+    if(self.douyindisc_testFailNextCommit){self.douyindisc_testFailNextCommit=NO;if(error)*error=douyindisc_error(4,@"UI_TEST injected glass commit failure.");return NO;}
+#endif
+    NSError *writeError=nil;
+    if(![NSFileManager.defaultManager createDirectoryAtURL:self.douyindisc_storeDirectory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0700} error:&writeError]){if(error)*error=writeError;return NO;}
+    NSData *data=[NSPropertyListSerialization dataWithPropertyList:@{@"enabled":@(enabled)} format:NSPropertyListBinaryFormat_v1_0 options:0 error:&writeError];
+    NSURL *url=[self.douyindisc_storeDirectory URLByAppendingPathComponent:@"glass.plist"];
+    if(!data||![data writeToURL:url options:NSDataWritingAtomic error:&writeError]){if(error)*error=writeError?:douyindisc_error(4,@"玻璃底栏配置保存失败。");return NO;}
+    self.douyindisc_glassPreference=enabled;
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.glass.changed" object:self];
+    return YES;
 }
 
 - (void)douyindisc_previewOpacity:(CGFloat)opacity identifier:(NSString *)identifier {

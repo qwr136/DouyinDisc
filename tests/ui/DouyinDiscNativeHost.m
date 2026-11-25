@@ -2,11 +2,8 @@
 #import "../../Sources/DouyinDiscNavigation.h"
 
 @protocol AWENormalModeTabBarInnerView @end
-@interface AWENormalModeTabBar : UIView
-@end
-@implementation AWENormalModeTabBar
-@end
-@interface AWENormalModeTabBarGeneralButton : UIButton { @public UIView<AWENormalModeTabBarInnerView> *_innerView; }
+#include "DouyinDiscGlassFixtures.h"
+@interface AWENormalModeTabBarGeneralButton : AWENormalModeTabBarButton { @public UIView<AWENormalModeTabBarInnerView> *_innerView; }
 @end
 @implementation AWENormalModeTabBarGeneralButton
 - (void)layoutSubviews { [super layoutSubviews]; }
@@ -203,7 +200,9 @@ static void douyindisc_writeProgress(void) {
 #include "DouyinDiscCaptionCases.h"
 #if defined(DOUYINDISC_UI_TEST)
 #include "DouyinDiscNavigationStoreCases.h"
+#include "DouyinDiscGlassStoreCases.h"
 #endif
+#include "DouyinDiscGlassCases.h"
 #include "DouyinDiscNavigationCases.h"
 
 static void douyindisc_styleOneCases(DouyinDiscDisplay *driver, AWEMusicCoverButton *button);
@@ -285,6 +284,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(douyindisc_uiTestPickerAppearanceStable(art), "numeric controls and picker card layout pass UIKit interaction checks");
     douyindisc_installNavigationHooks();
     UIWindow *window = self.window;
+    douyindisc_glassCases(window);
     UIScrollView *scroll = [[UIScrollView alloc] initWithFrame:window.bounds];
     scroll.contentSize = CGSizeMake(window.bounds.size.width, window.bounds.size.height*3);
     [window.rootViewController.view addSubview:scroll];
@@ -492,6 +492,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
 - (void)douyindisc_finish {
     if(douyindisc_storeTestsStarted)return;
     douyindisc_storeTestsStarted=YES;
+    douyindisc_glassStoreCases();
     douyindisc_navigationStoreCases(^{
       douyindisc_pickerCases(self.window, ^{
         NSUInteger failures=0;

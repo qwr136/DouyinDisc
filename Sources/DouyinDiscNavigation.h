@@ -7,6 +7,8 @@ void douyindisc_installNavigationHooks(void);
 
 @interface DouyinDiscNavigationStore : NSObject
 + (instancetype)douyindisc_sharedStore;
+- (BOOL)douyindisc_glassEnabled;
+- (BOOL)douyindisc_saveGlassEnabled:(BOOL)enabled error:(NSError **)error;
 - (void)douyindisc_preloadImagesWithCompletion:(void (^)(void))completion;
 - (void)douyindisc_previewOpacity:(CGFloat)opacity identifier:(NSString *)identifier;
 - (void)douyindisc_clearOpacityPreviewForIdentifier:(NSString *)identifier;
