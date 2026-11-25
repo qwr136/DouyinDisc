@@ -509,7 +509,7 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
     NSURL *url=info[UIImagePickerControllerImageURL];UIImage *image=info[UIImagePickerControllerOriginalImage];PHAsset *asset=info[UIImagePickerControllerPHAsset];NSString *mediaType=info[UIImagePickerControllerMediaType];
     PHAssetResource *gifResource=nil;
     if(asset){NSArray<PHAssetResource *> *resources=[PHAssetResource assetResourcesForAsset:asset];for(NSNumber *wanted in @[@(PHAssetResourceTypeFullSizePhoto),@(PHAssetResourceTypePhoto)]){for(PHAssetResource *resource in resources)if(resource.type==wanted.integerValue&&douyindisc_navigationIsGIFUTI(resource.uniformTypeIdentifier)){gifResource=resource;break;}if(gifResource)break;}}
-    BOOL declaredGIF=[mediaType isKindOfClass:NSString.class]&&douyindisc_navigationIsGIFUTI(mediaType);
+    BOOL declaredGIF=([mediaType isKindOfClass:NSString.class]&&douyindisc_navigationIsGIFUTI(mediaType))||[url.pathExtension caseInsensitiveCompare:@"gif"]==NSOrderedSame;
     BOOL hasProvider=url||image||asset;
     self.douyindisc_pickerHasResult=YES;self.douyindisc_pickerHasProvider=hasProvider;
     __weak typeof(self) weakSelf=self;

@@ -51,8 +51,10 @@ static NSUInteger douyindisc_navCaseUUIDFiles(NSURL *directory) {
     NSUInteger count = 0;
     for (NSURL *file in files) {
         NSString *name = file.lastPathComponent;
-        if (name.length != 40 || ![name hasSuffix:@".png"]) continue;
-        NSString *uuid = [name substringToIndex:36];
+        BOOL uuidImage=name.length==40&&[name hasSuffix:@".png"];
+        BOOL uuidGIF=name.length==40&&[name hasSuffix:@".gif"];
+        if(!uuidImage&&!uuidGIF)continue;
+        NSString *uuid=[name substringToIndex:36];
         NSUUID *parsed = [[NSUUID alloc] initWithUUIDString:uuid];
         if (parsed && [parsed.UUIDString caseInsensitiveCompare:uuid] == NSOrderedSame) ++count;
     }
