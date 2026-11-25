@@ -5,8 +5,8 @@
 
 static NSString * const douyindisc_utiPNG = @"public.png";
 static NSString * const douyindisc_utiGIF = @"com.compuserve.gif";
-static const NSUInteger douyindisc_gifByteLimit = 2 * 1024 * 1024;
-static const NSUInteger douyindisc_gifFrameLimit = 24;
+static const NSUInteger douyindisc_gifByteLimit = 8 * 1024 * 1024;
+static const NSUInteger douyindisc_gifFrameLimit = 120;
 static const NSUInteger douyindisc_gifCanvasLimit = 4096;
 static const NSUInteger douyindisc_gifDecodeEdge = 96;
 
@@ -90,7 +90,7 @@ static DouyinDiscGIFAnimation *douyindisc_decodeGIF(NSData *data,NSError **error
     CGImageSourceRef source=CGImageSourceCreateWithData((__bridge CFDataRef)data,NULL);
     if(!source){if(error)*error=douyindisc_error(2,@"GIF动画数据损坏。");return nil;}
     CFStringRef type=CGImageSourceGetType(source);size_t count=CGImageSourceGetCount(source);
-    if(!type||!CFEqual(type,(__bridge CFStringRef)douyindisc_utiGIF)||count<2||count>douyindisc_gifFrameLimit||CGImageSourceGetStatus(source)!=kCGImageStatusComplete){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF动画不完整或超过24帧限制。");return nil;}
+    if(!type||!CFEqual(type,(__bridge CFStringRef)douyindisc_utiGIF)||count<2||count>douyindisc_gifFrameLimit||CGImageSourceGetStatus(source)!=kCGImageStatusComplete){CFRelease(source);if(error)*error=douyindisc_error(2,count>douyindisc_gifFrameLimit?@"GIF帧数超过120帧限制。":@"GIF动画数据不完整或不是多帧GIF。");return nil;}
     NSMutableArray<UIImage *> *frames=[NSMutableArray arrayWithCapacity:count];NSMutableArray<NSNumber *> *keyTimes=[NSMutableArray arrayWithCapacity:count];NSTimeInterval duration=0;
     NSDictionary *options=@{(__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways:@YES,(__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize:@(douyindisc_gifDecodeEdge),(__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform:@YES,(__bridge NSString *)kCGImageSourceShouldCacheImmediately:@YES};
     for(size_t i=0;i<count;i++){
@@ -448,7 +448,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
         BOOL gifSignature=douyindisc_hasGIFSignature(snapshot);
         size_t sourceFrames=gifSignature&&snapshot.length<=douyindisc_gifByteLimit?douyindisc_frameCount(snapshot):0;
         DouyinDiscGIFAnimation *animation=nil;
-        if(gifSignature&&(!sourceFrames||snapshot.length>douyindisc_gifByteLimit))error=douyindisc_error(2,@"GIF动画数据损坏或超过2 MiB限制。");
+        if(gifSignature&&(!sourceFrames||snapshot.length>douyindisc_gifByteLimit))error=douyindisc_error(2,@"GIF动画数据损坏或超过8 MiB限制。");
         else if(gifSignature&&sourceFrames>1)animation=douyindisc_decodeGIF(snapshot,&error);
         UIImage *image=error?nil:douyindisc_decodeImage(snapshot,NO,&error);
         NSData *png = image.CGImage ? douyindisc_PNGData(image.CGImage, &error) : nil;

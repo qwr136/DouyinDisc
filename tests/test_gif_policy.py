@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parent.parent
 class GIFPolicyTests(unittest.TestCase):
     def test_gif_resource_limits_and_static_fallback_are_bounded(self):
         store=(ROOT/'Sources/DouyinDiscNavigationStore.m').read_text()
-        for token in ('douyindisc_gifByteLimit = 2 * 1024 * 1024','douyindisc_gifFrameLimit = 24','douyindisc_gifCanvasLimit = 4096','douyindisc_gifDecodeEdge = 96','duration+delay>8','decodedAnimationBytes','8*1024*1024'):
+        for token in ('douyindisc_gifByteLimit = 8 * 1024 * 1024','douyindisc_gifFrameLimit = 120','douyindisc_gifCanvasLimit = 4096','douyindisc_gifDecodeEdge = 96','duration+delay>8','decodedAnimationBytes','8*1024*1024'):
             self.assertIn(token,store)
         self.assertIn('CGImageSourceCreateThumbnailAtIndex(source, 0',store)
         self.assertIn('douyindisc_gifNameForImageName',store)
@@ -27,7 +27,7 @@ class GIFPolicyTests(unittest.TestCase):
         self.assertIn('UIImagePickerControllerPHAsset',panel)
         self.assertIn('requestDataForAssetResource:resource',panel)
         self.assertIn('cancelDataRequest:current',panel)
-        self.assertIn('chunk.length>2*1024*1024-buffer.length',panel)
+        self.assertIn('chunk.length>8*1024*1024-buffer.length',panel)
         self.assertNotIn('UIDocumentPicker',panel)
         self.assertNotIn('UniformTypeIdentifiers',panel)
         self.assertNotIn('NSFileCoordinator',panel)
