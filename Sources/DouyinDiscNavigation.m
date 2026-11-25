@@ -22,7 +22,7 @@ static NSData *douyindisc_readSelectedPhotoURL(NSURL *url,BOOL declaredGIF,NSErr
         NSData *prefix=[handle readDataOfLength:6];[data appendData:prefix];
         NSUInteger limit=64*1024*1024;
         NSDictionary *attributes=[NSFileManager.defaultManager attributesOfItemAtPath:url.path error:error];NSNumber *size=attributes[NSFileSize];
-        if(!size||size.unsignedLongLongValue>limit){if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:isGIF?@"GIF文件超过64 MiB限制。":@"图片文件超过64 MiB。"}];[handle closeFile];return nil;}
+        if(!size||size.unsignedLongLongValue>limit){if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"GIF或图片文件超过64 MiB安全上限。"}];[handle closeFile];return nil;}
         while(data.length<size.unsignedIntegerValue){NSUInteger remaining=size.unsignedIntegerValue-data.length;NSData *chunk=[handle readDataOfLength:MIN(256*1024,remaining)];if(!chunk.length)break;[data appendData:chunk];}
         [handle closeFile];if(data.length!=size.unsignedIntegerValue){if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"图片读取不完整。"}];return nil;}
     }@catch(NSException *exception){(void)exception;@try{[handle closeFile];}@catch(NSException *ignored){(void)ignored;}if(error&&!*error)*error=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片读取失败。"}];return nil;}
