@@ -78,10 +78,14 @@ static void douyindisc_gifSetVisible(DouyinDiscTextLease *lease,BOOL visible) {
     NSString *key=@"com.minis.douyindisc.animated-gif";
     if(!visible||UIAccessibilityIsReduceMotionEnabled()||!lease.douyindisc_animation){[lease.douyindisc_overlay.layer removeAnimationForKey:key];lease.douyindisc_animationVisible=NO;return;}
     if([lease.douyindisc_overlay.layer animationForKey:key]){lease.douyindisc_animationVisible=YES;return;}
-    NSMutableArray *values=[NSMutableArray arrayWithCapacity:lease.douyindisc_animation.frames.count];
+    NSMutableArray *values=[NSMutableArray arrayWithCapacity:lease.douyindisc_animation.frames.count+1];
     for(UIImage *frame in lease.douyindisc_animation.frames){if(!frame.CGImage)return;[values addObject:(__bridge id)frame.CGImage];}
+    // GIF keyTimes are frame start offsets. Add a terminal sample so Core Animation
+    // holds the last frame for its full delay instead of ending at its start time.
+    [values addObject:values.lastObject];NSMutableArray *times=[lease.douyindisc_animation.keyTimes mutableCopy];[times addObject:@1.0];
     CAKeyframeAnimation *animation=[CAKeyframeAnimation animationWithKeyPath:@"contents"];
-    animation.values=values;animation.keyTimes=lease.douyindisc_animation.keyTimes;animation.duration=lease.douyindisc_animation.duration;
+    animation.values=values;animation.keyTimes=times;animation.duration=lease.douyindisc_animation.duration;
+    animation.beginTime=[lease.douyindisc_overlay.layer convertTime:CACurrentMediaTime() fromLayer:nil];
     animation.calculationMode=kCAAnimationDiscrete;animation.repeatCount=HUGE_VALF;animation.removedOnCompletion=NO;animation.fillMode=kCAFillModeBoth;
     [lease.douyindisc_overlay.layer addAnimation:animation forKey:key];lease.douyindisc_animationVisible=YES;
 }
