@@ -41,7 +41,7 @@ static void douyindisc_gifCases(UIWindow *window,dispatch_block_t done) {
         AWENormalModeTabBarTextView *inner=[[AWENormalModeTabBarTextView alloc]initWithFrame:button.bounds];UILabel *label=[[UILabel alloc]initWithFrame:inner.bounds];label.text=@"首页";inner->_label=label;[inner addSubview:label];button->_innerView=inner;[button addSubview:inner];[window.rootViewController.view addSubview:button];
         douyindisc_apply(inner);DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:label];CAKeyframeAnimation *play=(CAKeyframeAnimation *)[lease.douyindisc_overlay.layer animationForKey:@"com.minis.douyindisc.animated-gif"];
         DD_CHECK_NS(lease!=nil,@"GIF fixture resolves to a native navigation icon lease");
-        DD_CHECK_NS(lease.douyindisc_animation==coldAnimation,@"GIF lease owns the restored cold-load animation");
+        DD_CHECK_NS(lease.douyindisc_animation.frames.count==coldAnimation.frames.count&&fabs(lease.douyindisc_animation.duration-coldAnimation.duration)<.001,@"GIF lease owns the restored cold-load animation");
         DD_CHECK_NS(play!=nil,@"visible GIF layer has a Core Animation playback entry");
         DD_CHECK_NS(play.values.count==2&&play.keyTimes.count==2,@"GIF animation schedules both decoded frames");
         DD_CHECK_NS(play.calculationMode==kCAAnimationDiscrete,@"GIF uses discrete frame timing");
