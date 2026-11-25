@@ -30,7 +30,7 @@ static NSData *douyindisc_gifCasePixel(CGImageRef image) {
     CGContextDrawImage(context,CGRectMake(0,0,24,24),image);CGContextRelease(context);const uint8_t *bytes=data.bytes;
     return [NSData dataWithBytes:bytes+(12*24+12)*4 length:3];
 }
-static void douyindisc_gifCases(UIWindow *window,dispatch_block_t done) {
+static void douyindisc_gifStoreAndPlaybackCases(UIWindow *window,dispatch_block_t done) {
     DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;NSString *identifier=@"bottom_home";NSError *error=nil;
     if(![store douyindisc_saveEnabled:YES opacity:1 scale:1 identifier:identifier error:&error]){DD_CHECK_NS(NO,@"GIF test enables the bottom navigation item");if(done)done();return;}
     NSData *gif=douyindisc_gifCaseFixture();size_t sourceFrames=0;CGImageSourceRef source=gif?CGImageSourceCreateWithData((__bridge CFDataRef)gif,NULL):NULL;if(source){sourceFrames=CGImageSourceGetCount(source);CFRelease(source);}
@@ -73,5 +73,13 @@ static void douyindisc_gifCases(UIWindow *window,dispatch_block_t done) {
             });
         }];
     }];
+}
+extern void douyindisc_uiTestCommitImageAndCheckPanelPreview(NSData *,NSString *,void(^)(BOOL));
+static void douyindisc_gifCases(UIWindow *window,dispatch_block_t done) {
+    NSData *fixture=douyindisc_gifCaseFixture();
+    douyindisc_uiTestCommitImageAndCheckPanelPreview(fixture,@"top_recommend",^(BOOL refreshed){
+        DD_CHECK_NS(refreshed,@"after GIF save the existing settings row immediately shows the thumbnail, change title and clear action");
+        douyindisc_gifStoreAndPlaybackCases(window,done);
+    });
 }
 #endif
