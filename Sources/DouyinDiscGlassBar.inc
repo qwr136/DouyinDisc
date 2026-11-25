@@ -168,7 +168,7 @@ static void douyindisc_glassApply(UIView *bar) {
         douyindisc_glassRemove(bar);return;
     }
     DouyinDiscGlassLease *lease=objc_getAssociatedObject(bar,&douyindisc_glassKey);
-    if(!lease){lease=[DouyinDiscGlassLease new];lease.douyindisc_bar=bar;lease.douyindisc_ownedClear=[UIColor colorWithWhite:0 alpha:0];lease.douyindisc_surface=[[DouyinDiscGlassView alloc]initWithFrame:rect];objc_setAssociatedObject(bar,&douyindisc_glassKey,lease,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}
+    if(!lease){lease=[DouyinDiscGlassLease new];lease.douyindisc_bar=bar;lease.douyindisc_background=bar.backgroundColor;lease.douyindisc_ownedClear=[UIColor colorWithWhite:0 alpha:0];lease.douyindisc_surface=[[DouyinDiscGlassView alloc]initWithFrame:rect];objc_setAssociatedObject(bar,&douyindisc_glassKey,lease,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}
     [CATransaction begin];[CATransaction setDisableActions:YES];
     if(![bar.backgroundColor isEqual:lease.douyindisc_ownedClear]){
         lease.douyindisc_background=bar.backgroundColor;bar.backgroundColor=lease.douyindisc_ownedClear;

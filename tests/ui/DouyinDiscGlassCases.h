@@ -29,8 +29,9 @@ static void douyindisc_glassCases(UIWindow *window) {
     for(UIControl *button in buttons)[button sendActionsForControlEvents:UIControlEventTouchUpInside];
     DD_CHECK(probe.douyindisc_taps==5,"all five original actions including the central publish action fire once");
     UILabel *badge=[UILabel new];badge.text=@"9";badge.alpha=.8;[buttons[3] addSubview:badge];
+    CGFloat beforeBadgeAlpha=badge.alpha;UIView *beforeBadgeParent=badge.superview;NSString *beforeBadgeText=[badge.text copy];
     [bar layoutSubviews];
-    DD_CHECK(badge.superview==buttons[3]&&badge.alpha==.8&&[badge.text isEqual:@"9"],"native message badge remains untouched");
+    DD_CHECK_NS(badge.superview==beforeBadgeParent&&badge.alpha==beforeBadgeAlpha&&[badge.text isEqual:beforeBadgeText],([NSString stringWithFormat:@"native message badge remains untouched (before=%.17g after=%.17g)",(double)beforeBadgeAlpha,(double)badge.alpha]));
     AWENormalModeTabBarGeneralButton *home=buttons.firstObject;
     AWENormalModeTabBarTextView *text=[[AWENormalModeTabBarTextView alloc]initWithFrame:home.bounds];text->_label=[[UILabel alloc]initWithFrame:CGRectMake(6,10,52,24)];text->_label.text=@"首页";[text addSubview:text->_label];home->_innerView=text;[home addSubview:text];
     UIImage *custom=[UIImage systemImageNamed:@"star.fill"];
@@ -68,5 +69,8 @@ static void douyindisc_glassCases(UIWindow *window) {
     DD_CHECK(bar->_backgroundView.layer.mask==externalMask,"cleanup never overwrites an externally replaced mask");
     BOOL valid=YES;(void)douyindisc_glassField(bar,"_tabBarButtons","@\"UIView\"",&valid);
     DD_CHECK(!valid,"glass field access rejects mismatched Objective-C ivar encoding");
+    UIColor *initialClear=[UIColor colorWithWhite:0 alpha:0];bar.backgroundColor=initialClear;
+    [store douyindisc_saveGlassEnabled:YES error:nil];[store douyindisc_saveGlassEnabled:NO error:nil];
+    DD_CHECK(bar.backgroundColor!=nil&&[bar.backgroundColor isEqual:initialClear],"an originally transparent native background is restored as a color rather than nil");
     [bar removeFromSuperview];
 }
