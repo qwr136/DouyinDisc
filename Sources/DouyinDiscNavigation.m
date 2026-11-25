@@ -181,8 +181,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 @interface DouyinDiscSettingsViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @property (nonatomic, strong) UIScrollView *douyindisc_scrollView;
 @property (nonatomic, strong) UIStackView *douyindisc_stack;
-@property (nonatomic, strong) UISwitch *douyindisc_glassSwitch;
-- (void)douyindisc_glassSwitchChanged;
 @property (nonatomic, weak) DouyinDiscNavigationRow *douyindisc_activeRow;
 @property (nonatomic, copy) NSString *douyindisc_activeIdentifier;
 @property (nonatomic) NSUInteger douyindisc_activePickGeneration;
@@ -281,27 +279,10 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
     UILabel *title=[UILabel new];title.text=@"首页导航图标";title.font=[UIFont systemFontOfSize:24 weight:UIFontWeightBold];
     UILabel *notice=[UILabel new];notice.numberOfLines=0;notice.font=[UIFont systemFontOfSize:12];notice.textColor=UIColor.secondaryLabelColor;notice.text=@"自定义首页分类与底部导航。关闭开关或未选图时保留抖音原样。";
     [intro addArrangedSubview:title];[intro addArrangedSubview:notice];[self.douyindisc_stack addArrangedSubview:intro];
-    UIView *glassCard=[UIView new];glassCard.translatesAutoresizingMaskIntoConstraints=NO;
-    glassCard.backgroundColor=UIColor.secondarySystemGroupedBackgroundColor;glassCard.layer.cornerRadius=16;
-    UIStackView *glassText=[UIStackView new];glassText.axis=UILayoutConstraintAxisVertical;glassText.spacing=4;glassText.translatesAutoresizingMaskIntoConstraints=NO;
-    UILabel *glassTitle=[UILabel new];glassTitle.text=@"悬浮玻璃底栏";glassTitle.font=[UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-    UILabel *glassNote=[UILabel new];glassNote.text=@"圆角毛玻璃与边缘高光，保留原按钮。关闭恢复原样。";glassNote.font=[UIFont systemFontOfSize:12];glassNote.textColor=UIColor.secondaryLabelColor;glassNote.numberOfLines=0;
-    [glassText addArrangedSubview:glassTitle];[glassText addArrangedSubview:glassNote];[glassCard addSubview:glassText];
-    self.douyindisc_glassSwitch=[UISwitch new];self.douyindisc_glassSwitch.translatesAutoresizingMaskIntoConstraints=NO;
-    self.douyindisc_glassSwitch.on=DouyinDiscNavigationStore.douyindisc_sharedStore.douyindisc_glassEnabled;
-    self.douyindisc_glassSwitch.accessibilityLabel=@"悬浮玻璃底栏";self.douyindisc_glassSwitch.accessibilityIdentifier=@"douyindisc.glass.enabled";
-    [self.douyindisc_glassSwitch addTarget:self action:@selector(douyindisc_glassSwitchChanged) forControlEvents:UIControlEventValueChanged];[glassCard addSubview:self.douyindisc_glassSwitch];
-    [NSLayoutConstraint activateConstraints:@[
-        [glassText.leadingAnchor constraintEqualToAnchor:glassCard.leadingAnchor constant:14],[glassText.topAnchor constraintEqualToAnchor:glassCard.topAnchor constant:14],
-        [glassText.bottomAnchor constraintEqualToAnchor:glassCard.bottomAnchor constant:-14],[glassText.trailingAnchor constraintEqualToAnchor:self.douyindisc_glassSwitch.leadingAnchor constant:-12],
-        [self.douyindisc_glassSwitch.trailingAnchor constraintEqualToAnchor:glassCard.trailingAnchor constant:-14],[self.douyindisc_glassSwitch.centerYAnchor constraintEqualToAnchor:glassCard.centerYAnchor],
-        [glassCard.heightAnchor constraintGreaterThanOrEqualToConstant:82]
-    ]];
-    [self.douyindisc_stack addArrangedSubview:glassCard];
     for (NSDictionary *item in douyindisc_navigationItems()) {
         NSString *group = [item[@"identifier"] hasPrefix:@"top_"] ? @"首页顶部分类" : @"底部导航";
-        BOOL needsHeader = [item[@"identifier"] isEqual:@"top_recommend"] ||
-            [item[@"identifier"] isEqual:@"bottom_home"];
+        BOOL needsHeader = self.douyindisc_stack.arrangedSubviews.count == 1 ||
+            (([item[@"identifier"] isEqual:@"bottom_home"]));
         if (needsHeader) {
             UILabel *header = [UILabel new]; header.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold]; header.textColor = UIColor.secondaryLabelColor;
             header.text = group; header.accessibilityLabel = group;
@@ -356,13 +337,6 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
     for (NSDictionary *item in douyindisc_navigationItems()) {
         [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearOpacityPreviewForIdentifier:item[@"identifier"]];
         [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:item[@"identifier"]];
-    }
-}
-- (void)douyindisc_glassSwitchChanged {
-    NSError *error=nil;
-    if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveGlassEnabled:self.douyindisc_glassSwitch.isOn error:&error]){
-        self.douyindisc_glassSwitch.on=DouyinDiscNavigationStore.douyindisc_sharedStore.douyindisc_glassEnabled;
-        [self douyindisc_showError:error];
     }
 }
 - (void)douyindisc_showError:(NSError *)error {
