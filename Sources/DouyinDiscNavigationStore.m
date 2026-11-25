@@ -5,8 +5,10 @@
 
 static NSString * const douyindisc_utiPNG = @"public.png";
 static NSString * const douyindisc_utiGIF = @"com.compuserve.gif";
-static const NSUInteger douyindisc_gifByteLimit = 8 * 1024 * 1024;
-static const NSUInteger douyindisc_gifFrameLimit = 120;
+static const NSUInteger douyindisc_gifByteLimit = 64 * 1024 * 1024;
+static const NSUInteger douyindisc_gifFrameLimit = 1024;
+static const NSTimeInterval douyindisc_gifDurationLimit = 60.0;
+static const NSUInteger douyindisc_gifDecodedByteLimit = 64 * 1024 * 1024;
 static const NSUInteger douyindisc_gifCanvasLimit = 4096;
 static const NSUInteger douyindisc_gifDecodeEdge = 96;
 
@@ -86,11 +88,11 @@ static BOOL douyindisc_dataIsAnimatedGIF(NSData *data) {
 }
 
 static DouyinDiscGIFAnimation *douyindisc_decodeGIF(NSData *data,NSError **error) {
-    if(!data.length||data.length>douyindisc_gifByteLimit){if(error)*error=douyindisc_error(2,@"GIF动画必须小于2 MiB。");return nil;}
+    if(!data.length||data.length>douyindisc_gifByteLimit){if(error)*error=douyindisc_error(2,@"GIF动画超过64 MiB安全上限。");return nil;}
     CGImageSourceRef source=CGImageSourceCreateWithData((__bridge CFDataRef)data,NULL);
     if(!source){if(error)*error=douyindisc_error(2,@"GIF动画数据损坏。");return nil;}
     CFStringRef type=CGImageSourceGetType(source);size_t count=CGImageSourceGetCount(source);
-    if(!type||!CFEqual(type,(__bridge CFStringRef)douyindisc_utiGIF)||count<2||count>douyindisc_gifFrameLimit||CGImageSourceGetStatus(source)!=kCGImageStatusComplete){CFRelease(source);if(error)*error=douyindisc_error(2,count>douyindisc_gifFrameLimit?@"GIF帧数超过120帧限制。":@"GIF动画数据不完整或不是多帧GIF。");return nil;}
+    if(!type||!CFEqual(type,(__bridge CFStringRef)douyindisc_utiGIF)||count<2||count>douyindisc_gifFrameLimit||CGImageSourceGetStatus(source)!=kCGImageStatusComplete){CFRelease(source);if(error)*error=douyindisc_error(2,count>douyindisc_gifFrameLimit?@"GIF帧数超过1024帧安全上限。":@"GIF动画数据不完整或不是多帧GIF。");return nil;}
     NSMutableArray<UIImage *> *frames=[NSMutableArray arrayWithCapacity:count];NSMutableArray<NSNumber *> *keyTimes=[NSMutableArray arrayWithCapacity:count];NSTimeInterval duration=0;
     NSDictionary *options=@{(__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways:@YES,(__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize:@(douyindisc_gifDecodeEdge),(__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform:@YES,(__bridge NSString *)kCGImageSourceShouldCacheImmediately:@YES};
     for(size_t i=0;i<count;i++){
@@ -101,7 +103,7 @@ static DouyinDiscGIFAnimation *douyindisc_decodeGIF(NSData *data,NSError **error
         NSDictionary *gif=props[(__bridge NSString *)kCGImagePropertyGIFDictionary];
         NSNumber *n=gif[(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime]?:gif[(__bridge NSString *)kCGImagePropertyGIFDelayTime];
         double delay=n?[n doubleValue]:.1;if(!isfinite(delay))delay=.1;delay=fmin(.5,fmax(.04,delay));
-        if(duration+delay>8){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF动画时长超过8秒。");return nil;}
+        if(duration+delay>douyindisc_gifDurationLimit){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF动画时长超过60秒安全上限。");return nil;}
         CGImageRef frame=CGImageSourceCreateThumbnailAtIndex(source,i,(__bridge CFDictionaryRef)options);
         if(!frame){CFRelease(source);if(error)*error=douyindisc_error(2,@"GIF帧解码失败。");return nil;}
         [frames addObject:[UIImage imageWithCGImage:frame scale:1 orientation:UIImageOrientationUp]];CGImageRelease(frame);
@@ -350,7 +352,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             if(cached&&gifURL&&[NSFileManager.defaultManager fileExistsAtPath:gifURL.path]){animations[key]=cached;continue;}
             NSNumber *gifSize=nil;if(gifURL)[gifURL getResourceValue:&gifSize forKey:NSURLFileSizeKey error:nil];
             NSData *gif=(gifSize&&gifSize.unsignedLongLongValue>0&&gifSize.unsignedLongLongValue<=douyindisc_gifByteLimit)?[NSData dataWithContentsOfURL:gifURL options:NSDataReadingMappedIfSafe error:nil]:nil;
-            if(gif.length<=douyindisc_gifByteLimit){DouyinDiscGIFAnimation *animation=douyindisc_decodeGIF(gif,nil);NSUInteger cost=douyindisc_gifDecodedCost(animation);if(animation&&decodedAnimationBytes<=8*1024*1024&&cost<=8*1024*1024-decodedAnimationBytes){animations[key]=animation;decodedAnimationBytes+=cost;}}
+            if(gif.length<=douyindisc_gifByteLimit){DouyinDiscGIFAnimation *animation=douyindisc_decodeGIF(gif,nil);NSUInteger cost=douyindisc_gifDecodedCost(animation);if(animation&&decodedAnimationBytes<=douyindisc_gifDecodedByteLimit&&cost<=douyindisc_gifDecodedByteLimit-decodedAnimationBytes){animations[key]=animation;decodedAnimationBytes+=cost;}}
         }
         dispatch_async(dispatch_get_main_queue(), ^{
             NSAssert(NSThread.isMainThread, @"Navigation store merge must be on main thread");
@@ -448,7 +450,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
         BOOL gifSignature=douyindisc_hasGIFSignature(snapshot);
         size_t sourceFrames=gifSignature&&snapshot.length<=douyindisc_gifByteLimit?douyindisc_frameCount(snapshot):0;
         DouyinDiscGIFAnimation *animation=nil;
-        if(gifSignature&&(!sourceFrames||snapshot.length>douyindisc_gifByteLimit))error=douyindisc_error(2,@"GIF动画数据损坏或超过8 MiB限制。");
+        if(gifSignature&&(!sourceFrames||snapshot.length>douyindisc_gifByteLimit))error=douyindisc_error(2,@"GIF动画数据损坏或超过64 MiB安全上限。");
         else if(gifSignature&&sourceFrames>1)animation=douyindisc_decodeGIF(snapshot,&error);
         UIImage *image=error?nil:douyindisc_decodeImage(snapshot,NO,&error);
         NSData *png = image.CGImage ? douyindisc_PNGData(image.CGImage, &error) : nil;
@@ -491,7 +493,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             if(animation){
                 NSUInteger total=douyindisc_gifDecodedCost(animation);
                 for(NSString *cachedKey in self.douyindisc_animations)if(![cachedKey isEqualToString:key]){NSUInteger cost=douyindisc_gifDecodedCost(self.douyindisc_animations[cachedKey]);total=cost>NSUIntegerMax-total?NSUIntegerMax:total+cost;}
-                if(total>8*1024*1024){[NSFileManager.defaultManager removeItemAtURL:newURL error:nil];if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil];[self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];if(completion)completion(douyindisc_error(2,@"GIF动画缓存已达8 MiB上限，原图未更改。"));return;}
+                if(total>douyindisc_gifDecodedByteLimit){[NSFileManager.defaultManager removeItemAtURL:newURL error:nil];if(newGIFURL)[NSFileManager.defaultManager removeItemAtURL:newGIFURL error:nil];[self douyindisc_finishImagePickingForIdentifier:key generation:authorizedGeneration];if(completion)completion(douyindisc_error(2,@"GIF动画缓存超过64 MiB安全上限，原图未更改。"));return;}
             }
             NSMutableDictionary *config = [self.douyindisc_config mutableCopy];
             NSMutableDictionary *entry = [config[key] mutableCopy] ?: [NSMutableDictionary dictionary];
