@@ -1,12 +1,8 @@
 #import "DouyinDiscNavigation.h"
 #import <math.h>
 #import <ImageIO/ImageIO.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 static NSString * const douyindisc_utiPNG = @"public.png";
-static NSString * const douyindisc_utiJPEG = @"public.jpeg";
-static NSString * const douyindisc_utiHEIC = @"public.heic";
-static NSString * const douyindisc_utiHEIF = @"public.heif";
 
 static NSArray<NSDictionary<NSString *, id> *> *douyindisc_itemTable(void) {
     static NSArray *items;

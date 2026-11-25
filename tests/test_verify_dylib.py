@@ -175,16 +175,22 @@ class VerifyDylibTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'special-slot hash mismatch'):
             self.verify(patch(req, len(req) - 9, 'B', 1))
 
-    def test_approved_navigation_system_dependencies(self):
+    def test_navigation_dependencies_exclude_unused_picker_frameworks(self):
         from verify_dylib import inspect_dylib
-        approved=("/System/Library/Frameworks/ImageIO.framework/ImageIO",
-                 "/System/Library/Frameworks/PhotosUI.framework/PhotosUI",
-                 "/System/Library/Frameworks/UniformTypeIdentifiers.framework/UniformTypeIdentifiers")
+        approved=("/System/Library/Frameworks/ImageIO.framework/ImageIO",)
         for name in approved:
             with self.subTest(name=name):
                 data=specimen(deps=((0xC,LIB_SYSTEM),(0xC,FOUNDATION),(0xC,name)))
                 self.artifact.write_bytes(data)
                 self.assertIn(name,inspect_dylib(self.artifact)['dependencies'])
+        removed=("/System/Library/Frameworks/PhotosUI.framework/PhotosUI",
+                 "/System/Library/Frameworks/UniformTypeIdentifiers.framework/UniformTypeIdentifiers")
+        for name in removed:
+            with self.subTest(name=name):
+                data=specimen(deps=((0xC,LIB_SYSTEM),(0xC,FOUNDATION),(0xC,name)))
+                self.artifact.write_bytes(data)
+                with self.assertRaisesRegex(ValueError,'dependency is not an approved Apple install name'):
+                    inspect_dylib(self.artifact)
 
     def test_manifest_matching_and_cli_failure(self):
         path = self.project / 'tweak.json'

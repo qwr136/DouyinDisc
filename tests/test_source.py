@@ -31,13 +31,15 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('[row douyindisc_setHasImage:YES]',panel)
         self.assertIn('[self.douyindisc_imageButton setImage:[UIImage systemImageNamed:@"photo"] forState:UIControlStateNormal]',panel)
         self.assertIn('douyindisc_decodeImageData:data',panel)
-        self.assertIn('NSFileCoordinator',panel)
-        self.assertIn('!hasSize||!size||!size.unsignedLongLongValue',panel)
+        self.assertNotIn('UIDocumentPicker',panel)
+        self.assertNotIn('NSFileCoordinator',panel)
+        self.assertNotIn('SecurityScopedResource',panel)
+        self.assertNotIn('NSItemProvider',panel)
         self.assertIn('DOUYINDISC_UI_TEST=1', (ROOT/'scripts/run_uikit_tests.py').read_text(encoding='utf-8'))
         self.assertIn('entry[@"scale"] doubleValue', hooks)
         self.assertNotIn('UISlider', panel)
         self.assertIn('UIImagePickerControllerSourceTypePhotoLibrary', panel)
-        self.assertIn('photos.modalPresentationStyle=UIModalPresentationFullScreen', panel)
+        self.assertIn('picker.modalPresentationStyle=UIModalPresentationFullScreen', panel)
         self.assertIn('UIImagePickerControllerImageURL', panel)
         self.assertIn('UIImagePickerControllerOriginalImage', panel)
         self.assertNotIn('PHPickerViewController', panel)
@@ -86,17 +88,17 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('iconImageView', hooks)
         self.assertIn('DouyinDisc root cell receives its icon and disclosure arrow after one original display callback',host)
         self.assertIn('douyindisc_photoTapped',panel)
-        self.assertIn('douyindisc_filesTapped',panel)
-        self.assertIn('self.douyindisc_filesButton.accessibilityIdentifier',panel)
-        self.assertIn('self.douyindisc_filesButton.accessibilityLabel',panel)
-        self.assertIn('self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_filesButton,self.douyindisc_clearButton]]',panel)
-        self.assertIn('initForOpeningContentTypes:',panel)
+        self.assertIn('douyindisc_pickPhoto',panel)
+        self.assertNotIn('douyindisc_filesButton',panel)
+        self.assertNotIn('douyindisc_filesTapped',panel)
+        self.assertIn('self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_clearButton]]',panel)
+        self.assertNotIn('initForOpeningContentTypes:',panel)
         self.assertIn('UIImagePickerControllerSourceTypePhotoLibrary',panel)
         self.assertIn('UIImagePickerControllerOriginalImage',panel)
         self.assertIn('imagePickerControllerDidCancel:',panel)
         self.assertNotIn('PHPickerViewController',panel)
         self.assertIn('system photo cancel revokes the previous selection ticket',host)
-        self.assertIn('photo file and switch controls all receive touch after picker dismissal',host)
+        self.assertIn('photo and switch controls still receive touch after picker dismissal',host)
         self.assertIn('settings-window brightness is restored after system photo cancel',host)
         self.assertNotIn('UIMenu *',panel)
         self.assertNotIn('UIAction *photos=',panel)
@@ -109,7 +111,7 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('native tapped block opens DouyinDisc from the root row',host)
         self.assertNotIn('UISlider', panel)
         self.assertIn('UIImagePickerControllerSourceTypePhotoLibrary', panel)
-        self.assertIn('photos.modalPresentationStyle=UIModalPresentationFullScreen', panel)
+        self.assertIn('picker.modalPresentationStyle=UIModalPresentationFullScreen', panel)
         self.assertIn('UIImagePickerControllerImageURL', panel)
         self.assertIn('UIImagePickerControllerOriginalImage', panel)
         self.assertNotIn('PHPickerViewController', panel)
@@ -148,7 +150,7 @@ class SourceContractTests(unittest.TestCase):
                 (SOURCE, lambda src: '#import <substrate.h>\n' + src, 'jailbreak header'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace('arm64-apple-ios', 'arm64e-apple-ios'), 'TARGET differs'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace("*SOURCE_FILES, '-o'", "*SOURCE_FILES, '-lsubstrate', '-o'"), 'Apple-only'),
-                (Path('scripts/build_dylib.py'), lambda src: src.replace("'UniformTypeIdentifiers'", "'Substrate'"), 'framework list'),
+                (Path('scripts/build_dylib.py'), lambda src: src.replace("'ImageIO'", "'Substrate'"), 'framework list'),
                 (Path('build.sh'), lambda src: src.replace('\npython3 scripts/toolchain.py', '\n# python3 scripts/toolchain.py'), 'verify before'),
             ):
                 with self.subTest(file=relative, message=message):
@@ -223,7 +225,7 @@ printf '%s\\n' "$stage" >> order
                     self.assertFalse(list(artifact.parent.glob('.build.*')))
                     if phase == 'offline':
                         self.assertIn('truncated Mach-O header', proc.stderr)
-            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO','UniformTypeIdentifiers') for value in ('-framework',framework)]
+            expected_frameworks = [value for framework in ('Foundation','UIKit','QuartzCore','CoreGraphics','ImageIO') for value in ('-framework',framework)]
             expected_sources = [str(SOURCE), 'Sources/DouyinDiscPolicy.c', 'Sources/DouyinDiscNativeDisplay.m',
                                 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m',
                                 'Sources/DouyinDiscNavigationHooks.m']

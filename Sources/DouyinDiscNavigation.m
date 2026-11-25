@@ -1,17 +1,10 @@
 #import "DouyinDiscNavigation.h"
-#import <Photos/Photos.h>
 #import <objc/runtime.h>
 #import <math.h>
 #import <ImageIO/ImageIO.h>
-#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #if defined(DOUYINDISC_UI_TEST)
 #import <dlfcn.h>
 #endif
-static NSString * const douyindisc_utiPNG = @"public.png";
-static NSString * const douyindisc_utiJPEG = @"public.jpeg";
-static NSString * const douyindisc_utiHEIC = @"public.heic";
-static NSString * const douyindisc_utiImage = @"public.image";
-
 static UIColor *douyindisc_color(NSString *hex) {
     unsigned value = 0;
     NSScanner *scanner = [NSScanner scannerWithString:[hex stringByReplacingOccurrencesOfString:@"#" withString:@""]];
@@ -34,14 +27,13 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, strong) UILabel *douyindisc_sizeTitle;
 @property (nonatomic, strong) UIImageView *douyindisc_thumbnail;
 @property (nonatomic, strong) UIButton *douyindisc_imageButton;
-@property (nonatomic, strong) UIButton *douyindisc_filesButton;
 @property (nonatomic, strong) UIButton *douyindisc_clearButton;
 @property (nonatomic, strong) UIStackView *douyindisc_actions;
 @property (nonatomic, copy) void (^douyindisc_change)(DouyinDiscNavigationRow *, BOOL, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_preview)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_changeScale)(DouyinDiscNavigationRow *, CGFloat);
 @property (nonatomic, copy) void (^douyindisc_previewScale)(DouyinDiscNavigationRow *, CGFloat);
-@property (nonatomic, copy) void (^douyindisc_pick)(DouyinDiscNavigationRow *, BOOL);
+@property (nonatomic, copy) void (^douyindisc_pickPhoto)(DouyinDiscNavigationRow *);
 @property (nonatomic, copy) void (^douyindisc_clear)(DouyinDiscNavigationRow *);
 - (void)douyindisc_changeOpacityByMinus;
 - (void)douyindisc_changeOpacityByPlus;
@@ -56,7 +48,6 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_adjustSize:(NSInteger)delta;
 - (void)douyindisc_switchChanged;
 - (void)douyindisc_photoTapped;
-- (void)douyindisc_filesTapped;
 - (void)douyindisc_clearTapped;
 - (void)douyindisc_setHasImage:(BOOL)hasImage;
 - (void)douyindisc_setImagePickingEnabled:(BOOL)enabled;
@@ -104,18 +95,11 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_imageButton.titleEdgeInsets=UIEdgeInsetsMake(0,6,0,0);
     self.douyindisc_imageButton.contentVerticalAlignment=UIControlContentVerticalAlignmentCenter;
     [self.douyindisc_imageButton addTarget:self action:@selector(douyindisc_photoTapped) forControlEvents:UIControlEventTouchUpInside];
-    self.douyindisc_filesButton=[UIButton buttonWithType:UIButtonTypeSystem];self.douyindisc_filesButton.translatesAutoresizingMaskIntoConstraints=NO;
-    [self.douyindisc_filesButton setImage:[UIImage systemImageNamed:@"folder"] forState:UIControlStateNormal];
-    self.douyindisc_filesButton.tintColor=douyindisc_color(@"#1557C0");[self.douyindisc_filesButton setTitle:@"文件" forState:UIControlStateNormal];self.douyindisc_filesButton.titleLabel.font=[UIFont systemFontOfSize:12 weight:UIFontWeightMedium];self.douyindisc_filesButton.titleEdgeInsets=UIEdgeInsetsMake(0,4,0,0);
-    self.douyindisc_filesButton.accessibilityLabel=@"从文件选择图标";
-    self.douyindisc_filesButton.enabled=[entry[@"enabled"] boolValue];
-    self.douyindisc_filesButton.accessibilityIdentifier=[@"douyindisc.files." stringByAppendingString:self.douyindisc_identifier];
-    [self.douyindisc_filesButton addTarget:self action:@selector(douyindisc_filesTapped) forControlEvents:UIControlEventTouchUpInside];
     self.douyindisc_clearButton=[UIButton buttonWithType:UIButtonTypeSystem]; self.douyindisc_clearButton.translatesAutoresizingMaskIntoConstraints=NO;
     [self.douyindisc_clearButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
     self.douyindisc_clearButton.accessibilityLabel=@"移除此项自定义图标"; self.douyindisc_clearButton.enabled=image!=nil;
     [self.douyindisc_clearButton addTarget:self action:@selector(douyindisc_clearTapped) forControlEvents:UIControlEventTouchUpInside];
-    self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_filesButton,self.douyindisc_clearButton]];
+    self.douyindisc_actions=[[UIStackView alloc] initWithArrangedSubviews:@[self.douyindisc_imageButton,self.douyindisc_clearButton]];
     self.douyindisc_actions.translatesAutoresizingMaskIntoConstraints=NO; self.douyindisc_actions.axis=UILayoutConstraintAxisHorizontal; self.douyindisc_actions.spacing=4;
     [content addSubview:self.douyindisc_actions];
     self.douyindisc_thumbnail=[UIImageView new]; self.douyindisc_thumbnail.translatesAutoresizingMaskIntoConstraints=NO;
@@ -153,7 +137,7 @@ static UIColor *douyindisc_color(NSString *hex) {
         [self.douyindisc_switch.trailingAnchor constraintEqualToAnchor:content.trailingAnchor], [self.douyindisc_switch.centerYAnchor constraintEqualToAnchor:swatch.centerYAnchor],
         [self.douyindisc_thumbnail.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_thumbnail.topAnchor constraintEqualToAnchor:swatch.bottomAnchor constant:8], [self.douyindisc_thumbnail.widthAnchor constraintEqualToConstant:42], [self.douyindisc_thumbnail.heightAnchor constraintEqualToConstant:42],
         [self.douyindisc_actions.leadingAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.trailingAnchor constant:8], [self.douyindisc_actions.centerYAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.centerYAnchor], [self.douyindisc_actions.trailingAnchor constraintLessThanOrEqualToAnchor:content.trailingAnchor],
-        [self.douyindisc_imageButton.widthAnchor constraintEqualToConstant:88], [self.douyindisc_imageButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_filesButton.widthAnchor constraintEqualToConstant:76], [self.douyindisc_filesButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.heightAnchor constraintEqualToConstant:36],
+        [self.douyindisc_imageButton.widthAnchor constraintEqualToConstant:88], [self.douyindisc_imageButton.heightAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.widthAnchor constraintEqualToConstant:36], [self.douyindisc_clearButton.heightAnchor constraintEqualToConstant:36],
         [self.douyindisc_opacityTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor], [self.douyindisc_opacityTitle.centerYAnchor constraintEqualToAnchor:self.douyindisc_value.centerYAnchor],
         [self.douyindisc_opacityMinus.leadingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-146], [self.douyindisc_opacityMinus.centerYAnchor constraintEqualToAnchor:self.douyindisc_value.centerYAnchor], [self.douyindisc_opacityMinus.widthAnchor constraintEqualToConstant:34], [self.douyindisc_opacityMinus.heightAnchor constraintEqualToConstant:30],
         [self.douyindisc_value.leadingAnchor constraintEqualToAnchor:self.douyindisc_opacityMinus.trailingAnchor constant:2], [self.douyindisc_value.trailingAnchor constraintEqualToAnchor:self.douyindisc_opacityPlus.leadingAnchor constant:-2], [self.douyindisc_value.widthAnchor constraintEqualToConstant:74], [self.douyindisc_value.heightAnchor constraintEqualToConstant:30], [self.douyindisc_value.topAnchor constraintEqualToAnchor:self.douyindisc_thumbnail.bottomAnchor constant:8],
@@ -167,7 +151,7 @@ static UIColor *douyindisc_color(NSString *hex) {
     ]];
     return self;
 }
-- (void)douyindisc_setImagePickingEnabled:(BOOL)enabled { self.douyindisc_imageButton.enabled=enabled;self.douyindisc_filesButton.enabled=enabled; }
+- (void)douyindisc_setImagePickingEnabled:(BOOL)enabled { self.douyindisc_imageButton.enabled=enabled; }
 - (void)douyindisc_setHasImage:(BOOL)hasImage {
     NSString *title=hasImage?@"更换图标":@"照片";
     [self.douyindisc_imageButton setTitle:title forState:UIControlStateNormal];
@@ -189,13 +173,12 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_commitOpacityInput {NSString *raw=[self.douyindisc_value.text stringByReplacingOccurrencesOfString:@"%" withString:@""];if(![self douyindisc_validPercentText:raw]){self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];return;}double parsed=raw.doubleValue;if(!isfinite(parsed)){self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];return;}NSInteger v=(NSInteger)lrint(MIN(100.0,MAX(0.0,parsed)));self.douyindisc_opacity=v/100.0;self.douyindisc_value.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_preview)self.douyindisc_preview(self,self.douyindisc_opacity);if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
 - (void)douyindisc_commitSizeInput {NSString *raw=[self.douyindisc_sizeValue.text stringByReplacingOccurrencesOfString:@"%" withString:@""];if(![self douyindisc_validPercentText:raw]){self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];return;}double parsed=raw.doubleValue;if(!isfinite(parsed)){self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];return;}NSInteger v=(NSInteger)lrint(MIN(150.0,MAX(50.0,parsed)));self.douyindisc_scale=v/100.0;self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_scale);if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_scale);}
 - (void)douyindisc_switchChanged {if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
-- (void)douyindisc_photoTapped { if(self.douyindisc_imageButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,NO); }
-- (void)douyindisc_filesTapped { if(self.douyindisc_filesButton.enabled&&self.douyindisc_pick)self.douyindisc_pick(self,YES); }
+- (void)douyindisc_photoTapped { if(self.douyindisc_imageButton.enabled&&self.douyindisc_pickPhoto)self.douyindisc_pickPhoto(self); }
 - (void)douyindisc_setEnabledAfterCommit:(BOOL)enabled { self.douyindisc_switch.on=enabled; [self douyindisc_setImagePickingEnabled:enabled]; }
 - (void)douyindisc_clearTapped { if (self.douyindisc_clear) self.douyindisc_clear(self); }
 @end
 
-@interface DouyinDiscSettingsViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIDocumentPickerDelegate>
+@interface DouyinDiscSettingsViewController () <UIImagePickerControllerDelegate, UINavigationControllerDelegate>
 @property (nonatomic, strong) UIScrollView *douyindisc_scrollView;
 @property (nonatomic, strong) UIStackView *douyindisc_stack;
 @property (nonatomic, weak) DouyinDiscNavigationRow *douyindisc_activeRow;
@@ -216,14 +199,13 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic, copy) dispatch_block_t douyindisc_uiTestPickerReady;
 @property (nonatomic) BOOL douyindisc_uiTestPresentationCompleted;
 #endif
-- (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files;
+- (void)douyindisc_presentPhotoPickerForRow:(DouyinDiscNavigationRow *)row;
 - (void)douyindisc_finishPickerUI:(UIViewController *)picker cancelled:(BOOL)cancelled keepImportTicket:(BOOL)keepImportTicket;
 - (void)douyindisc_finishImportSessionIdentifier:(NSString *)identifier generation:(NSUInteger)generation;
 - (void)douyindisc_dismissPicker:(UIViewController *)picker completion:(dispatch_block_t)completion;
 - (void)douyindisc_schedulePickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_startPickerMonitor:(UIViewController *)picker generation:(NSUInteger)generation;
 - (void)douyindisc_checkPickerRecovery:(UIViewController *)picker generation:(NSUInteger)generation recovery:(NSUInteger)recovery;
-- (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError;
 - (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration;
 @end
 
@@ -329,7 +311,7 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
             if(![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_saveEnabled:[entry[@"enabled"] boolValue] opacity:[entry[@"opacity"] doubleValue] scale:scale identifier:changed.douyindisc_identifier error:&error]){changed.douyindisc_scale=[entry[@"scale"] doubleValue];changed.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(changed.douyindisc_scale*100)];[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:changed.douyindisc_identifier];[weakSelf douyindisc_showError:error];return;}
             [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:changed.douyindisc_identifier];
         };
-        row.douyindisc_pick = ^(DouyinDiscNavigationRow *selected, BOOL files) { [weakSelf douyindisc_presentPickerForRow:selected files:files]; };
+        row.douyindisc_pickPhoto = ^(DouyinDiscNavigationRow *selected) { [weakSelf douyindisc_presentPhotoPickerForRow:selected]; };
         row.douyindisc_clear = ^(DouyinDiscNavigationRow *selected) {
             NSError *error = nil;
             if (![DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearImageForIdentifier:selected.douyindisc_identifier error:&error]) { [weakSelf douyindisc_showError:error]; return; }
@@ -363,7 +345,7 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
     [alert addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
-- (void)douyindisc_presentPickerForRow:(DouyinDiscNavigationRow *)row files:(BOOL)files {
+- (void)douyindisc_presentPhotoPickerForRow:(DouyinDiscNavigationRow *)row {
     if (!NSThread.isMainThread || !self.view.window || self.presentedViewController || self.douyindisc_activePicker || self.isBeingDismissed) return;
     DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
     if (self.douyindisc_activePickGeneration)
@@ -375,15 +357,9 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
     self.douyindisc_activePickGeneration=generation;
     self.douyindisc_pickerHasResult=NO;
     self.douyindisc_pickerHasProvider=NO;
-    UIViewController *picker;
-    if (files) {
-        UIDocumentPickerViewController *document=[[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[[UTType typeWithIdentifier:douyindisc_utiImage]] asCopy:YES];
-        document.delegate=self; picker=document;
-    } else {
-        UIImagePickerController *photos=[UIImagePickerController new];
-        photos.sourceType=UIImagePickerControllerSourceTypePhotoLibrary;photos.mediaTypes=@[@"public.image"];
-        photos.delegate=self;photos.modalPresentationStyle=UIModalPresentationFullScreen;picker=photos;
-    }
+    UIImagePickerController *picker=[UIImagePickerController new];
+    picker.sourceType=UIImagePickerControllerSourceTypePhotoLibrary;picker.mediaTypes=@[@"public.image"];
+    picker.delegate=self;picker.modalPresentationStyle=UIModalPresentationFullScreen;
     self.douyindisc_activePicker=picker;
     __weak typeof(self) weakSelf=self;
 #if defined(DOUYINDISC_UI_TEST)
@@ -483,25 +459,7 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
     NSUInteger recovery=++self.douyindisc_pickerRecoveryGeneration;self.douyindisc_pickerRecoveryAttempts=0;self.douyindisc_pickerDetachedSamples=0;__weak typeof(self) weakSelf=self;
     dispatch_async(dispatch_get_main_queue(),^{[weakSelf douyindisc_checkPickerRecovery:picker generation:generation recovery:recovery];});
 }
-- (void)douyindisc_loadPhotoProvider:(NSItemProvider *)provider types:(NSArray<NSString *> *)types index:(NSUInteger)index identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration error:(NSError *)lastError {
-    if(index>=types.count){
-        if([provider canLoadObjectOfClass:UIImage.class]){
-            __weak typeof(self) weakSelf=self;
-            [provider loadObjectOfClass:UIImage.class completionHandler:^(id object,NSError *objectError){
-                dispatch_async(dispatch_get_main_queue(),^{NSData *fallback=[object isKindOfClass:UIImage.class]?UIImagePNGRepresentation(object):nil;if(fallback)[weakSelf douyindisc_commitImageData:fallback identifier:identifier pickingGeneration:pickingGeneration];else {[weakSelf douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];[weakSelf douyindisc_showError:objectError?:lastError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片无法解码为静态图片。"}]];}});
-            }];
-        } else dispatch_async(dispatch_get_main_queue(),^{[self douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];[self douyindisc_showError:lastError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"照片提供器没有返回可读取的图片数据。"}]];});
-        return;
-    }
-    NSString *type=types[index];
-    if(![provider hasItemConformingToTypeIdentifier:type]){[self douyindisc_loadPhotoProvider:provider types:types index:index+1 identifier:identifier pickingGeneration:pickingGeneration error:lastError];return;}
-    __weak typeof(self) weakSelf=self;
-    [provider loadDataRepresentationForTypeIdentifier:type completionHandler:^(NSData *data,NSError *error){
-        if(data.length&&[DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_decodeImageData:data])dispatch_async(dispatch_get_main_queue(),^{[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:pickingGeneration];});
-        else [weakSelf douyindisc_loadPhotoProvider:provider types:types index:index+1 identifier:identifier pickingGeneration:pickingGeneration error:error?:lastError];
-    }];
-}
-- (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration {
+- (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration {- (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration {
     __weak typeof(self) weakSelf=self;
     [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_saveImageData:data identifier:identifier pickingGeneration:pickingGeneration completion:^(NSError *error){
         DouyinDiscSettingsViewController *strongSelf=weakSelf;
@@ -533,37 +491,6 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
         else if(image){NSData *data=UIImagePNGRepresentation(image);if(data)[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];}
     }];
 }
-- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
-    if (self.douyindisc_activePicker!=controller || self.douyindisc_pickerHasResult) return;
-    NSURL *url=urls.firstObject;
-    NSString *identifier=[self.douyindisc_activeIdentifier copy]; NSUInteger generation=self.douyindisc_activePickGeneration;
-    self.douyindisc_pickerHasResult=YES;
-    self.douyindisc_pickerHasProvider=url!=nil;
-    [self douyindisc_dismissPicker:controller completion:^{
-        [self douyindisc_finishPickerUI:controller cancelled:!url keepImportTicket:url!=nil];
-        if (!url || !identifier || !generation) return;
-        BOOL scoped=[url startAccessingSecurityScopedResource];
-    __weak typeof(self) weakSelf=self;
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED,0), ^{
-        __block NSData *data=nil; __block NSError *readError=nil;
-        NSFileCoordinator *coordinator=[[NSFileCoordinator alloc] initWithFilePresenter:nil];
-        [coordinator coordinateReadingItemAtURL:url options:0 error:&readError byAccessor:^(NSURL *readURL){
-            NSNumber *size=nil; BOOL hasSize=[readURL getResourceValue:&size forKey:NSURLFileSizeKey error:&readError];
-            if(!hasSize||!size||!size.unsignedLongLongValue){readError=readError?:[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:3 userInfo:@{NSLocalizedDescriptionKey:@"无法读取图片文件信息，请先下载到本机再导入。"}];return;}
-            if(size.unsignedLongLongValue>64*1024*1024){readError=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:3 userInfo:@{NSLocalizedDescriptionKey:@"图片文件超过 64 MiB。"}];return;}
-            data=[NSData dataWithContentsOfURL:readURL options:NSDataReadingMappedIfSafe error:&readError];
-        }];
-        if(scoped)[url stopAccessingSecurityScopedResource];
-        dispatch_async(dispatch_get_main_queue(), ^{if(data)[weakSelf douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];else {[weakSelf douyindisc_finishImportSessionIdentifier:identifier generation:generation];[weakSelf douyindisc_showError:readError];}});
-    });
-    }];
-}
-- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
-    if (self.douyindisc_activePicker!=controller || self.douyindisc_pickerHasResult) return;
-    self.douyindisc_pickerHasResult=YES;
-    __weak typeof(self) weakSelf=self;
-    [self douyindisc_dismissPicker:controller completion:^{ [weakSelf douyindisc_finishPickerUI:controller cancelled:YES keepImportTicket:NO]; }];
-}
 @end
 
 #if defined(DOUYINDISC_UI_TEST)
@@ -575,9 +502,9 @@ BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
  __block CGFloat preview=-1,committed=-1;row.douyindisc_previewScale=^(DouyinDiscNavigationRow *r,CGFloat x){(void)r;preview=x;};row.douyindisc_changeScale=^(DouyinDiscNavigationRow *r,CGFloat x){(void)r;committed=x;};row.douyindisc_sizeValue.text=@"125";[row douyindisc_commitSizeInput];BOOL typed=fabs(preview-1.25)<.001&&fabs(committed-1.25)<.001&&[row.douyindisc_sizeValue.text isEqualToString:@"125%"];
  [row.douyindisc_sizePlus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL plusTapped=fabs(row.douyindisc_scale-1.26)<.001;[row.douyindisc_sizeMinus sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL minusTapped=fabs(row.douyindisc_scale-1.25)<.001;row.douyindisc_sizeValue.text=@"999";[row douyindisc_commitSizeInput];BOOL maxClamp=fabs(row.douyindisc_scale-1.5)<.001;row.douyindisc_sizeValue.text=@"1";[row douyindisc_commitSizeInput];BOOL minClamp=fabs(row.douyindisc_scale-.5)<.001;
  __block CGFloat opacity=-1;row.douyindisc_change=^(DouyinDiscNavigationRow *r,BOOL on,CGFloat x){(void)r;(void)on;opacity=x;};row.douyindisc_value.text=@"120";[row douyindisc_commitOpacityInput];BOOL opacityClamp=fabs(opacity-1)<.001&&[row.douyindisc_value.text isEqualToString:@"100%"];
- BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"照片"]&&row.douyindisc_imageButton.currentImage!=nil&&row.douyindisc_thumbnail.image==nil&&!row.douyindisc_imageButton.enabled;[row douyindisc_setImagePickingEnabled:YES];__block NSInteger source=-1;row.douyindisc_pick=^(DouyinDiscNavigationRow *r,BOOL files){(void)r;source=files?1:0;};[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL photo=source==0;source=-1;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL files=source==1;
+ BOOL noImage=[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"照片"]&&row.douyindisc_imageButton.currentImage!=nil&&row.douyindisc_thumbnail.image==nil&&!row.douyindisc_imageButton.enabled;[row douyindisc_setImagePickingEnabled:YES];__block BOOL photo=NO;row.douyindisc_pickPhoto=^(DouyinDiscNavigationRow *r){(void)r;photo=YES;};[row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
  row.douyindisc_thumbnail.image=image;[row douyindisc_setHasImage:YES];[row douyindisc_setEnabledAfterCommit:NO];
- return labels&&controls&&rangeControls&&typed&&plusTapped&&minusTapped&&maxClamp&&minClamp&&minClamp&&opacityClamp&&noImage&&photo&&files&&row.bounds.size.height==198&&row.douyindisc_actions.arrangedSubviews.count==3&&row.douyindisc_clearButton.enabled&&row.douyindisc_imageButton.bounds.size.width==88;
+ return labels&&controls&&rangeControls&&typed&&plusTapped&&minusTapped&&maxClamp&&minClamp&&minClamp&&opacityClamp&&noImage&&photo&&row.bounds.size.height==198&&row.douyindisc_actions.arrangedSubviews.count==2&&row.douyindisc_clearButton.enabled&&row.douyindisc_imageButton.bounds.size.width==88;
 }
 
 extern void douyindisc_uiTestSetNavigationImage(NSString *, UIImage *, BOOL);
@@ -619,18 +546,16 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     __block BOOL photoFullScreen=NO;
     __block BOOL photoVisible=NO;
     __block BOOL cancelSent=NO;
-    __block NSInteger source=-1;
+    __block BOOL photoDirect=NO;
     __block NSUInteger generation=0;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
         if(completed)return;completed=YES;
         [panel.view layoutIfNeeded];[window layoutIfNeeded];
         CGPoint photoPoint=[row.douyindisc_imageButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_imageButton.bounds),CGRectGetMidY(row.douyindisc_imageButton.bounds)) toView:window];
-        CGPoint filePoint=[row.douyindisc_filesButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_filesButton.bounds),CGRectGetMidY(row.douyindisc_filesButton.bounds)) toView:window];
         CGPoint switchPoint=[row.douyindisc_switch convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds)) toView:window];
-        BOOL touches=[window hitTest:photoPoint withEvent:nil]&&[[window hitTest:photoPoint withEvent:nil] isDescendantOfView:row.douyindisc_imageButton]&&[[window hitTest:filePoint withEvent:nil] isDescendantOfView:row.douyindisc_filesButton]&&[[window hitTest:switchPoint withEvent:nil] isDescendantOfView:row.douyindisc_switch];
-        row.douyindisc_pick=^(DouyinDiscNavigationRow *selected,BOOL files){(void)selected;source=files?1:0;};
-        [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL photoDirect=source==0;
-        source=-1;[row.douyindisc_filesButton sendActionsForControlEvents:UIControlEventTouchUpInside];BOOL fileDirect=source==1;
+        BOOL touches=[window hitTest:photoPoint withEvent:nil]&&[[window hitTest:photoPoint withEvent:nil] isDescendantOfView:row.douyindisc_imageButton]&&[[window hitTest:switchPoint withEvent:nil] isDescendantOfView:row.douyindisc_switch];
+        row.douyindisc_pickPhoto=^(DouyinDiscNavigationRow *selected){(void)selected;photoDirect=YES;};
+        [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
         double after=douyindisc_uiTestWindowBrightness(window);
         NSUInteger reopenTicket=[store douyindisc_beginImagePickingForIdentifier:@"top_recommend"];
         BOOL oldTicketRevoked=reopenTicket>generation;
@@ -638,9 +563,9 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         NSMutableDictionary *results=[@{
             @"swipeRecovery":@(cancelled&&!panel.douyindisc_activePicker&&panel.douyindisc_activePickGeneration==0),
             @"ticketRevoked":@(oldTicketRevoked),
-            @"interactive":@(cancelled&&touches&&row.douyindisc_imageButton.enabled&&row.douyindisc_filesButton.enabled&&row.douyindisc_switch.enabled),
+            @"interactive":@(cancelled&&touches&&row.douyindisc_imageButton.enabled&&row.douyindisc_switch.enabled),
             @"brightness":@(brightness>0&&fabs(after-brightness)<3),
-            @"photoDirect":@(photoDirect),@"fileDirect":@(fileDirect),
+            @"photoDirect":@(photoDirect),
             @"unchanged":@([[store douyindisc_entryForIdentifier:@"top_recommend"] isEqual:before]&&beforeConfig&&[beforeConfig isEqual:[NSData dataWithContentsOfFile:configPath]]),
             @"photoFullScreen":@(photoFullScreen),@"photoVisible":@(photoVisible),@"cancelSent":@(cancelSent)
         } mutableCopy];

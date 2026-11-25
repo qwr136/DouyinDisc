@@ -149,9 +149,9 @@ static void douyindisc_pickerCases(UIWindow *window, dispatch_block_t done) {
         DD_CHECK([results[@"photoVisible"] boolValue], "native photo picker was visible before cancellation");
         DD_CHECK([results[@"cancelSent"] boolValue], "photo cancellation comes from the picker delegate path");
         DD_CHECK([results[@"ticketRevoked"] boolValue], "system photo cancel revokes the previous selection ticket");
-        DD_CHECK([results[@"interactive"] boolValue], "photo file and switch controls all receive touch after picker dismissal");
+        DD_CHECK([results[@"interactive"] boolValue], "photo and switch controls still receive touch after picker dismissal");
         DD_CHECK([results[@"brightness"] boolValue], "settings-window brightness is restored after system photo cancel");
-        DD_CHECK([results[@"photoDirect"] boolValue]&&[results[@"fileDirect"] boolValue], "independent photo and file buttons route directly to their own picker");
+        DD_CHECK([results[@"photoDirect"] boolValue], "the retained photo button opens the native photo library");
         DD_CHECK([results[@"unchanged"] boolValue], "picker cancellation leaves existing image and configuration intact");
         if(done)done();
     });
