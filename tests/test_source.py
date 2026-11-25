@@ -17,6 +17,15 @@ SOURCE = Path('Sources/DouyinDiscEntry.m')
 
 
 class SourceContractTests(unittest.TestCase):
+    def test_photo_import_implementation_is_unique_after_removal(self):
+        panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text(encoding='utf-8')
+        signature='- (void)douyindisc_commitImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration {'
+        self.assertEqual(panel.count(signature), 1)
+        self.assertNotRegex(panel, r'\{\s*-\s*\(void\)')
+        self.assertNotIn('douyindisc_dismissPicker', panel)
+        self.assertIn('UIImagePickerControllerImageURL', panel)
+        self.assertIn('douyindisc_actions.arrangedSubviews.count==2', panel)
+
     def test_navigation_replacement_and_import_contracts(self):
         hooks=(ROOT/'Sources/DouyinDiscNavigationHooks.m').read_text(encoding='utf-8')
         panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text(encoding='utf-8')
