@@ -40,7 +40,12 @@ static void douyindisc_gifCases(UIWindow *window,dispatch_block_t done) {
         AWENormalModeTabBarGeneralButton *button=[[AWENormalModeTabBarGeneralButton alloc]initWithFrame:CGRectMake(0,0,64,49)];
         AWENormalModeTabBarTextView *inner=[[AWENormalModeTabBarTextView alloc]initWithFrame:button.bounds];UILabel *label=[[UILabel alloc]initWithFrame:inner.bounds];label.text=@"首页";inner->_label=label;[inner addSubview:label];button->_innerView=inner;[button addSubview:inner];[window.rootViewController.view addSubview:button];
         douyindisc_apply(inner);DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:label];CAKeyframeAnimation *play=(CAKeyframeAnimation *)[lease.douyindisc_overlay.layer animationForKey:@"com.minis.douyindisc.animated-gif"];
-        DD_CHECK_NS(lease.douyindisc_animation==coldAnimation&&play.values.count==2&&play.keyTimes.count==2&&play.calculationMode==kCAAnimationDiscrete,@"visible icon runs true GIF frames with per-frame timing values={play.values.count} times={play.keyTimes.count} mode={play.calculationMode} repeats={play.repeatCount} animation={lease.douyindisc_animation.frames.count} visible={lease.douyindisc_animationVisible}");
+        DD_CHECK_NS(lease!=nil,@"GIF fixture resolves to a native navigation icon lease");
+        DD_CHECK_NS(lease.douyindisc_animation==coldAnimation,@"GIF lease owns the restored cold-load animation");
+        DD_CHECK_NS(play!=nil,@"visible GIF layer has a Core Animation playback entry");
+        DD_CHECK_NS(play.values.count==2&&play.keyTimes.count==2,@"GIF animation schedules both decoded frames");
+        DD_CHECK_NS(play.calculationMode==kCAAnimationDiscrete,@"GIF uses discrete frame timing");
+        DD_CHECK_NS(lease.douyindisc_animationVisible,@"visible navigation lease is marked animating");
         DD_CHECK_NS(!lease.douyindisc_overlay.userInteractionEnabled,@"animated icon layer preserves native button interaction");
         lease.douyindisc_overlay.hidden=YES;douyindisc_gifRefresh();
         DD_CHECK_NS([lease.douyindisc_overlay.layer animationForKey:@"com.minis.douyindisc.animated-gif"]==nil,@"hidden navigation icon stops advancing GIF frames");
