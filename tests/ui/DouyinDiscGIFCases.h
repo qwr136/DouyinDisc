@@ -14,7 +14,7 @@ static NSData *douyindisc_gifCaseFixture(void) {
         UIGraphicsBeginImageContextWithOptions(CGSizeMake(24,24),NO,1);
         CGContextSetFillColorWithColor(UIGraphicsGetCurrentContext(),colors[i%colors.count].CGColor);CGContextFillRect(UIGraphicsGetCurrentContext(),CGRectMake(0,0,24,24));
         UIImage *image=UIGraphicsGetImageFromCurrentImageContext();UIGraphicsEndImageContext();
-        NSDictionary *properties=@{(__bridge NSString *)kCGImagePropertyGIFDictionary:@{(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime:delays[i]}};
+        NSDictionary *properties=@{(__bridge NSString *)kCGImagePropertyGIFDictionary:@{(__bridge NSString *)kCGImagePropertyGIFUnclampedDelayTime:delays[i%delays.count]}};
         CGImageDestinationAddImage(destination,image.CGImage,(__bridge CFDictionaryRef)properties);
     }
     BOOL ok=CGImageDestinationFinalize(destination);CFRelease(destination);return ok?data:nil;
