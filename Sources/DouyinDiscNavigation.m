@@ -217,6 +217,7 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property (nonatomic) NSUInteger douyindisc_pickerRecoveryGeneration;
 @property (nonatomic) NSUInteger douyindisc_pickerRecoveryAttempts;
 #if defined(DOUYINDISC_UI_TEST)
+@property (nonatomic, copy) void (^douyindisc_uiTestImageCommitFinished)(DouyinDiscNavigationRow *, BOOL);
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerFinished)(BOOL cancelled);
 @property (nonatomic, copy) void (^douyindisc_uiTestPickerPresented)(UIViewController *picker);
 @property (nonatomic, copy) dispatch_block_t douyindisc_uiTestPickerReady;
@@ -234,6 +235,27 @@ static UIColor *douyindisc_color(NSString *hex) {
 @end
 
 #if defined(DOUYINDISC_UI_TEST)
+static __strong DouyinDiscSettingsViewController *douyindisc_uiTestRetainedPanel;
+void douyindisc_uiTestCommitImageAndCheckPanelPreview(NSData *data,NSString *identifier,void(^done)(BOOL)) {
+    if(!NSThread.isMainThread||!data.length||!identifier.length||!done){if(done)done(NO);return;}
+    DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
+    NSDictionary *old=[store douyindisc_entryForIdentifier:identifier];NSError *saveError=nil;
+    if(![store douyindisc_saveEnabled:YES opacity:[old[@"opacity"] doubleValue] scale:[old[@"scale"] doubleValue] identifier:identifier error:&saveError]){done(NO);return;}
+    NSUInteger generation=[store douyindisc_beginImagePickingForIdentifier:identifier];
+    DouyinDiscSettingsViewController *panel=[DouyinDiscSettingsViewController new];[panel loadViewIfNeeded];
+    DouyinDiscNavigationRow *target=nil;
+    for(UIView *view in panel.douyindisc_stack.arrangedSubviews)if([view isKindOfClass:DouyinDiscNavigationRow.class]&&[[(DouyinDiscNavigationRow *)view douyindisc_identifier] isEqualToString:identifier]){target=(DouyinDiscNavigationRow *)view;break;}
+    if(!target||!generation){if(generation)[store douyindisc_finishImagePickingForIdentifier:identifier generation:generation];[store douyindisc_saveEnabled:[old[@"enabled"] boolValue] opacity:[old[@"opacity"] doubleValue] scale:[old[@"scale"] doubleValue] identifier:identifier error:nil];done(NO);return;}
+    douyindisc_uiTestRetainedPanel=panel;
+    panel.douyindisc_uiTestImageCommitFinished=^(DouyinDiscNavigationRow *row,BOOL committed){
+        BOOL refreshed=committed&&row==target&&row.douyindisc_thumbnail.image==[store douyindisc_imageForIdentifier:identifier]&&row.douyindisc_clearButton.enabled&&[[row.douyindisc_imageButton titleForState:UIControlStateNormal] isEqualToString:@"更换图标"]&&[store douyindisc_entryForIdentifier:identifier][@"hasImage"];
+        douyindisc_uiTestRetainedPanel.douyindisc_uiTestImageCommitFinished=nil;
+        if(refreshed)[store douyindisc_clearImageForIdentifier:identifier error:nil];
+        [store douyindisc_saveEnabled:[old[@"enabled"] boolValue] opacity:[old[@"opacity"] doubleValue] scale:[old[@"scale"] doubleValue] identifier:identifier error:nil];
+        douyindisc_uiTestRetainedPanel=nil;if(done)done(refreshed);
+    };
+    [panel douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];
+}
 static void douyindisc_uiTestTracePicker(NSString *event, DouyinDiscSettingsViewController *owner, UIViewController *picker) {
     UIWindow *window=owner.viewIfLoaded.window;
     UINavigationController *nav=owner.navigationController;
@@ -445,7 +467,7 @@ NSError *failure=nil;
             else if(readError)failure=readError;
             else if(!data.length||![[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_isAnimatedGIFData:data])failure=[NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:2 userInfo:@{NSLocalizedDescriptionKey:@"无法读取完整GIF动画，原图未更改。"}];
             if(failure){[self douyindisc_failImagePickingIdentifier:identifier generation:generation error:failure];return;}
-            [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_saveImageData:data identifier:identifier pickingGeneration:generation completion:^(NSError *error){if(error&&self.isViewLoaded&&self.view.window)[self douyindisc_showError:error];}];
+            [self douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation];
         });
     }];
     [lock lock];requestID=issued;BOOL cancel=exceeded;[lock unlock];if(cancel&&issued!=PHInvalidAssetResourceDataRequestID)[manager cancelDataRequest:issued];
@@ -493,13 +515,21 @@ NSError *failure=nil;
     __weak typeof(self) weakSelf=self;
     [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_saveImageData:data identifier:identifier pickingGeneration:pickingGeneration completion:^(NSError *error){
         DouyinDiscSettingsViewController *strongSelf=weakSelf;
-        if(error){[strongSelf douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];if(strongSelf.isViewLoaded&&strongSelf.view.window)[strongSelf douyindisc_showError:error];return;}
+        if(error){[strongSelf douyindisc_finishImportSessionIdentifier:identifier generation:pickingGeneration];if(strongSelf.isViewLoaded&&strongSelf.view.window)[strongSelf douyindisc_showError:error];
+#if defined(DOUYINDISC_UI_TEST)
+            if(strongSelf.douyindisc_uiTestImageCommitFinished){void(^finished)(DouyinDiscNavigationRow *,BOOL)=strongSelf.douyindisc_uiTestImageCommitFinished;strongSelf.douyindisc_uiTestImageCommitFinished=nil;finished(nil,NO);}
+#endif
+            return;}
         for(UIView *view in strongSelf.douyindisc_stack.arrangedSubviews){
             if(![view isKindOfClass:DouyinDiscNavigationRow.class])continue;
             DouyinDiscNavigationRow *row=(DouyinDiscNavigationRow *)view;
             if(![row.douyindisc_identifier isEqualToString:identifier])continue;
             row.douyindisc_thumbnail.image=[[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_imageForIdentifier:identifier];
-            [row douyindisc_setHasImage:YES];break;
+            [row douyindisc_setHasImage:YES];
+#if defined(DOUYINDISC_UI_TEST)
+            if(strongSelf.douyindisc_uiTestImageCommitFinished){void(^finished)(DouyinDiscNavigationRow *,BOOL)=strongSelf.douyindisc_uiTestImageCommitFinished;strongSelf.douyindisc_uiTestImageCommitFinished=nil;finished(row,YES);}
+#endif
+            break;
         }
     }];
 }

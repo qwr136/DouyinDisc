@@ -31,4 +31,11 @@ class GIFPolicyTests(unittest.TestCase):
         self.assertNotIn('UIDocumentPicker',panel)
         self.assertNotIn('UniformTypeIdentifiers',panel)
         self.assertNotIn('NSFileCoordinator',panel)
+        panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text()
+        start=panel.index('- (void)douyindisc_importGIFResource:(PHAssetResource *)resource identifier:(NSString *)identifier pickingGeneration:(NSUInteger)generation {')
+        resource=panel[start:].split('- (void)douyindisc_startPickerMonitor:',1)[0]
+        self.assertIn('[self douyindisc_commitImageData:data identifier:identifier pickingGeneration:generation]',resource)
+        self.assertNotIn('douyindisc_saveImageData:',resource)
+        self.assertIn('douyindisc_uiTestImageCommitFinished',panel)
+        self.assertIn('douyindisc_uiTestCommitImageAndCheckPanelPreview',panel)
         self.assertIn('douyindisc_gifCases(self.window', (ROOT/'tests/ui/DouyinDiscNativeHost.m').read_text())
