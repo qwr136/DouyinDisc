@@ -711,10 +711,13 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     __block NSUInteger generation=0;
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
         if(completed)return;completed=YES;
-        [panel.view layoutIfNeeded];[window layoutIfNeeded];
+        [panel.view layoutIfNeeded];[panel.douyindisc_scrollView layoutIfNeeded];[panel.douyindisc_stack layoutIfNeeded];[row layoutIfNeeded];[window layoutIfNeeded];
         CGPoint photoPoint=[row.douyindisc_imageButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_imageButton.bounds),CGRectGetMidY(row.douyindisc_imageButton.bounds)) toView:window];
         CGPoint switchPoint=[row.douyindisc_switch convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds)) toView:window];
-        BOOL touches=[window hitTest:photoPoint withEvent:nil]&&[[window hitTest:photoPoint withEvent:nil] isDescendantOfView:row.douyindisc_imageButton]&&[[window hitTest:switchPoint withEvent:nil] isDescendantOfView:row.douyindisc_switch];
+        UIView *photoHit=[window hitTest:photoPoint withEvent:nil],*switchHit=[window hitTest:switchPoint withEvent:nil];
+        BOOL photoTouchable=photoHit&&[photoHit isDescendantOfView:row.douyindisc_imageButton],switchTouchable=switchHit&&[switchHit isDescendantOfView:row.douyindisc_switch];
+        NSLog(@"DD_PICKER_TOUCH rowFrame=%@ scrollFrame=%@ contentOffset=%@ photoPoint=%@ photoHit=%@ switchPoint=%@ switchHit=%@ enabled=%d/%d",NSStringFromCGRect(row.frame),NSStringFromCGRect(panel.douyindisc_scrollView.frame),NSStringFromCGPoint(panel.douyindisc_scrollView.contentOffset),NSStringFromCGPoint(photoPoint),NSStringFromClass(photoHit.class),NSStringFromCGPoint(switchPoint),NSStringFromClass(switchHit.class),row.douyindisc_imageButton.enabled,row.douyindisc_switch.enabled);
+        BOOL touches=photoTouchable&&switchTouchable;
         row.douyindisc_pickPhoto=^(DouyinDiscNavigationRow *selected){(void)selected;photoDirect=YES;};
         [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
         double after=douyindisc_uiTestWindowBrightness(window);
