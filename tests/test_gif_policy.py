@@ -21,6 +21,16 @@ class GIFPolicyTests(unittest.TestCase):
         for token in ('CAKeyframeAnimation','kCAAnimationDiscrete','douyindisc_gifLeaseVisible','UIAccessibilityIsReduceMotionEnabled()','UIApplicationWillResignActiveNotification','UIApplicationDidBecomeActiveNotification','CGRectIntersection','animationForKey:'):
             self.assertIn(token,hooks)
         self.assertIn('removeAnimationForKey:@"com.minis.douyindisc.animated-gif"',hooks)
+    def test_discrete_key_times_have_terminal_boundary(self):
+        hooks=(ROOT/'Sources/DouyinDiscNavigationHooks.m').read_text()
+        display=(ROOT/'Sources/DouyinDiscNativeDisplay.m').read_text()
+        self.assertIn('NSMutableArray *times=[lease.douyindisc_animation.keyTimes mutableCopy];[times addObject:@1.0];',hooks)
+        self.assertIn('animation.values=values;animation.keyTimes=times;',hooks)
+        self.assertIn('NSMutableArray *times=[customAnimation.keyTimes mutableCopy];[times addObject:@1.0];',display)
+        self.assertIn('gif.values=frames;gif.keyTimes=times;',display)
+        self.assertNotIn('[values addObject:values.lastObject]',hooks)
+        self.assertNotIn('[frames addObject:frames.lastObject]',display)
+
     def test_photo_picker_uses_original_gif_resource_but_no_files_picker(self):
         panel=(ROOT/'Sources/DouyinDiscNavigation.m').read_text()
         self.assertIn('UIImagePickerControllerDelegate',panel)

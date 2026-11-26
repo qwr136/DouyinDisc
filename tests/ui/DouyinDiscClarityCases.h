@@ -37,7 +37,7 @@ static void douyindisc_clarityCases(DouyinDiscDisplay *driver, AWEMusicCoverButt
     [driver douyindisc_refresh:button];
     DD_CHECK(douyindisc_coverage(surface.douyindisc_canvas) == before, "actual custom artwork raster alpha does not inherit button branch dimming");
     DD_CHECK(fabs(button.alpha-.25)<.001, "native button alpha is never forced brighter");
-    DD_CHECK(CGRectEqualToRect(surface.douyindisc_overlay.frame,[button convertRect:button.bounds toView:surface.douyindisc_canvas]), "independent image stays aligned with the original hit target");
+    DD_CHECK(CGRectEqualToRect(surface.douyindisc_artworkGroup.frame,[button convertRect:button.bounds toView:surface.douyindisc_canvas]), "independent image group stays aligned with the original hit target");
     button.alpha=savedAlpha;
     button->_guidanceView.alpha=1;
     button->_guidanceLabel.alpha=1;

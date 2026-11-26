@@ -45,8 +45,11 @@ class VideoDiscContractTests(unittest.TestCase):
         for contract in ('video-page disc displays the user-selected icon',
                          'clipped to a circular icon',
                          'rasterized composite alpha matches',
-                         'custom GIF includes terminal-frame hold',
+                         'custom GIF keyTimes bound both frames',
                          'new feed controls join the same adjusted rotation phase',
+                         'prepared but offscreen feed disc keeps its lease',
+                         'GIF playback resumes when the disc returns',
+                         'clearing custom artwork restores the built-in disc',
                          'switch-off restores original pixels'):
             self.assertIn(contract, cases)
 

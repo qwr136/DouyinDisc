@@ -313,7 +313,7 @@ static void douyindisc_changed(UIControl *control) {
         NSMutableArray *frames=[NSMutableArray arrayWithCapacity:customAnimation.frames.count];
         for(UIImage *frameImage in customAnimation.frames)if(frameImage.CGImage)[frames addObject:(__bridge id)frameImage.CGImage];
         if(frames.count>1&&frames.count==customAnimation.keyTimes.count){
-            [frames addObject:frames.lastObject];NSMutableArray *times=[customAnimation.keyTimes mutableCopy];[times addObject:@1.0];
+            NSMutableArray *times=[customAnimation.keyTimes mutableCopy];[times addObject:@1.0];
             CAKeyframeAnimation *gif=[CAKeyframeAnimation animationWithKeyPath:@"contents"];
             gif.values=frames;gif.keyTimes=times;gif.duration=customAnimation.duration;gif.repeatCount=HUGE_VALF;gif.calculationMode=kCAAnimationDiscrete;gif.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];gif.beginTime=[overlay convertTime:CACurrentMediaTime() fromLayer:nil];gif.removedOnCompletion=NO;gif.fillMode=kCAFillModeBoth;
             [overlay addAnimation:gif forKey:douyindisc_discGIFKey];
