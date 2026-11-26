@@ -92,6 +92,7 @@ jobs:
             reports/numeric-keyboard-panel.png
             reports/numeric-keyboard-screen.png
             reports/numeric-keyboard-visible.json
+            reports/numeric-keyboard-captured.json
             reports/uikit-timeline.jsonl
             reports/uikit-start.json
             reports/uikit-begin.json

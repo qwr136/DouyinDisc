@@ -39,6 +39,10 @@ class NumericInputTests(unittest.TestCase):
         self.assertIn('douyindisc_uiTestKeyboardVisible(self.window',host)
         self.assertIn('UIKeyboardDidShowNotification',helper)
         self.assertIn('CGRectGetHeight(intersection)>100',helper)
+        self.assertIn('appearanceDeadline=started+5.8,hardDeadline=started+20.0',helper)
+        self.assertIn('captureScheduled=YES;appearanceValidated=YES;',helper)
+        self.assertIn('appearanceValidated&&visible()',helper)
+        self.assertIn('DOUYINDISC_TEST_NONCE',helper)
         self.assertIn('DD_CHECK_NS([numeric[key] boolValue],label)',host)
         for token in ('[window hitTest:point withEvent:nil]','becomeFirstResponder','isFirstResponder',
                       'UIControlEventEditingDidBegin','UIControlEventEditingDidEnd',

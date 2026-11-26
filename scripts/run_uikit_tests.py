@@ -18,7 +18,7 @@ TRACE_LOCK = threading.Lock()
 MARKERS = {'uikit-start.json': 'APP_STARTED', 'uikit-begin.json': 'TEST_BEGIN',
            'uikit-complete.json': 'TEST_DONE'}
 EVIDENCE = tuple(MARKERS) + ('uikit-timeline.jsonl', 'numeric-keyboard-panel.png',
-    'numeric-keyboard-visible.json', 'settings-layout.png', 'picker-visible.png',
+    'numeric-keyboard-visible.json', 'numeric-keyboard-captured.json', 'settings-layout.png', 'picker-visible.png',
     'picker-not-visible.png', 'picker-timeout.png')
 
 def trace(event, **fields):
@@ -75,11 +75,25 @@ def launch_host(device, bundle, data, nonce):
         while not capture_stop.wait(.05):
             if marker.is_file():
                 try:
-                    run('xcrun', 'simctl', 'io', device, 'screenshot',
-                        str(REPORTS / 'numeric-keyboard-screen.png'), timeout=15,
+                    metadata = json.loads(marker.read_text())
+                except (OSError, ValueError):
+                    continue
+                if metadata.get('nonce') != nonce:
+                    continue
+                success = False
+                try:
+                    screen = REPORTS / 'numeric-keyboard-screen.png'
+                    run('xcrun', 'simctl', 'io', device, 'screenshot', str(screen), timeout=15,
                         stage='keyboard_screenshot')
+                    success = screen.is_file() and screen.stat().st_size > 1000
                 except Exception as error:
                     (REPORTS / 'numeric-keyboard-capture-error.txt').write_text(str(error))
+                finally:
+                    acknowledgment = data / 'Documents/numeric-keyboard-captured.json'
+                    temporary = acknowledgment.with_suffix('.tmp')
+                    temporary.write_text(json.dumps({'nonce': nonce, 'success': success, 'timeUTC': time.time()}))
+                    temporary.replace(acknowledgment)
+                    trace('keyboard_capture_acknowledged', success=success, nonce=nonce)
                 return
     capture_thread = threading.Thread(target=capture_keyboard, daemon=True)
     capture_thread.start()

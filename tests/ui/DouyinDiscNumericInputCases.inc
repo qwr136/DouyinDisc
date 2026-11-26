@@ -258,12 +258,15 @@ NSDictionary *douyindisc_uiTestNumericInput(UIWindow *window) {
 
 // Independent asynchronous software-keyboard proof. Call serially on the main
 // thread, before starting any other UIKit fixture. Completion is exactly once.
-// The panel PNG excludes the system keyboard; the JSON marker asks the runner
-// for a real simctl screenshot while the keyboard is held for another second.
+// The JSON marker requests a real simctl screenshot. Keyboard appearance has
+// its own 5.8s budget; the nonce-matched screenshot ACK has a separate bounded
+// hold. No synchronous window rasterization competes with those deadlines.
 void douyindisc_uiTestKeyboardVisible(UIWindow *window, void(^done)(BOOL)) {
     static BOOL running=NO;
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{if(done)done(NO);});return;}
     if(!window||!done||running){if(done)done(NO);return;}running=YES;
+    NSTimeInterval started=NSProcessInfo.processInfo.systemUptime;
+    NSTimeInterval appearanceDeadline=started+5.8,hardDeadline=started+20.0;
     DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
     UIViewController *previousRoot=window.rootViewController;
     BOOL wasHidden=window.hidden;UIWindow *previousKey=nil;
@@ -279,13 +282,18 @@ void douyindisc_uiTestKeyboardVisible(UIWindow *window, void(^done)(BOOL)) {
     if(!config||!directory||(hadFile&&!bytes)){running=NO;done(NO);return;}
     NSString *documents=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES).firstObject;
     NSString *marker=[documents stringByAppendingPathComponent:@"numeric-keyboard-visible.json"];
-    NSString *png=[documents stringByAppendingPathComponent:@"numeric-keyboard-panel.png"];
-    [fm removeItemAtPath:marker error:nil];[fm removeItemAtPath:png error:nil];
+    NSString *ackPath=[documents stringByAppendingPathComponent:@"numeric-keyboard-captured.json"];
+    NSString *nonce=NSProcessInfo.processInfo.environment[@"DOUYINDISC_TEST_NONCE"]?:@"local";
+    [fm removeItemAtPath:marker error:nil];[fm removeItemAtPath:ackPath error:nil];
+    [fm removeItemAtPath:[documents stringByAppendingPathComponent:@"numeric-keyboard-panel.png"] error:nil];
     DouyinDiscSettingsViewController *panel=[DouyinDiscSettingsViewController new];
     UINavigationController *nav=[[UINavigationController alloc]initWithRootViewController:panel];
     __block DouyinDiscNavigationRow *row=nil;
     __block UITextField *field=nil;
-    __block BOOL finished=NO,shown=NO,captureScheduled=NO;
+    __block BOOL finished=NO,shown=NO,captureScheduled=NO,appearanceValidated=NO;
+    __block BOOL screenshotAcknowledged=NO,screenshotSucceeded=NO;
+    __block NSString *captureStatus=@"not-requested";
+    __block NSTimer *captureTimer=nil;
     __block CGRect keyboardFrame=CGRectZero;
     NSMutableArray *observers=[NSMutableArray array];
     NSNotificationCenter *center=NSNotificationCenter.defaultCenter;
@@ -294,7 +302,9 @@ void douyindisc_uiTestKeyboardVisible(UIWindow *window, void(^done)(BOOL)) {
         return shown&&field.isFirstResponder&&field.window==window&&window.rootViewController==nav&&!CGRectIsNull(intersection)&&CGRectGetWidth(intersection)>0&&CGRectGetHeight(intersection)>100;
     };
     void (^finish)(BOOL)=^(BOOL passed){
-        if(finished)return;finished=YES;
+        if(finished)return;
+        BOOL liveBeforeDone=appearanceValidated&&visible();
+        finished=YES;[captureTimer invalidate];captureTimer=nil;
         for(id token in observers)[center removeObserver:token];[observers removeAllObjects];
         // Empty text is invalid by contract: focus-only probing must not save.
         field.text=@"";
@@ -315,13 +325,19 @@ void douyindisc_uiTestKeyboardVisible(UIWindow *window, void(^done)(BOOL)) {
         if(!unchanged)restored=hadFile?[bytes writeToURL:settings options:NSDataWritingAtomic error:nil]:(![fm fileExistsAtPath:settings.path]||[fm removeItemAtURL:settings error:nil]);
         if(!hadDirectory&&[fm fileExistsAtPath:directory.path]&&[fm contentsOfDirectoryAtPath:directory.path error:nil].count==0)[fm removeItemAtURL:directory error:nil];
         [center postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
-        BOOL success=passed&&ended&&unchanged&&restored&&window.rootViewController==previousRoot;
-        NSLog(@"DD_NUMERIC_KEYBOARD_FINISHED pass=%d didShow=%d doneEnded=%d configUnchanged=%d",success,shown,ended,unchanged);
+        BOOL success=passed&&liveBeforeDone&&ended&&unchanged&&restored&&window.rootViewController==previousRoot;
+        NSLog(@"DD_NUMERIC_KEYBOARD_FINISHED pass=%d didShow=%d appearanceWithinBudget=%d liveBeforeDone=%d doneEnded=%d configUnchanged=%d screenshotAck=%d screenshotSuccess=%d captureStatus=%@ nonce=%@ elapsed=%.3f",success,shown,appearanceValidated,liveBeforeDone,ended,unchanged,screenshotAcknowledged,screenshotSucceeded,captureStatus,nonce,NSProcessInfo.processInfo.systemUptime-started);
         if(!success)[fm removeItemAtPath:marker error:nil];
         running=NO;done(success);
     };
-    // The deadline includes panel mounting, notification wait and screenshot hold.
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(5.8*NSEC_PER_SEC)),dispatch_get_main_queue(),^{finish(NO);});
+    // A successful appearance disarms ONLY the appearance deadline. Every exit
+    // still rechecks the live first responder/window/frame before dispatching Done.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(MAX(0,appearanceDeadline-NSProcessInfo.processInfo.systemUptime)*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
+        if(!finished&&!appearanceValidated){captureStatus=@"appearance-timeout";finish(NO);}
+    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(MAX(0,hardDeadline-NSProcessInfo.processInfo.systemUptime)*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
+        if(!finished){captureStatus=@"hard-deadline-no-ack";finish(appearanceValidated&&visible());}
+    });
     @try {
         window.rootViewController=nav;[window makeKeyAndVisible];
         [window layoutIfNeeded];[nav.view layoutIfNeeded];[panel.view layoutIfNeeded];
@@ -341,18 +357,25 @@ void douyindisc_uiTestKeyboardVisible(UIWindow *window, void(^done)(BOOL)) {
         [observers addObject:[center addObserverForName:UIKeyboardDidChangeFrameNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note){if(!finished)updateFrame(note);}]];
         [observers addObject:[center addObserverForName:UIKeyboardDidShowNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note){
             if(finished||!field.isFirstResponder)return;updateFrame(note);shown=YES;
-            if(!visible()||captureScheduled)return;captureScheduled=YES;
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.0*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
-                if(finished)return;if(!visible()){finish(NO);return;}
-                NSDictionary *evidence=@{@"event":@"UIKeyboardDidShowNotification",@"firstResponder":@YES,@"windowIntersection":NSStringFromCGRect(CGRectIntersection(window.bounds,keyboardFrame)),@"timestamp":@([NSDate date].timeIntervalSince1970),@"screenshotHoldSeconds":@1};
-                NSData *json=[NSJSONSerialization dataWithJSONObject:evidence options:0 error:nil];
-                BOOL marked=[json writeToFile:marker atomically:YES];
-                UIGraphicsImageRenderer *renderer=[[UIGraphicsImageRenderer alloc]initWithSize:window.bounds.size];
-                UIImage *image=[renderer imageWithActions:^(UIGraphicsImageRendererContext *context){(void)context;[window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];}];
-                BOOL captured=[UIImagePNGRepresentation(image) writeToFile:png atomically:YES];
-                NSLog(@"DD_NUMERIC_KEYBOARD_VISIBLE marker=%@ frame=%@",marker,NSStringFromCGRect(keyboardFrame));
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(1.0*NSEC_PER_SEC)),dispatch_get_main_queue(),^{if(!finished)finish(marked&&captured&&visible());});
-            });
+            if(!visible()||captureScheduled)return;
+            if(NSProcessInfo.processInfo.systemUptime>appearanceDeadline){captureStatus=@"appearance-timeout";finish(NO);return;}
+            captureScheduled=YES;appearanceValidated=YES;
+            NSDictionary *evidence=@{@"nonce":nonce,@"event":@"UIKeyboardDidShowNotification",@"firstResponder":@YES,@"windowIntersection":NSStringFromCGRect(CGRectIntersection(window.bounds,keyboardFrame)),@"timestamp":@([NSDate date].timeIntervalSince1970),@"screenshotHoldMaximumSeconds":@20};
+            NSData *json=[NSJSONSerialization dataWithJSONObject:evidence options:0 error:nil];
+            if(![json writeToFile:marker atomically:YES]){captureStatus=@"marker-write-failed";finish(NO);return;}
+            captureStatus=@"waiting-for-screenshot";
+            NSLog(@"DD_NUMERIC_KEYBOARD_VISIBLE marker=%@ frame=%@",marker,NSStringFromCGRect(keyboardFrame));
+            captureTimer=[NSTimer timerWithTimeInterval:.1 repeats:YES block:^(NSTimer *timer){
+                if(finished){[timer invalidate];return;}
+                if(!visible()){captureStatus=@"lost-keyboard-before-capture";finish(NO);return;}
+                NSData *ackData=[NSData dataWithContentsOfFile:ackPath];
+                NSDictionary *ack=ackData?[NSJSONSerialization JSONObjectWithData:ackData options:0 error:nil]:nil;
+                if(![ack isKindOfClass:NSDictionary.class]||![ack[@"nonce"] isEqual:nonce])return;
+                screenshotAcknowledged=YES;screenshotSucceeded=[ack[@"success"] boolValue];
+                captureStatus=screenshotSucceeded?@"screenshot-saved":@"screenshot-unavailable";
+                finish(visible());
+            }];
+            [NSRunLoop.mainRunLoop addTimer:captureTimer forMode:NSRunLoopCommonModes];
         }]];
         // Yield once so panel/window appearance reaches UIKit before asking focus.
         dispatch_async(dispatch_get_main_queue(),^{if(!finished&&(![field becomeFirstResponder]||!field.isFirstResponder))finish(NO);});
