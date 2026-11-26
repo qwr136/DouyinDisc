@@ -24,6 +24,8 @@ class NumericInputTests(unittest.TestCase):
                       'if(!valid||value==previous)return;', 'self.douyindisc_rotationSpeed=value/100.0'):
             self.assertIn(token,block)
         self.assertNotIn('doubleValue',block)
+        self.assertNotIn('whitespaceAndNewlineCharacterSet',block)
+        self.assertIn('characterSetWithCharactersInString:@" \\t\\r\\n"',block)
         for part in ('changeAngle','changeCorner','changeRotationSpeed'):
             self.assertIn(f'- (void)douyindisc_{part}:(NSInteger)delta {{[self endEditing:YES];',panel)
         self.assertIn('[self.view endEditing:YES];',panel)

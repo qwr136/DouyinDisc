@@ -280,8 +280,9 @@ static UIColor *douyindisc_color(NSString *hex) {
     NSInteger minimum=speed?25:0,maximum=angle?359:(speed?300:50);
     NSInteger previous=(NSInteger)lrint(angle?self.douyindisc_angle:(speed?self.douyindisc_rotationSpeed*100:self.douyindisc_cornerRadius));
     NSString *unit=angle?@"°":@"%";
-    NSString *raw=[field.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]?:@"";
-    if([raw hasSuffix:unit])raw=[[raw substringToIndex:raw.length-1] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSCharacterSet *padding=[NSCharacterSet characterSetWithCharactersInString:@" \t\r\n"];
+    NSString *raw=[field.text stringByTrimmingCharactersInSet:padding]?:@"";
+    if([raw hasSuffix:unit])raw=[[raw substringToIndex:raw.length-1] stringByTrimmingCharactersInSet:padding];
     BOOL valid=raw.length>0;NSInteger value=0;
     // Saturate while parsing: arbitrarily long digit input cannot overflow.
     for(NSUInteger i=0;i<raw.length;i++){
