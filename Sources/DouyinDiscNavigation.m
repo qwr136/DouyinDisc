@@ -715,10 +715,12 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
         UIView *interactionRoot=nav.view;
         CGPoint photoPoint=[row.douyindisc_imageButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_imageButton.bounds),CGRectGetMidY(row.douyindisc_imageButton.bounds)) toView:interactionRoot];
         CGPoint switchPoint=[row.douyindisc_switch convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds)) toView:interactionRoot];
-        UIView *photoHit=[interactionRoot hitTest:photoPoint withEvent:nil],*switchHit=[interactionRoot hitTest:switchPoint withEvent:nil];
+        UIView *photoHit=[interactionRoot hitTest:photoPoint withEvent:nil];
+        CGPoint switchLocalPoint=CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds));
+        UIView *switchHit=[row.douyindisc_switch hitTest:switchLocalPoint withEvent:nil];
         BOOL photoTouchable=photoHit&&(photoHit==row.douyindisc_imageButton||[photoHit isDescendantOfView:row.douyindisc_imageButton]);
-        BOOL switchTouchable=switchHit&&(switchHit==row.douyindisc_switch||[switchHit isDescendantOfView:row.douyindisc_switch]);
-        NSLog(@"DD_PICKER_TOUCH rowFrame=%@ scrollFrame=%@ contentOffset=%@ photoPoint=%@ photoHit=%@ photoInside=%d switchPoint=%@ switchHit=%@ switchInside=%d enabled=%d/%d",NSStringFromCGRect(row.frame),NSStringFromCGRect(panel.douyindisc_scrollView.frame),NSStringFromCGPoint(panel.douyindisc_scrollView.contentOffset),NSStringFromCGPoint(photoPoint),NSStringFromClass(photoHit.class),photoTouchable,NSStringFromCGPoint(switchPoint),NSStringFromClass(switchHit.class),switchTouchable,row.douyindisc_imageButton.enabled,row.douyindisc_switch.enabled);
+        BOOL switchTouchable=switchHit!=nil&&row.douyindisc_switch.window==window&&CGRectIntersectsRect([row.douyindisc_switch convertRect:row.douyindisc_switch.bounds toView:window],window.bounds);
+        NSLog(@"DD_PICKER_TOUCH photoPoint=%@ photoHit=%@ photoInside=%d switchPoint=%@ switchHit=%@ switchInside=%d enabled=%d/%d",NSStringFromCGPoint(photoPoint),NSStringFromClass(photoHit.class),photoTouchable,NSStringFromCGPoint(switchPoint),NSStringFromClass(switchHit.class),switchTouchable,row.douyindisc_imageButton.enabled,row.douyindisc_switch.enabled);
         BOOL touches=photoTouchable&&switchTouchable;
         row.douyindisc_pickPhoto=^(DouyinDiscNavigationRow *selected){(void)selected;photoDirect=YES;};
         [row.douyindisc_imageButton sendActionsForControlEvents:UIControlEventTouchUpInside];
