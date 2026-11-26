@@ -198,6 +198,7 @@ static void douyindisc_writeProgress(void) {
     [douyindisc_results addObject:line]; NSLog(@"DD_CHECK %@", line); douyindisc_writeProgress(); \
 } while (0)
 
+extern NSDictionary *douyindisc_uiTestSettingsLayout(UIWindow *window);
 #import "../../Sources/DouyinDiscNavigationHooks.m"
 #include "DouyinDiscClarityCases.h"
 #include "DouyinDiscCaptionCases.h"
@@ -505,6 +506,14 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     if(douyindisc_storeTestsStarted)return;
     douyindisc_storeTestsStarted=YES;
     douyindisc_navigationCases(self.window);
+    NSDictionary *layout=douyindisc_uiTestSettingsLayout(self.window);
+    DD_CHECK([layout[@"navigationCount"] unsignedIntegerValue]==13&&[layout[@"controlCount"] unsignedIntegerValue]==217,"layout suite mounts all thirteen navigation rows plus the unchanged video disc");
+    DD_CHECK([layout[@"aligned"] boolValue],"every setting label value minus and plus share a common vertical center");
+    DD_CHECK([layout[@"ordered"] boolValue],"opacity size angle corner rotation and speed occupy separate ordered rows");
+    DD_CHECK([layout[@"bounded"] boolValue],"all setting rows fit inside their card with no large empty lower block");
+    DD_CHECK([layout[@"unambiguous"] boolValue],"mounted appearance controls have complete unambiguous layout constraints");
+    DD_CHECK([layout[@"windowHits"] boolValue],"all 217 control centers hit the intended control from UIWindow without obstruction");
+    DD_CHECK([layout[@"discUnchanged"] boolValue],"video disc card keeps its original height and control scope");
     douyindisc_navigationStoreCases(^{
       douyindisc_pickerCases(self.window, ^{
         NSUInteger failures=0;

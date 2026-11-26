@@ -40,6 +40,21 @@ class NavigationAppearanceTests(unittest.TestCase):
         self.assertIn('douyindisc_stopAnimations()',hooks)
         self.assertIn('imageChanged=lease.douyindisc_image!=image',hooks)
 
+    def test_settings_layout_anchors_and_window_hit_gate(self):
+        panel=(ROOT/"Sources/DouyinDiscNavigation.m").read_text()
+        for part in ('angle','corner'):
+            self.assertIn(f'self.douyindisc_{part}Value.centerYAnchor constraintEqualToAnchor:self.douyindisc_{part}Minus.centerYAnchor',panel)
+        self.assertIn('UIView *switchHit=[window hitTest:switchPoint withEvent:nil]',panel)
+        self.assertNotIn('[row.douyindisc_switch hitTest:',panel)
+        helper=(ROOT/"tests/ui/DouyinDiscSettingsLayoutCases.inc").read_text()
+        self.assertIn('[window hitTest:point withEvent:nil]',helper)
+        self.assertIn('hasAmbiguousLayout',helper)
+        self.assertIn('CGRectContainsRect(row.bounds,r)',helper)
+        self.assertIn('settings-layout.png',helper)
+        host=(ROOT/"tests/ui/DouyinDiscNativeHost.m").read_text()
+        self.assertIn('douyindisc_uiTestSettingsLayout(self.window)',host)
+        self.assertIn('all 217 control centers hit',host)
+
     def test_host_covers_static_angle_auto_rotation_and_restore(self):
         host=(ROOT/"tests/ui/DouyinDiscNativeHost.m").read_text()
         tests=(ROOT/"tests/ui/DouyinDiscNavigationCases.h").read_text()

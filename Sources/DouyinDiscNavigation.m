@@ -220,10 +220,12 @@ static UIColor *douyindisc_color(NSString *hex) {
         [layoutConstraints addObjectsFromArray:@[
             [self.douyindisc_angleTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],[self.douyindisc_angleTitle.centerYAnchor constraintEqualToAnchor:self.douyindisc_angleValue.centerYAnchor],
             [self.douyindisc_angleMinus.leadingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-146],[self.douyindisc_angleMinus.topAnchor constraintEqualToAnchor:self.douyindisc_sizeValue.bottomAnchor constant:8],[self.douyindisc_angleMinus.widthAnchor constraintEqualToConstant:34],[self.douyindisc_angleMinus.heightAnchor constraintEqualToConstant:30],
+            [self.douyindisc_angleValue.centerYAnchor constraintEqualToAnchor:self.douyindisc_angleMinus.centerYAnchor],
             [self.douyindisc_angleValue.leadingAnchor constraintEqualToAnchor:self.douyindisc_angleMinus.trailingAnchor constant:2],[self.douyindisc_angleValue.trailingAnchor constraintEqualToAnchor:self.douyindisc_anglePlus.leadingAnchor constant:-2],[self.douyindisc_angleValue.widthAnchor constraintEqualToConstant:74],[self.douyindisc_angleValue.heightAnchor constraintEqualToConstant:30],
             [self.douyindisc_anglePlus.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],[self.douyindisc_anglePlus.centerYAnchor constraintEqualToAnchor:self.douyindisc_angleValue.centerYAnchor],[self.douyindisc_anglePlus.widthAnchor constraintEqualToConstant:34],[self.douyindisc_anglePlus.heightAnchor constraintEqualToConstant:30],
             [self.douyindisc_cornerTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],[self.douyindisc_cornerTitle.centerYAnchor constraintEqualToAnchor:self.douyindisc_cornerValue.centerYAnchor],
             [self.douyindisc_cornerMinus.leadingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-146],[self.douyindisc_cornerMinus.topAnchor constraintEqualToAnchor:self.douyindisc_angleValue.bottomAnchor constant:8],[self.douyindisc_cornerMinus.widthAnchor constraintEqualToConstant:34],[self.douyindisc_cornerMinus.heightAnchor constraintEqualToConstant:30],
+            [self.douyindisc_cornerValue.centerYAnchor constraintEqualToAnchor:self.douyindisc_cornerMinus.centerYAnchor],
             [self.douyindisc_cornerValue.leadingAnchor constraintEqualToAnchor:self.douyindisc_cornerMinus.trailingAnchor constant:2],[self.douyindisc_cornerValue.trailingAnchor constraintEqualToAnchor:self.douyindisc_cornerPlus.leadingAnchor constant:-2],[self.douyindisc_cornerValue.widthAnchor constraintEqualToConstant:74],[self.douyindisc_cornerValue.heightAnchor constraintEqualToConstant:30],
             [self.douyindisc_cornerPlus.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],[self.douyindisc_cornerPlus.centerYAnchor constraintEqualToAnchor:self.douyindisc_cornerValue.centerYAnchor],[self.douyindisc_cornerPlus.widthAnchor constraintEqualToConstant:34],[self.douyindisc_cornerPlus.heightAnchor constraintEqualToConstant:30],
             [self.douyindisc_rotationTitle.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],[self.douyindisc_rotationTitle.centerYAnchor constraintEqualToAnchor:self.douyindisc_rotationSwitch.centerYAnchor],
@@ -646,6 +648,7 @@ NSError *failure=nil;
 @end
 
 #if defined(DOUYINDISC_UI_TEST)
+#include "../tests/ui/DouyinDiscSettingsLayoutCases.inc"
 BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
  NSDictionary *item=douyindisc_navigationItems().firstObject;DouyinDiscNavigationRow *row=[[DouyinDiscNavigationRow alloc]initWithItem:item entry:@{@"enabled":@NO,@"opacity":@.99,@"scale":@.89} image:nil];row.frame=CGRectMake(0,0,390,350);[row setNeedsLayout];[row layoutIfNeeded];
  BOOL labels=[row.douyindisc_opacityTitle.text isEqualToString:@"透明度"]&&[row.douyindisc_sizeTitle.text isEqualToString:@"图标大小"];
@@ -712,14 +715,13 @@ void douyindisc_uiTestPickerCancellationInteractive(UIWindow *window, void (^don
     panel.douyindisc_uiTestPickerFinished=^(BOOL cancelled){
         if(completed)return;completed=YES;
         [panel.view layoutIfNeeded];[panel.douyindisc_scrollView layoutIfNeeded];[panel.douyindisc_stack layoutIfNeeded];[row layoutIfNeeded];[window layoutIfNeeded];
-        UIView *interactionRoot=nav.view;
+        UIView *interactionRoot=window;
         CGPoint photoPoint=[row.douyindisc_imageButton convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_imageButton.bounds),CGRectGetMidY(row.douyindisc_imageButton.bounds)) toView:interactionRoot];
         CGPoint switchPoint=[row.douyindisc_switch convertPoint:CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds)) toView:interactionRoot];
-        UIView *photoHit=[interactionRoot hitTest:photoPoint withEvent:nil];
-        CGPoint switchLocalPoint=CGPointMake(CGRectGetMidX(row.douyindisc_switch.bounds),CGRectGetMidY(row.douyindisc_switch.bounds));
-        UIView *switchHit=[row.douyindisc_switch hitTest:switchLocalPoint withEvent:nil];
+        UIView *photoHit=[window hitTest:photoPoint withEvent:nil];
+        UIView *switchHit=[window hitTest:switchPoint withEvent:nil];
         BOOL photoTouchable=photoHit&&(photoHit==row.douyindisc_imageButton||[photoHit isDescendantOfView:row.douyindisc_imageButton]);
-        BOOL switchTouchable=switchHit!=nil&&row.douyindisc_switch.window==window&&CGRectIntersectsRect([row.douyindisc_switch convertRect:row.douyindisc_switch.bounds toView:window],window.bounds);
+        BOOL switchTouchable=switchHit&&(switchHit==row.douyindisc_switch||[switchHit isDescendantOfView:row.douyindisc_switch]);
         NSLog(@"DD_PICKER_TOUCH photoPoint=%@ photoHit=%@ photoInside=%d switchPoint=%@ switchHit=%@ switchInside=%d enabled=%d/%d",NSStringFromCGPoint(photoPoint),NSStringFromClass(photoHit.class),photoTouchable,NSStringFromCGPoint(switchPoint),NSStringFromClass(switchHit.class),switchTouchable,row.douyindisc_imageButton.enabled,row.douyindisc_switch.enabled);
         BOOL touches=photoTouchable&&switchTouchable;
         row.douyindisc_pickPhoto=^(DouyinDiscNavigationRow *selected){(void)selected;photoDirect=YES;};

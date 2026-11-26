@@ -88,6 +88,7 @@ jobs:
             reports/dylib-validation.json
             reports/toolchain-verification.json
             reports/uikit-report.txt
+            reports/settings-layout.png
             tests/report.txt
             toolchain-lock.json
           if-no-files-found: error
