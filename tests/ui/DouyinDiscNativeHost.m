@@ -203,6 +203,7 @@ static void douyindisc_writeProgress(void) {
 #include "DouyinDiscCaptionCases.h"
 #if defined(DOUYINDISC_UI_TEST)
 #include "DouyinDiscNavigationStoreCases.h"
+#include "DouyinDiscCustomDiscCases.h"
 #include "DouyinDiscGIFCases.h"
 #endif
 #include "DouyinDiscNavigationCases.h"
@@ -306,7 +307,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     [first layoutSubviews];
     DD_CHECK(first.douyindisc_layoutCalls == layouts + 1, "inherited original layout forwarded exactly once");
     DouyinDiscSurface *a = objc_getAssociatedObject(first, &douyindisc_leaseKey);
-    DD_CHECK(a && a.douyindisc_overlay.superlayer == a.douyindisc_canvas.layer, "layout attaches artwork before any timer fires");
+    DD_CHECK(a && a.douyindisc_overlay.superlayer == a.douyindisc_artworkGroup && a.douyindisc_artworkGroup.superlayer == a.douyindisc_canvas.layer, "layout attaches artwork before any timer fires");
     DD_CHECK(first->_guidanceLabel.alpha == 0 && first->_guidanceView.alpha == 0, "caption and its separate dark plate suppressed together");
     DD_CHECK(first->_imageContentView.alpha == 0 && first->_imageBgView.alpha == 0, "native bitmap and background kept but visually suppressed");
     DD_CHECK(douyindisc_darkPixels(first) == 0, "actual rendered model pixels contain no native black half-disc");
@@ -314,6 +315,13 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     [first addTarget:self action:@selector(douyindisc_nativeTap:) forControlEvents:UIControlEventTouchUpInside];
     [first sendActionsForControlEvents:UIControlEventTouchUpInside];
     DD_CHECK(self.douyindisc_clicks == 1, "original registered native click still fires once");
+    NSUInteger clicksBeforeDiscTest=self.douyindisc_clicks;
+    douyindisc_customDiscCases(driver,first);
+    [first sendActionsForControlEvents:UIControlEventTouchUpInside];
+    DD_CHECK(self.douyindisc_clicks==clicksBeforeDiscTest+1,"custom disc replacement keeps the original share-below music action working");
+    self.douyindisc_clicks=clicksBeforeDiscTest;
+    a=objc_getAssociatedObject(first,&douyindisc_leaseKey);
+    DD_CHECK(a.douyindisc_overlay.contents==(__bridge id)driver.douyindisc_image.CGImage,"cleared custom icon restores the embedded default artwork");
     DD_CHECK(a.douyindisc_overlay.contents == (__bridge id)driver.douyindisc_image.CGImage, "overlay uses actual production clarity artwork");
     DD_CHECK(![douyindisc_nativeObject(first, "AWEMusicCoverButton", "_guidanceView", "@\"UIImageView\"") isKindOfClass:UIView.class], "mismatched field type rejected without private dispatch");
     douyindisc_clarityCases(driver, first, a, window);
@@ -325,8 +333,8 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     douyindisc_item(window, scroll, window.bounds.size.height, incoming, NULL);
     [incoming layoutSubviews];
     DouyinDiscSurface *b = objc_getAssociatedObject(incoming, &douyindisc_leaseKey);
-    DD_CHECK(b && b.douyindisc_overlay.superlayer == b.douyindisc_canvas.layer, "incoming offscreen feed item prepared before entering viewport");
-    DD_CHECK(a != b && a.douyindisc_overlay.superlayer == a.douyindisc_canvas.layer, "old and incoming items hold independent visual surfaces");
+    DD_CHECK(b && b.douyindisc_overlay.superlayer == b.douyindisc_artworkGroup && b.douyindisc_artworkGroup.superlayer == b.douyindisc_canvas.layer, "incoming offscreen feed item prepared before entering viewport");
+    DD_CHECK(a != b && a.douyindisc_overlay.superlayer == a.douyindisc_artworkGroup && a.douyindisc_artworkGroup.superlayer == a.douyindisc_canvas.layer, "old and incoming items hold independent visual surfaces");
     CABasicAnimation *spinA = (CABasicAnimation *)[a.douyindisc_overlay animationForKey:douyindisc_spinKey];
     CABasicAnimation *spinB = (CABasicAnimation *)[b.douyindisc_overlay animationForKey:douyindisc_spinKey];
     DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || (spinA && spinB && fabs(spinA.beginTime - spinB.beginTime) < .001), "all video items use one absolute rotation epoch");
@@ -336,7 +344,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     [first->_imageContentView.layer addAnimation:nativeSpin forKey:@"host-native-spin"];
     [driver douyindisc_refresh:first];
     DD_CHECK([first->_imageContentView.layer animationForKey:@"host-native-spin"] != nil, "native animation left intact on its own hidden renderer");
-    DD_CHECK(a.douyindisc_overlay.superlayer == a.douyindisc_canvas.layer && a.douyindisc_overlay.superlayer != first->_imageContentView.layer, "new image never inherits native renderer rotation");
+    DD_CHECK(a.douyindisc_overlay.superlayer == a.douyindisc_artworkGroup && a.douyindisc_artworkGroup.superlayer == a.douyindisc_canvas.layer && a.douyindisc_overlay.superlayer != first->_imageContentView.layer, "new image never inherits native renderer rotation");
     first.enabled = NO;
     [driver douyindisc_refresh:first];
     DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || [a.douyindisc_overlay animationForKey:douyindisc_spinKey], "native playback/control pause does not stop independent rotation");
@@ -348,7 +356,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     first->_imageContentView.image = blue;
     [first->_imageContentView.layer displayIfNeeded];
     DD_CHECK(first->_imageContentView.alpha == 0, "asynchronous native image replacement cannot reveal old artwork between ticks");
-    DD_CHECK(douyindisc_darkPixels(first) == 0 && a.douyindisc_overlay.superlayer == a.douyindisc_canvas.layer, "native image update leaves only custom artwork visible");
+    DD_CHECK(douyindisc_darkPixels(first) == 0 && a.douyindisc_overlay.superlayer == a.douyindisc_artworkGroup && a.douyindisc_artworkGroup.superlayer == a.douyindisc_canvas.layer, "native image update leaves only custom artwork visible");
     DD_CHECK(first->_imageContentView.image == blue, "native model continues receiving current artwork");
     [scroll setContentOffset:CGPointMake(0, window.bounds.size.height) animated:NO];
     [scroll layoutIfNeeded];
@@ -381,7 +389,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(timer.isValid, "active lightweight known-control timer installed");
     [NSNotificationCenter.defaultCenter postNotificationName:UIApplicationWillResignActiveNotification object:nil];
     DD_CHECK(!timer.isValid && !driver.douyindisc_timer, "deactivation stops all active scanning work");
-    DD_CHECK(a.douyindisc_overlay.superlayer == a.douyindisc_canvas.layer && b.douyindisc_overlay.superlayer == b.douyindisc_canvas.layer, "inactive snapshot retains both existing artwork surfaces");
+    DD_CHECK(a.douyindisc_overlay.superlayer == a.douyindisc_artworkGroup && a.douyindisc_artworkGroup.superlayer == a.douyindisc_canvas.layer && b.douyindisc_overlay.superlayer == b.douyindisc_artworkGroup && b.douyindisc_artworkGroup.superlayer == b.douyindisc_canvas.layer, "inactive snapshot retains both existing artwork surfaces");
     DD_CHECK(first->_guidanceView.alpha == 0, "guidance background stays hidden through inactive notification");
     UIWindow *panel = [[UIWindow alloc] initWithFrame:window.bounds];
     panel.rootViewController = [UIViewController new]; [panel makeKeyAndVisible];
@@ -432,7 +440,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     DD_CHECK(listen->_listenTitleLabel.alpha == 0 && [listen->_listenTitleLabel.text isEqualToString:@"听抖音"], "listen caption hidden without rewriting its text");
     DD_CHECK(incoming.alpha == 1 && !incoming.hidden && listen.alpha == 1, "listen host and native entry button remain interactive");
     DouyinDiscSurface *listenSurface = objc_getAssociatedObject(incoming, &douyindisc_leaseKey);
-    DD_CHECK(listenSurface.douyindisc_overlay.superlayer == listenSurface.douyindisc_canvas.layer, "listen artwork uses independent entry-button layer");
+    DD_CHECK(listenSurface.douyindisc_overlay.superlayer == listenSurface.douyindisc_artworkGroup && listenSurface.douyindisc_artworkGroup.superlayer == listenSurface.douyindisc_canvas.layer, "listen artwork uses independent entry-button layer");
     DD_CHECK(douyindisc_darkPixels(listen) == 0, "real rasterization shows no listen gradient/earphone remnants");
     CABasicAnimation *listenSpin = (CABasicAnimation *)[listenSurface.douyindisc_overlay animationForKey:douyindisc_spinKey];
     DD_CHECK(UIAccessibilityIsReduceMotionEnabled() || fabs(listenSpin.beginTime-spinA.beginTime)<.001, "listen-mode switch shares the continuous rotation epoch");

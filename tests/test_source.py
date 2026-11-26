@@ -63,18 +63,18 @@ class SourceContractTests(unittest.TestCase):
 
 
         self.assertIn('douyindisc_adjustSize:(NSInteger)delta', panel)
-        self.assertIn('MAX(50,MIN(150', panel)
+        self.assertIn('NSInteger minimum=speed?25:50,maximum=speed?300:150', panel)
         self.assertIn('MAX(0,MIN(100', panel)
         self.assertIn('isfinite(parsed)', panel)
         self.assertIn('douyindisc_sizeValue.centerYAnchor constraintEqualToAnchor:self.douyindisc_sizeMinus.centerYAnchor', panel)
         self.assertIn('douyindisc_sizePlus sendActionsForControlEvents:UIControlEventTouchUpInside', panel)
         self.assertIn('douyindisc_sizeMinus sendActionsForControlEvents:UIControlEventTouchUpInside', panel)
         self.assertIn('self.douyindisc_opacityTitle.text=@"透明度"', panel)
-        self.assertIn('self.douyindisc_sizeTitle.text=@"图标大小"', panel)
+        self.assertIn('self.douyindisc_sizeTitle.text=item[@"adjustmentTitle"]?:@"图标大小"', panel)
         self.assertIn('constraintEqualToConstant:198', panel)
         self.assertIn('numeric steppers, typed percentages and picker cancel behavior remain available',host)
         self.assertIn('accessibilityLabel=@"透明度百分比"', panel)
-        self.assertIn('accessibilityLabel=@"图标大小百分比"', panel)
+        self.assertIn('accessibilityLabel=speedMode?@"唱片转速百分比":@"图标大小百分比"', panel)
         self.assertIn('AWESettingsTableViewController', hooks)
         self.assertIn('douyindisc_rootSettingsWillAppear',hooks)
         self.assertIn('setUseStandardArrowImage:',hooks)
@@ -135,7 +135,7 @@ class SourceContractTests(unittest.TestCase):
 
 
         self.assertIn('douyindisc_adjustSize:(NSInteger)delta', panel)
-        self.assertIn('MAX(50,MIN(150', panel)
+        self.assertIn('NSInteger minimum=speed?25:50,maximum=speed?300:150', panel)
         self.assertIn('MAX(0,MIN(100', panel)
         self.assertIn('isfinite(parsed)', panel)
         self.assertIn('douyindisc_sizeValue.centerYAnchor constraintEqualToAnchor:self.douyindisc_sizeMinus.centerYAnchor', panel)

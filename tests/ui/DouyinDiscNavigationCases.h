@@ -17,11 +17,12 @@ extern void douyindisc_uiTestSetNavigationScale(NSString *identifier, CGFloat sc
 
 static void douyindisc_navigationCases(UIWindow *window) {
     NSArray<NSDictionary<NSString *,id> *> *items=douyindisc_navigationItems();
-    DD_CHECK(items.count==13,"the settings model has exactly thirteen requested text slots");
+    DD_CHECK(items.count==14,"the settings model adds one dedicated video-disc customization slot");
     NSArray *topTitles=@[@"推荐",@"关注",@"同城",@"精选",@"商城",@"团购",@"直播",@"热点",@"经验"];
     NSArray *bottom=@[@"首页",@"朋友",@"消息",@"我"];
     for(NSUInteger i=0;i<9;i++) DD_CHECK([items[i][@"title"] isEqual:topTitles[i]],"top-channel order matches the screenshot");
     for(NSUInteger i=0;i<4;i++) DD_CHECK([items[i+9][@"title"] isEqual:bottom[i]],"bottom-tab order excludes plus");
+    DD_CHECK([items.lastObject[@"identifier"] isEqual:@"video_disc"]&&[items.lastObject[@"adjustmentTitle"] isEqual:@"转速"],"video-disc settings are appended after navigation icon rows with speed controls");
 
     UIView *feed=[UIView new]; feed.frame=CGRectMake(0,0,390,220); [window.rootViewController.view addSubview:feed];
     AWENormalModeTabBar *bar=[AWENormalModeTabBar new]; bar.frame=CGRectMake(0,150,390,70); [feed addSubview:bar];

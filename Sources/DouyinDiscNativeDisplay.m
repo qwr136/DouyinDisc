@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
 #import "DouyinDiscNative.h"
+#import "DouyinDiscNavigation.h"
 #include <math.h>
 #import "DouyinDiscHostVersion.h"
 #include "DouyinDiscArtwork.inc"
@@ -30,6 +31,7 @@ static UIImage *douyindisc_loadCenterRing(void) {
 }
 
 static NSString *const douyindisc_spinKey = @"com.minis.douyindisc.continuous";
+static NSString *const douyindisc_discGIFKey = @"com.minis.douyindisc.custom-gif";
 static char douyindisc_leaseKey;
 @class DouyinDiscSurface, DouyinDiscDisplay;
 
@@ -45,6 +47,18 @@ static BOOL douyindisc_visibleToWindow(UIView *view, UIWindow *window) {
         if (view == window) return YES;
     }
     return NO;
+}
+
+static BOOL douyindisc_onScreen(UIControl *control) {
+    UIWindow *window=control.window;
+    if(!window||!douyindisc_visibleToWindow(control,window))return NO;
+    CGRect visible=[control convertRect:control.bounds toView:window];
+    for(UIView *ancestor=control.superview;ancestor&&ancestor!=window;ancestor=ancestor.superview){
+        if(!ancestor.clipsToBounds&&!ancestor.layer.masksToBounds)continue;
+        visible=CGRectIntersection(visible,[ancestor convertRect:ancestor.bounds toView:window]);
+        if(CGRectIsNull(visible)||CGRectIsEmpty(visible))return NO;
+    }
+    return !CGRectIsEmpty(CGRectIntersection(visible,window.bounds));
 }
 
 static BOOL douyindisc_preparedGeometry(UIControl *control) {
@@ -123,15 +137,20 @@ static UIView *douyindisc_scopedShare(UIControl *control) {
 @property (nonatomic, weak) UIWindow *douyindisc_window;
 @property (nonatomic, weak) UIView *douyindisc_scope;
 @property (nonatomic, weak) UIView *douyindisc_canvas;
+@property (nonatomic, strong) CALayer *douyindisc_artworkGroup;
 @property (nonatomic, strong) CALayer *douyindisc_overlay;
 @property (nonatomic, strong) CALayer *douyindisc_accentArcs;
 @property (nonatomic, strong) CALayer *douyindisc_centerOverlay;
 @property (nonatomic, strong) NSArray<DouyinDiscVisual *> *douyindisc_visuals;
+@property (nonatomic, strong) UIImage *douyindisc_customImage;
+@property (nonatomic, strong) DouyinDiscGIFAnimation *douyindisc_customAnimation;
+@property (nonatomic) CGFloat douyindisc_spinSpeed;
 - (void)douyindisc_restore;
 @end
 @implementation DouyinDiscSurface
 - (void)douyindisc_restore {
     [CATransaction begin]; [CATransaction setDisableActions:YES];
+    [self.douyindisc_artworkGroup removeFromSuperlayer];
     [self.douyindisc_overlay removeFromSuperlayer];
     [self.douyindisc_accentArcs removeFromSuperlayer];
     [self.douyindisc_centerOverlay removeFromSuperlayer];
@@ -146,6 +165,7 @@ static UIView *douyindisc_scopedShare(UIControl *control) {
 @property (nonatomic, strong) NSHashTable<UIControl *> *douyindisc_controls;
 @property (nonatomic, strong) NSTimer *douyindisc_timer;
 @property (nonatomic) CFTimeInterval douyindisc_epoch;
+@property (nonatomic) CGFloat douyindisc_spinSpeed;
 @property (nonatomic) BOOL douyindisc_refreshing;
 - (void)douyindisc_refresh:(UIControl *)control;
 @end
@@ -161,6 +181,7 @@ static void douyindisc_changed(UIControl *control) {
     if (self) {
         _douyindisc_controls = [NSHashTable weakObjectsHashTable];
         _douyindisc_epoch = CACurrentMediaTime();
+        _douyindisc_spinSpeed = 1;
     }
     return self;
 }
@@ -179,7 +200,13 @@ static void douyindisc_changed(UIControl *control) {
         surface = nil;
     }
     UIView *canvas = sameScope ? surface.douyindisc_canvas : douyindisc_scopedShare(control);
-    BOOL valid = douyindisc_preparedGeometry(control) && canvas;
+    DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
+    NSDictionary *discEntry=[store douyindisc_entryForIdentifier:@"video_disc"];
+    BOOL valid = [discEntry[@"enabled"] boolValue] && douyindisc_preparedGeometry(control) && canvas;
+    UIImage *customImage=valid?[store douyindisc_imageForIdentifier:@"video_disc"]:nil;
+    DouyinDiscGIFAnimation *customAnimation=customImage?[store douyindisc_animationForIdentifier:@"video_disc"]:nil;
+    CGFloat customOpacity=MAX(0,MIN(1,[discEntry[@"opacity"] doubleValue]));
+    CGFloat spinSpeed=MAX(.25,MIN(3,[discEntry[@"speed"] doubleValue]));
     NSMutableArray<UIView *> *views = valid ? [douyindisc_nativeVisuals(control) mutableCopy] : [NSMutableArray array];
     if (valid) {
         for (UIView *label in douyindisc_localCaptions(control)) if (![views containsObject:label]) [views addObject:label];
@@ -199,8 +226,12 @@ static void douyindisc_changed(UIControl *control) {
         surface.douyindisc_window = control.window;
         surface.douyindisc_scope = control.superview;
         surface.douyindisc_canvas = canvas;
+        surface.douyindisc_artworkGroup=[CALayer layer];
+        surface.douyindisc_artworkGroup.name=@"DouyinDiscArtworkGroup";
+        surface.douyindisc_artworkGroup.allowsGroupOpacity=YES;
         surface.douyindisc_overlay = [CALayer layer];
         surface.douyindisc_overlay.name = @"DouyinDiscOuterArtwork";
+        [surface.douyindisc_artworkGroup addSublayer:surface.douyindisc_overlay];
         surface.douyindisc_overlay.contents = (__bridge id)self.douyindisc_image.CGImage;
         surface.douyindisc_overlay.contentsGravity = kCAGravityResizeAspect;
         UIImage *arcs=douyindisc_loadAccentArcs();
@@ -209,6 +240,7 @@ static void douyindisc_changed(UIControl *control) {
             surface.douyindisc_accentArcs.name=@"DouyinDiscAccentArcs80";
             surface.douyindisc_accentArcs.contents=(__bridge id)arcs.CGImage;
             surface.douyindisc_accentArcs.contentsGravity=kCAGravityResizeAspect;
+            [surface.douyindisc_artworkGroup addSublayer:surface.douyindisc_accentArcs];
         }
         UIImage *ring=douyindisc_loadCenterRing();
         if (ring.CGImage) {
@@ -216,6 +248,7 @@ static void douyindisc_changed(UIControl *control) {
             surface.douyindisc_centerOverlay.name=@"DouyinDiscCenterRing";
             surface.douyindisc_centerOverlay.contents=(__bridge id)ring.CGImage;
             surface.douyindisc_centerOverlay.contentsGravity=kCAGravityResizeAspect;
+            [surface.douyindisc_artworkGroup addSublayer:surface.douyindisc_centerOverlay];
         }
         objc_setAssociatedObject(control, &douyindisc_leaseKey, surface, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
@@ -240,44 +273,79 @@ static void douyindisc_changed(UIControl *control) {
     CALayer *overlay = surface.douyindisc_overlay;
     CGRect frame = [control convertRect:control.bounds toView:canvas];
     CGFloat scale = control.window.screen.scale;
-    overlay.bounds = (CGRect){CGPointZero, CGSizeMake(round(frame.size.width*scale)/scale, round(frame.size.height*scale)/scale)};
-    overlay.position = CGPointMake(round(CGRectGetMidX(frame)*scale)/scale, round(CGRectGetMidY(frame)*scale)/scale);
-    overlay.contentsScale = scale;
-    overlay.opacity = 0.5f;
+    CGSize size=CGSizeMake(round(frame.size.width*scale)/scale,round(frame.size.height*scale)/scale);
+    CALayer *group=surface.douyindisc_artworkGroup;
+    group.bounds=(CGRect){CGPointZero,size};
+    group.position=CGPointMake(round(CGRectGetMidX(frame)*scale)/scale,round(CGRectGetMidY(frame)*scale)/scale);
+    group.contentsScale=scale;group.opacity=customOpacity;
+    if(group.superlayer!=canvas.layer)[canvas.layer addSublayer:group];
+    overlay.bounds=group.bounds;overlay.position=CGPointMake(CGRectGetMidX(group.bounds),CGRectGetMidY(group.bounds));
+    overlay.contentsScale=scale;
+    BOOL customImageChanged=surface.douyindisc_customImage!=customImage;
+    if(customImageChanged){
+        surface.douyindisc_customImage=customImage;
+        overlay.contents=customImage?(__bridge id)customImage.CGImage:(__bridge id)self.douyindisc_image.CGImage;
+        overlay.contentsGravity=customImage?kCAGravityResizeAspectFill:kCAGravityResizeAspect;
+    }
+    overlay.cornerRadius=customImage?MIN(overlay.bounds.size.width,overlay.bounds.size.height)*.5:0;
+    overlay.masksToBounds=customImage!=nil;
+    overlay.opacity = customImage?1.0f:0.5f;
     overlay.minificationFilter = kCAFilterTrilinear;
     overlay.magnificationFilter = kCAFilterLinear;
-    if (overlay.superlayer != canvas.layer) [canvas.layer addSublayer:overlay];
+    if(overlay.superlayer!=group)[group addSublayer:overlay];
     CALayer *arcs=surface.douyindisc_accentArcs;
     if(arcs){
         arcs.bounds=overlay.bounds; arcs.position=overlay.position; arcs.contentsScale=scale;
         arcs.opacity=1.0f; arcs.minificationFilter=kCAFilterTrilinear; arcs.magnificationFilter=kCAFilterLinear;
-        if(arcs.superlayer!=canvas.layer)[canvas.layer addSublayer:arcs];
+        if(arcs.superlayer!=group)[group addSublayer:arcs];
     }
     CALayer *ring=surface.douyindisc_centerOverlay;
     if (ring) {
         ring.bounds=overlay.bounds; ring.position=overlay.position; ring.contentsScale=scale;
         ring.opacity=0.9f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
-        if (ring.superlayer != canvas.layer) [canvas.layer addSublayer:ring];
+        if(ring.superlayer!=group)[group addSublayer:ring];
+    }
+    if(surface.douyindisc_customAnimation!=customAnimation){[overlay removeAnimationForKey:douyindisc_discGIFKey];surface.douyindisc_customAnimation=customAnimation;}
+    BOOL reduceMotion=UIAccessibilityIsReduceMotionEnabled();
+    BOOL customGIFVisible=customImage&&customAnimation&&douyindisc_onScreen(control);
+    if(!customGIFVisible||reduceMotion)[overlay removeAnimationForKey:douyindisc_discGIFKey];
+    else if(![overlay animationForKey:douyindisc_discGIFKey]){
+        NSMutableArray *frames=[NSMutableArray arrayWithCapacity:customAnimation.frames.count];
+        for(UIImage *frameImage in customAnimation.frames)if(frameImage.CGImage)[frames addObject:(__bridge id)frameImage.CGImage];
+        if(frames.count>1&&frames.count==customAnimation.keyTimes.count){
+            [frames addObject:frames.lastObject];NSMutableArray *times=[customAnimation.keyTimes mutableCopy];[times addObject:@1.0];
+            CAKeyframeAnimation *gif=[CAKeyframeAnimation animationWithKeyPath:@"contents"];
+            gif.values=frames;gif.keyTimes=times;gif.duration=customAnimation.duration;gif.repeatCount=HUGE_VALF;gif.calculationMode=kCAAnimationDiscrete;gif.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];gif.beginTime=[overlay convertTime:CACurrentMediaTime() fromLayer:nil];gif.removedOnCompletion=NO;gif.fillMode=kCAFillModeBoth;
+            [overlay addAnimation:gif forKey:douyindisc_discGIFKey];
+        }
     }
     CALayer *spinLayers[3]={overlay,arcs,ring};
-    if (UIAccessibilityIsReduceMotionEnabled()) {
+    if (reduceMotion) {
         for(NSUInteger i=0;i<3;i++)[spinLayers[i] removeAnimationForKey:douyindisc_spinKey];
+        surface.douyindisc_spinSpeed=0;
     } else {
-        CABasicAnimation *spin=(CABasicAnimation *)[overlay animationForKey:douyindisc_spinKey];
-        if(!spin){
-            spin=[CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-            spin.fromValue=@0; spin.toValue=@(2*M_PI); spin.duration=7; spin.repeatCount=HUGE_VALF;
+        BOOL globalSpeedChanged=fabs(self.douyindisc_spinSpeed-spinSpeed)>.001;
+        if(globalSpeedChanged){
+            NSNumber *presentedAngle=overlay.presentationLayer?[overlay.presentationLayer valueForKeyPath:@"transform.rotation.z"]:nil;
+            double phase=0;
+            if(presentedAngle){phase=fmod(presentedAngle.doubleValue,2*M_PI)/(2*M_PI);if(phase<0)phase+=1;}
+            CFTimeInterval now=CACurrentMediaTime();
+            self.douyindisc_epoch=now-phase*(7.0/spinSpeed);
+            self.douyindisc_spinSpeed=spinSpeed;
+        }
+        BOOL hasSpin=[overlay animationForKey:douyindisc_spinKey]!=nil;
+        BOOL surfaceSpeedChanged=fabs(surface.douyindisc_spinSpeed-spinSpeed)>.001;
+        if(!hasSpin||surfaceSpeedChanged){
+            for(NSUInteger i=0;i<3;i++)[spinLayers[i] removeAnimationForKey:douyindisc_spinKey];
+            CABasicAnimation *spin=[CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
+            spin.fromValue=@0;spin.toValue=@(2*M_PI);spin.duration=7.0/spinSpeed;spin.repeatCount=HUGE_VALF;
             spin.beginTime=[overlay convertTime:self.douyindisc_epoch fromLayer:nil];
             [overlay addAnimation:spin forKey:douyindisc_spinKey];
-            spin=(CABasicAnimation *)[overlay animationForKey:douyindisc_spinKey];
-        }
-        for(NSUInteger i=1;i<3;i++){
-            CALayer *layer=spinLayers[i];
-            if(layer&&![layer animationForKey:douyindisc_spinKey]){
-                CABasicAnimation *copy=[spin copy];
-                copy.beginTime=[layer convertTime:self.douyindisc_epoch fromLayer:nil];
-                [layer addAnimation:copy forKey:douyindisc_spinKey];
+            for(NSUInteger i=1;i<3;i++){
+                CALayer *layer=spinLayers[i];if(!layer)continue;
+                CABasicAnimation *copy=[spin copy];copy.beginTime=[layer convertTime:self.douyindisc_epoch fromLayer:nil];[layer addAnimation:copy forKey:douyindisc_spinKey];
             }
+            surface.douyindisc_spinSpeed=spinSpeed;
         }
     }
     [CATransaction commit];
@@ -325,11 +393,22 @@ static void douyindisc_changed(UIControl *control) {
 - (void)douyindisc_resignedActive:(NSNotification *)notification {
     (void)notification;
     [self.douyindisc_timer invalidate]; self.douyindisc_timer = nil;
-    // Already-applied surfaces remain in inactive/system snapshots. No background work.
+    for(UIControl *control in self.douyindisc_controls.allObjects){DouyinDiscSurface *surface=objc_getAssociatedObject(control,&douyindisc_leaseKey);[surface.douyindisc_overlay removeAnimationForKey:douyindisc_discGIFKey];}
+    // Retain visible layers for system snapshots, but never keep custom frame playback running in background.
 }
 
 - (void)douyindisc_motionChanged:(NSNotification *)notification {
     (void)notification; [self douyindisc_tick];
+}
+
+- (void)douyindisc_navigationChanged:(NSNotification *)notification {
+    (void)notification; [self douyindisc_tick];
+}
+
+- (void)douyindisc_navigationPreview:(NSNotification *)notification {
+    id identifier=notification.object;
+    if([identifier isKindOfClass:NSString.class]&&![identifier isEqualToString:@"video_disc"])return;
+    [self douyindisc_tick];
 }
 
 - (void)douyindisc_start {
@@ -337,6 +416,8 @@ static void douyindisc_changed(UIControl *control) {
     [center addObserver:self selector:@selector(douyindisc_becameActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
     [center addObserver:self selector:@selector(douyindisc_resignedActive:) name:UIApplicationWillResignActiveNotification object:nil];
     [center addObserver:self selector:@selector(douyindisc_motionChanged:) name:UIAccessibilityReduceMotionStatusDidChangeNotification object:nil];
+    [center addObserver:self selector:@selector(douyindisc_navigationChanged:) name:@"com.minis.douyindisc.navigation.changed" object:nil];
+    [center addObserver:self selector:@selector(douyindisc_navigationPreview:) name:@"com.minis.douyindisc.navigation.preview" object:nil];
     [self douyindisc_becameActive:nil];
 }
 @end

@@ -30,10 +30,13 @@ static NSArray<NSDictionary<NSString *, id> *> *douyindisc_itemTable(void) {
             @[@"top_live", @"直播", @"dot.radiowaves.left.and.right", @"#E94F65"], @[@"top_hot", @"热点", @"flame", @"#E94F65"],
             @[@"top_experience", @"经验", @"lightbulb", @"#E94F65"], @[@"bottom_home", @"首页", @"house", @"#3778D4"],
             @[@"bottom_friends", @"朋友", @"person.2", @"#3778D4"], @[@"bottom_messages", @"消息", @"bubble.left.and.bubble.right", @"#3778D4"],
-            @[@"bottom_me", @"我", @"person.crop.circle", @"#3778D4"]
+            @[@"bottom_me", @"我", @"person.crop.circle", @"#3778D4"], @[@"video_disc", @"视频唱片", @"opticaldisc", @"#8B5CF6"]
         ];
         NSMutableArray *built = [NSMutableArray arrayWithCapacity:raw.count];
-        for (NSArray *row in raw) [built addObject:@{@"identifier":row[0], @"title":row[1], @"sfIcon":row[2], @"accentColor":row[3]}];
+        for (NSArray *row in raw) {
+            NSString *identifier=row[0];
+            [built addObject:@{@"identifier":identifier, @"title":row[1], @"sfIcon":row[2], @"accentColor":row[3], @"adjustmentTitle":[identifier isEqualToString:@"video_disc"]?@"转速":@"图标大小"}];
+        }
         items = built.copy;
     });
     return items;
@@ -120,7 +123,7 @@ static NSUInteger douyindisc_gifDecodedCost(DouyinDiscGIFAnimation *animation) {
 }
 static BOOL douyindisc_validConfig(id value) {
     if (![value isKindOfClass:NSDictionary.class]) return NO;
-    NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"scale", @"image"]];
+    NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"scale", @"speed", @"image"]];
     for (id key in (NSDictionary *)value) {
         id entry = value[key];
         if (![key isKindOfClass:NSString.class] || !douyindisc_validIdentifier(key) || ![entry isKindOfClass:NSDictionary.class]) return NO;
@@ -128,10 +131,12 @@ static BOOL douyindisc_validConfig(id value) {
         if (entry[@"enabled"] && ![entry[@"enabled"] isKindOfClass:NSNumber.class]) return NO;
         if (entry[@"opacity"] && ![entry[@"opacity"] isKindOfClass:NSNumber.class]) return NO;
         if (entry[@"scale"] && ![entry[@"scale"] isKindOfClass:NSNumber.class]) return NO;
+        if (entry[@"speed"] && (![key isEqualToString:@"video_disc"] || ![entry[@"speed"] isKindOfClass:NSNumber.class])) return NO;
         if (entry[@"image"] && !douyindisc_validImageName(entry[@"image"])) return NO;
         double opacity = [entry[@"opacity"] respondsToSelector:@selector(doubleValue)] ? [entry[@"opacity"] doubleValue] : 1;
         double scale = [entry[@"scale"] respondsToSelector:@selector(doubleValue)] ? [entry[@"scale"] doubleValue] : 1;
-        if (!isfinite(opacity) || opacity < 0 || opacity > 1 || !isfinite(scale) || scale < .5 || scale > 1.5) return NO;
+        double speed = [entry[@"speed"] respondsToSelector:@selector(doubleValue)] ? [entry[@"speed"] doubleValue] : 1;
+        if (!isfinite(opacity) || opacity < 0 || opacity > 1 || !isfinite(scale) || scale < .5 || scale > 1.5 || !isfinite(speed) || speed < .25 || speed > 3) return NO;
     }
     return YES;
 }
@@ -251,7 +256,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 - (void)douyindisc_previewScale:(CGFloat)scale identifier:(NSString *)identifier {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
     if (!douyindisc_validIdentifier(identifier) || !isfinite(scale)) return;
-    self.douyindisc_previewScale[identifier] = @(fmin(1.5, fmax(.5, scale)));
+    CGFloat minimum=[identifier isEqualToString:@"video_disc"]?.25:.5,maximum=[identifier isEqualToString:@"video_disc"]?3:1.5;
+    self.douyindisc_previewScale[identifier] = @(fmin(maximum, fmax(minimum, scale)));
     [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.preview" object:identifier];
 }
 
@@ -266,14 +272,18 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
     if (!douyindisc_validIdentifier(identifier)) return @{@"enabled":@NO, @"opacity":@1, @"hasImage":@NO};
     NSDictionary *stored = self.douyindisc_config[identifier];
+    BOOL videoDisc=[identifier isEqualToString:@"video_disc"];
     NSNumber *opacity = self.douyindisc_previewOpacity[identifier] ?: stored[@"opacity"] ?: @1;
-    NSNumber *scale=self.douyindisc_previewScale[identifier] ?: stored[@"scale"] ?: @1;
-    return @{@"enabled":stored[@"enabled"] ?: @NO, @"opacity":opacity, @"scale":scale, @"hasImage":@(stored[@"image"] != nil)};
+    NSNumber *adjustment=self.douyindisc_previewScale[identifier] ?: (videoDisc?(stored[@"speed"]?:@1):(stored[@"scale"]?:@1));
+    NSNumber *enabled=stored[@"enabled"] ?: @(videoDisc);
+    return @{@"enabled":enabled, @"opacity":opacity, @"scale":adjustment, @"speed":adjustment, @"hasImage":@(stored[@"image"] != nil)};
 }
 
 - (BOOL)douyindisc_imagePickingEnabledForIdentifier:(NSString *)identifier {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
-    return douyindisc_validIdentifier(identifier) && [self.douyindisc_config[identifier][@"enabled"] boolValue];
+    if(!douyindisc_validIdentifier(identifier))return NO;
+    NSNumber *enabled=self.douyindisc_config[identifier][@"enabled"];
+    return enabled?[enabled boolValue]:[identifier isEqualToString:@"video_disc"];
 }
 
 - (NSUInteger)douyindisc_beginImagePickingForIdentifier:(NSString *)identifier {
@@ -321,7 +331,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 - (void)douyindisc_preloadImagesWithCompletion:(void (^)(void))completion {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
     NSDictionary *configSnapshot = self.douyindisc_config ?: @{};
-    NSMutableDictionary *generations = [NSMutableDictionary dictionaryWithCapacity:13];
+    NSMutableDictionary *generations = [NSMutableDictionary dictionaryWithCapacity:14];
     for (NSDictionary *item in douyindisc_itemTable()) {
         NSString *key = item[@"identifier"];
         generations[key] = self.douyindisc_imageGeneration[key] ?: @0;
@@ -344,7 +354,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
             if (!data.length || data.length > 6 * 1024 * 1024) continue;
             UIImage *image = douyindisc_decodeImage(data, YES, nil);
             if (image.CGImage) images[key] = image;
-            if(![configSnapshot[key][@"enabled"] boolValue])continue;
+            BOOL enabled=configSnapshot[key][@"enabled"]?[configSnapshot[key][@"enabled"] boolValue]:[key isEqualToString:@"video_disc"];
+            if(!enabled)continue;
             [animationCandidates addObject:key];
             NSString *gifName=douyindisc_gifNameForImageName(name);
             NSURL *gifURL=gifName?[directory URLByAppendingPathComponent:gifName]:nil;
@@ -408,18 +419,19 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 
 - (BOOL)douyindisc_saveEnabled:(BOOL)enabled opacity:(CGFloat)opacity scale:(CGFloat)scale identifier:(NSString *)identifier error:(NSError **)error {
     NSAssert(NSThread.isMainThread, @"Navigation store access must be on main thread");
-    if (!douyindisc_validIdentifier(identifier) || !isfinite(opacity) || !isfinite(scale)) {
-        if (error) *error = douyindisc_error(3, @"导航项、不透明度或图标大小无效。");
+    CGFloat minimum=[identifier isEqualToString:@"video_disc"]?.25:.5,maximum=[identifier isEqualToString:@"video_disc"]?3:1.5;
+    if (!douyindisc_validIdentifier(identifier) || !isfinite(opacity) || !isfinite(scale) || scale<minimum || scale>maximum) {
+        if (error) *error = douyindisc_error(3, @"导航项、不透明度或大小/转速无效。");
         return NO;
     }
     opacity = fmin(1, fmax(0, opacity));
-    scale = fmin(1.5, fmax(.5, scale));
+    scale = fmin(maximum, fmax(minimum, scale));
     BOOL wasEnabled=[self.douyindisc_config[identifier][@"enabled"] boolValue];
     NSMutableDictionary *config = [self.douyindisc_config mutableCopy];
     NSMutableDictionary *entry = [config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
     entry[@"enabled"] = @(enabled);
     entry[@"opacity"] = @(opacity);
-    entry[@"scale"] = @(scale);
+    if([identifier isEqualToString:@"video_disc"])entry[@"speed"]=@(scale);else entry[@"scale"]=@(scale);
     config[identifier] = entry;
     BOOL committed=[self douyindisc_commitLatestConfig:config beforeNotify:nil error:error];
     if(committed&&!enabled){[self douyindisc_cancelImagePickingForIdentifier:identifier];self.douyindisc_preloadGeneration++;[self.douyindisc_animations removeObjectForKey:identifier];}
@@ -556,8 +568,9 @@ void douyindisc_uiTestSetNavigationImage(NSString *identifier, UIImage *image, B
     NSMutableDictionary *entry=[config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
     entry[@"enabled"]=@(enabled);
     entry[@"opacity"]=@1;
+    if([identifier isEqualToString:@"video_disc"]&&!entry[@"speed"])entry[@"speed"]=@1;
     if(image){entry[@"image"]=@"fixture.png";store.douyindisc_images[identifier]=image;}
-    else { [entry removeObjectForKey:@"image"];[store.douyindisc_images removeObjectForKey:identifier]; }
+    else { [entry removeObjectForKey:@"image"];[store.douyindisc_images removeObjectForKey:identifier];[store.douyindisc_animations removeObjectForKey:identifier]; }
     config[identifier]=entry;
     store.douyindisc_config=[config copy];
     [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
@@ -568,9 +581,27 @@ void douyindisc_uiTestSetNavigationScale(NSString *identifier, CGFloat scale) {
     DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];
     NSMutableDictionary *config=[store.douyindisc_config mutableCopy] ?: [NSMutableDictionary dictionary];
     NSMutableDictionary *entry=[config[identifier] mutableCopy] ?: [NSMutableDictionary dictionary];
-    entry[@"scale"]=@(fmin(1.5,fmax(.5,scale)));
+    CGFloat minimum=[identifier isEqualToString:@"video_disc"]?.25:.5,maximum=[identifier isEqualToString:@"video_disc"]?3:1.5;
+    if([identifier isEqualToString:@"video_disc"])entry[@"speed"]=@(fmin(maximum,fmax(minimum,scale)));else entry[@"scale"]=@(fmin(maximum,fmax(minimum,scale)));
     config[identifier]=entry;
     store.douyindisc_config=[config copy];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
+}
+
+void douyindisc_uiTestSetDiscSettings(BOOL enabled, CGFloat opacity, CGFloat speed) {
+    if(!NSThread.isMainThread||!isfinite(opacity)||!isfinite(speed))return;
+    DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];
+    NSMutableDictionary *config=[store.douyindisc_config mutableCopy]?:[NSMutableDictionary dictionary];
+    NSMutableDictionary *entry=[config[@"video_disc"] mutableCopy]?:[NSMutableDictionary dictionary];
+    entry[@"enabled"]=@(enabled);entry[@"opacity"]=@(fmin(1,fmax(0,opacity)));entry[@"speed"]=@(fmin(3,fmax(.25,speed)));
+    config[@"video_disc"]=entry;store.douyindisc_config=[config copy];
+    [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
+}
+
+void douyindisc_uiTestSetNavigationAnimation(NSString *identifier, NSArray<UIImage *> *frames, NSArray<NSNumber *> *keyTimes, NSTimeInterval duration) {
+    if(!NSThread.isMainThread||!douyindisc_validIdentifier(identifier)||frames.count<2||frames.count!=keyTimes.count||!isfinite(duration)||duration<=0)return;
+    DouyinDiscGIFAnimation *animation=[DouyinDiscGIFAnimation new];animation.frames=frames.copy;animation.keyTimes=keyTimes.copy;animation.duration=duration;
+    DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];store.douyindisc_animations[identifier]=animation;
     [NSNotificationCenter.defaultCenter postNotificationName:@"com.minis.douyindisc.navigation.changed" object:store];
 }
 

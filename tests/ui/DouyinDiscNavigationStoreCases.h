@@ -97,8 +97,18 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     NSArray *items = douyindisc_navigationItems();
     for (NSDictionary *item in items) {
         NSDictionary *entry = [store douyindisc_entryForIdentifier:item[@"identifier"]];
-        DD_CHECK_NS(![entry[@"enabled"] boolValue] && [entry[@"opacity"] doubleValue] == 1 && [entry[@"scale"] doubleValue] == 1 && ![entry[@"hasImage"] boolValue], @"all thirteen navigation entries have independent defaults including 100 percent size");
+        BOOL videoDisc=[item[@"identifier"] isEqual:@"video_disc"];
+        DD_CHECK_NS([entry[@"enabled"] boolValue]==videoDisc && [entry[@"opacity"] doubleValue]==1 && [entry[@"scale"] doubleValue]==1 && [entry[@"speed"] doubleValue]==1 && ![entry[@"hasImage"] boolValue], @"navigation entries default off while the built-in video disc preserves its on state and 100 percent adjustment");
     }
+    NSUInteger discTicket=[store douyindisc_beginImagePickingForIdentifier:@"video_disc"];
+    DD_CHECK_NS(discTicket>0&&[store douyindisc_imagePickingEnabledForIdentifier:@"video_disc"],@"legacy built-in disc remains enabled and can start a custom-image picker without configuration migration");
+    [store douyindisc_finishImagePickingForIdentifier:@"video_disc" generation:discTicket];
+    NSURL *speedDirectory=[base URLByAppendingPathComponent:@"speed" isDirectory:YES];
+    [NSFileManager.defaultManager createDirectoryAtURL:speedDirectory withIntermediateDirectories:YES attributes:nil error:nil];
+    DouyinDiscNavigationStore *speedStore=douyindisc_uiTestCreateStore(speedDirectory);NSError *speedError=nil;
+    DD_CHECK_NS([speedStore douyindisc_saveEnabled:YES opacity:.72 scale:3 identifier:@"video_disc" error:&speedError] && [speedStore douyindisc_entryForIdentifier:@"video_disc"][@"speed"] && fabs([[speedStore douyindisc_entryForIdentifier:@"video_disc"][@"speed"] doubleValue]-3)<.001, @"video disc accepts the maximum 300 percent speed and persists it as speed");
+    NSError *invalidSpeedError=nil;
+    DD_CHECK_NS(![speedStore douyindisc_saveEnabled:YES opacity:.72 scale:3.01 identifier:@"video_disc" error:&invalidSpeedError] && invalidSpeedError!=nil, @"video disc rejects speeds above the explicit three-times ceiling");
     NSError *invalidError = nil;
     DD_CHECK_NS(![store douyindisc_saveEnabled:YES opacity:.4 scale:1 identifier:@"not_a_navigation_item" error:&invalidError] && invalidError != nil,
              @"invalid identifier is rejected synchronously");
