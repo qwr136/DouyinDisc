@@ -7,12 +7,12 @@ ROOT=Path(__file__).resolve().parent.parent
 class NavigationAppearanceTests(unittest.TestCase):
     def test_only_thirteen_navigation_ids_accept_appearance_fields(self):
         store=(ROOT/"Sources/DouyinDiscNavigationStore.m").read_text()
-        self.assertIn('static BOOL douyindisc_isNavigationIconIdentifier',store)
+        self.assertIn('!douyindisc_validIdentifier(identifier)||!douyindisc_isNavigationIconIdentifier(identifier)',store)
+        self.assertIn('angle<0||angle>=360',store)
         self.assertIn('entry[@"angle"]&&(!douyindisc_isNavigationIconIdentifier(key)',store)
         self.assertIn('entry[@"cornerRadius"]&&(!douyindisc_isNavigationIconIdentifier(key)',store)
         self.assertIn('entry[@"rotationEnabled"]&&(!douyindisc_isNavigationIconIdentifier(key)',store)
         self.assertIn('entry[@"rotationSpeed"]&&(!douyindisc_isNavigationIconIdentifier(key)',store)
-        self.assertIn('angle<0||angle>360',store)
         self.assertIn('cornerRadius<0||cornerRadius>50',store)
         self.assertIn('rotationSpeed<.25||rotationSpeed>3',store)
         self.assertIn('stored[@"rotationEnabled"]?:@NO',store)

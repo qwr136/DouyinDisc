@@ -117,6 +117,8 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     DD_CHECK_NS(appearanceSaved&&appearanceSaveError==nil&&fabs([appearanceEntry[@"angle"] doubleValue]-123)<.001&&fabs([appearanceEntry[@"cornerRadius"] doubleValue]-25)<.001&&[appearanceEntry[@"rotationEnabled"] boolValue]&&fabs([appearanceEntry[@"rotationSpeed"] doubleValue]-1.75)<.001,@"static angle, corner radius, rotation switch and speed persist independently for a navigation icon");
     NSError *invalidAppearanceError=nil;
     DD_CHECK_NS(![appearanceStore douyindisc_saveNavigationAppearanceForIdentifier:@"video_disc" angle:45 cornerRadius:10 rotationEnabled:YES rotationSpeed:1 error:&invalidAppearanceError]&&invalidAppearanceError!=nil,@"video-disc settings cannot consume navigation-only appearance controls");
+    NSError *invalidNavigationAppearanceError=nil;NSError *invalidAngleError=nil;
+    DD_CHECK_NS(![appearanceStore douyindisc_saveNavigationAppearanceForIdentifier:@"top_fake" angle:1 cornerRadius:0 rotationEnabled:NO rotationSpeed:1 error:&invalidNavigationAppearanceError]&&invalidNavigationAppearanceError!=nil&&! [appearanceStore douyindisc_saveNavigationAppearanceForIdentifier:@"bottom_home" angle:360 cornerRadius:0 rotationEnabled:NO rotationSpeed:1 error:&invalidAngleError]&&invalidAngleError!=nil,@"appearance store rejects unknown prefixed IDs and noncanonical 360-degree input");
     NSError *invalidError = nil;
     DD_CHECK_NS(![store douyindisc_saveEnabled:YES opacity:.4 scale:1 identifier:@"not_a_navigation_item" error:&invalidError] && invalidError != nil,
              @"invalid identifier is rejected synchronously");

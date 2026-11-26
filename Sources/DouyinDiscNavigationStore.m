@@ -453,7 +453,7 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
 
 - (BOOL)douyindisc_saveNavigationAppearanceForIdentifier:(NSString *)identifier angle:(CGFloat)angle cornerRadius:(CGFloat)cornerRadius rotationEnabled:(BOOL)rotationEnabled rotationSpeed:(CGFloat)rotationSpeed error:(NSError **)error {
     NSAssert(NSThread.isMainThread,@"Navigation store access must be on main thread");
-    if(!douyindisc_isNavigationIconIdentifier(identifier)||!isfinite(angle)||angle<0||angle>360||!isfinite(cornerRadius)||cornerRadius<0||cornerRadius>50||!isfinite(rotationSpeed)||rotationSpeed<.25||rotationSpeed>3){if(error)*error=douyindisc_error(3,@"导航图标角度、圆角或旋转速度无效。");return NO;}
+    if(!douyindisc_validIdentifier(identifier)||!douyindisc_isNavigationIconIdentifier(identifier)||!isfinite(angle)||angle<0||angle>=360||!isfinite(cornerRadius)||cornerRadius<0||cornerRadius>50||!isfinite(rotationSpeed)||rotationSpeed<.25||rotationSpeed>3){if(error)*error=douyindisc_error(3,@"导航图标角度、圆角或旋转速度无效。");return NO;}
     NSMutableDictionary *config=[self.douyindisc_config mutableCopy]?:[NSMutableDictionary dictionary];
     NSMutableDictionary *entry=[config[identifier] mutableCopy]?:[NSMutableDictionary dictionary];
     entry[@"angle"]=@(angle);entry[@"cornerRadius"]=@(cornerRadius);entry[@"rotationEnabled"]=@(rotationEnabled);entry[@"rotationSpeed"]=@(rotationSpeed);
