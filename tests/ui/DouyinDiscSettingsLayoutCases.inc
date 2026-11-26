@@ -35,7 +35,7 @@ NSDictionary *douyindisc_uiTestSettingsLayout(UIWindow *window) {
         if(!disc){
             navigationCount++;
             [rows addObjectsFromArray:@[@[row.douyindisc_angleTitle,row.douyindisc_angleMinus,row.douyindisc_angleValue,row.douyindisc_anglePlus],@[row.douyindisc_cornerTitle,row.douyindisc_cornerMinus,row.douyindisc_cornerValue,row.douyindisc_cornerPlus],@[row.douyindisc_rotationTitle,row.douyindisc_rotationSwitch],@[row.douyindisc_rotationSpeedMinus,row.douyindisc_rotationSpeedValue,row.douyindisc_rotationSpeedPlus]]];
-            [controls addObjectsFromArray:@[row.douyindisc_angleMinus,row.douyindisc_anglePlus,row.douyindisc_cornerMinus,row.douyindisc_cornerPlus,row.douyindisc_rotationSwitch,row.douyindisc_rotationSpeedMinus,row.douyindisc_rotationSpeedPlus]];
+            [controls addObjectsFromArray:@[row.douyindisc_angleMinus,row.douyindisc_anglePlus,row.douyindisc_cornerMinus,row.douyindisc_cornerPlus,row.douyindisc_rotationSwitch,row.douyindisc_rotationSpeedMinus,row.douyindisc_rotationSpeedPlus,row.douyindisc_angleValue,row.douyindisc_cornerValue,row.douyindisc_rotationSpeedValue]];
         }else discUnchanged=fabs(row.bounds.size.height-198)<.75&&!row.douyindisc_rotationSwitch&&!row.douyindisc_angleValue;
         CGFloat previousBottom=CGRectGetMaxY(douyindisc_layoutRect(row.douyindisc_thumbnail,row));
         for(NSArray<UIView *> *line in rows){

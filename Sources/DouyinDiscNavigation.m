@@ -56,7 +56,8 @@ static UIColor *douyindisc_color(NSString *hex) {
 @property(nonatomic) CGFloat douyindisc_cornerRadius;
 @property(nonatomic) CGFloat douyindisc_rotationSpeed;
 @property(nonatomic) BOOL douyindisc_rotationEnabled;
-@property(nonatomic,strong) UILabel *douyindisc_angleTitle,*douyindisc_angleValue,*douyindisc_cornerTitle,*douyindisc_cornerValue,*douyindisc_rotationTitle,*douyindisc_rotationSpeedValue;
+@property(nonatomic,strong) UILabel *douyindisc_angleTitle,*douyindisc_cornerTitle,*douyindisc_rotationTitle;
+@property(nonatomic,strong) UITextField *douyindisc_angleValue,*douyindisc_cornerValue,*douyindisc_rotationSpeedValue;
 @property(nonatomic,strong) UIButton *douyindisc_angleMinus,*douyindisc_anglePlus,*douyindisc_cornerMinus,*douyindisc_cornerPlus,*douyindisc_rotationSpeedMinus,*douyindisc_rotationSpeedPlus;
 @property(nonatomic,strong) UISwitch *douyindisc_rotationSwitch;
 @property (nonatomic, copy) void (^douyindisc_change)(DouyinDiscNavigationRow *, BOOL, CGFloat);
@@ -85,6 +86,9 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (void)douyindisc_commitOpacityInput;
 - (void)douyindisc_commitSizeInput;
 - (void)douyindisc_inputAccessoryDone;
+- (void)douyindisc_configureAppearanceInput:(UITextField *)field;
+- (void)douyindisc_editingAppearanceInput:(UITextField *)field;
+- (void)douyindisc_commitAppearanceInput:(UITextField *)field;
 - (void)douyindisc_adjustOpacity:(NSInteger)delta;
 - (void)douyindisc_adjustSize:(NSInteger)delta;
 - (void)douyindisc_switchChanged;
@@ -179,14 +183,17 @@ static UIColor *douyindisc_color(NSString *hex) {
         self.douyindisc_rotationEnabled=[entry[@"rotationEnabled"] boolValue];
         self.douyindisc_rotationSpeed=MAX(.1,MIN(10,[entry[@"rotationSpeed"] respondsToSelector:@selector(doubleValue)]?[entry[@"rotationSpeed"] doubleValue]:1));
         self.douyindisc_angleTitle=[UILabel new];self.douyindisc_angleTitle.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_angleTitle.text=@"静态角度";self.douyindisc_angleTitle.font=[UIFont systemFontOfSize:13 weight:UIFontWeightMedium];self.douyindisc_angleTitle.textColor=UIColor.secondaryLabelColor;self.douyindisc_angleTitle.accessibilityIdentifier=@"douyindisc.angle.title";[content addSubview:self.douyindisc_angleTitle];
-        self.douyindisc_angleValue=[UILabel new];self.douyindisc_angleValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_angleValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_angleValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_angleValue.text=[NSString stringWithFormat:@"%d°",(int)lrint(self.douyindisc_angle)];self.douyindisc_angleValue.accessibilityIdentifier=@"douyindisc.angle.value";[content addSubview:self.douyindisc_angleValue];
+        self.douyindisc_angleValue=[UITextField new];self.douyindisc_angleValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_angleValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_angleValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_angleValue.text=[NSString stringWithFormat:@"%d°",(int)lrint(self.douyindisc_angle)];self.douyindisc_angleValue.accessibilityIdentifier=@"douyindisc.angle.value";[content addSubview:self.douyindisc_angleValue];
         self.douyindisc_cornerTitle=[UILabel new];self.douyindisc_cornerTitle.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_cornerTitle.text=@"圆角";self.douyindisc_cornerTitle.font=[UIFont systemFontOfSize:13 weight:UIFontWeightMedium];self.douyindisc_cornerTitle.textColor=UIColor.secondaryLabelColor;self.douyindisc_cornerTitle.accessibilityIdentifier=@"douyindisc.corner.title";[content addSubview:self.douyindisc_cornerTitle];
-        self.douyindisc_cornerValue=[UILabel new];self.douyindisc_cornerValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_cornerValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_cornerValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_cornerValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_cornerRadius)];self.douyindisc_cornerValue.accessibilityIdentifier=@"douyindisc.corner.value";[content addSubview:self.douyindisc_cornerValue];
+        self.douyindisc_cornerValue=[UITextField new];self.douyindisc_cornerValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_cornerValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_cornerValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_cornerValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_cornerRadius)];self.douyindisc_cornerValue.accessibilityIdentifier=@"douyindisc.corner.value";[content addSubview:self.douyindisc_cornerValue];
         self.douyindisc_rotationTitle=[UILabel new];self.douyindisc_rotationTitle.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_rotationTitle.text=@"持续旋转";self.douyindisc_rotationTitle.font=[UIFont systemFontOfSize:13 weight:UIFontWeightMedium];self.douyindisc_rotationTitle.textColor=UIColor.secondaryLabelColor;self.douyindisc_rotationTitle.accessibilityIdentifier=@"douyindisc.rotation.title";[content addSubview:self.douyindisc_rotationTitle];
         self.douyindisc_rotationSwitch=[UISwitch new];self.douyindisc_rotationSwitch.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_rotationSwitch.on=self.douyindisc_rotationEnabled;self.douyindisc_rotationSwitch.onTintColor=douyindisc_color(item[@"accentColor"]);self.douyindisc_rotationSwitch.accessibilityIdentifier=@"douyindisc.rotation.enabled";self.douyindisc_rotationSwitch.accessibilityLabel=@"开启持续旋转";[self.douyindisc_rotationSwitch addTarget:self action:@selector(douyindisc_rotationSwitchChanged) forControlEvents:UIControlEventValueChanged];[content addSubview:self.douyindisc_rotationSwitch];
-        self.douyindisc_rotationSpeedValue=[UILabel new];self.douyindisc_rotationSpeedValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_rotationSpeedValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_rotationSpeedValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_rotationSpeedValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_rotationSpeed*100)];self.douyindisc_rotationSpeedValue.accessibilityIdentifier=@"douyindisc.rotation.speed";[content addSubview:self.douyindisc_rotationSpeedValue];
+        self.douyindisc_rotationSpeedValue=[UITextField new];self.douyindisc_rotationSpeedValue.translatesAutoresizingMaskIntoConstraints=NO;self.douyindisc_rotationSpeedValue.textAlignment=NSTextAlignmentCenter;self.douyindisc_rotationSpeedValue.font=[UIFont monospacedDigitSystemFontOfSize:14 weight:UIFontWeightSemibold];self.douyindisc_rotationSpeedValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_rotationSpeed*100)];self.douyindisc_rotationSpeedValue.accessibilityIdentifier=@"douyindisc.rotation.speed";[content addSubview:self.douyindisc_rotationSpeedValue];
         NSArray<NSArray *> *specs=@[@[@"douyindisc_angleMinus",@"douyindisc_anglePlus",@"降低静态角度",@"提高静态角度"],@[@"douyindisc_cornerMinus",@"douyindisc_cornerPlus",@"减小圆角",@"增大圆角"],@[@"douyindisc_rotationSpeedMinus",@"douyindisc_rotationSpeedPlus",@"降低旋转速度",@"提高旋转速度"]];
-        NSArray<NSArray<UILabel *> *> *valueRows=@[@[self.douyindisc_angleTitle,self.douyindisc_angleValue],@[self.douyindisc_cornerTitle,self.douyindisc_cornerValue],@[self.douyindisc_rotationTitle,self.douyindisc_rotationSpeedValue]];
+        self.douyindisc_angleValue.accessibilityLabel=@"静态角度数值";
+        self.douyindisc_cornerValue.accessibilityLabel=@"圆角百分比";
+        self.douyindisc_rotationSpeedValue.accessibilityLabel=@"旋转速度百分比";
+        for(UITextField *field in @[self.douyindisc_angleValue,self.douyindisc_cornerValue,self.douyindisc_rotationSpeedValue]) [self douyindisc_configureAppearanceInput:field];
         NSMutableArray<UIButton *> *stepperButtons=[NSMutableArray arrayWithCapacity:6];
         for(NSUInteger i=0;i<specs.count;i++)for(NSUInteger side=0;side<2;side++){
             UIButton *step=[UIButton buttonWithType:UIButtonTypeSystem];step.translatesAutoresizingMaskIntoConstraints=NO;[step setTitle:side?@"＋":@"−" forState:UIControlStateNormal];step.accessibilityLabel=specs[i][side+2];step.titleLabel.font=[UIFont systemFontOfSize:19 weight:UIFontWeightMedium];step.tintColor=douyindisc_color(item[@"accentColor"]);step.backgroundColor=UIColor.tertiarySystemGroupedBackgroundColor;step.layer.cornerRadius=8;
@@ -194,7 +201,6 @@ static UIColor *douyindisc_color(NSString *hex) {
             [step addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];[content addSubview:step];[stepperButtons addObject:step];
             if(i==0){if(side)self.douyindisc_anglePlus=step;else self.douyindisc_angleMinus=step;}else if(i==1){if(side)self.douyindisc_cornerPlus=step;else self.douyindisc_cornerMinus=step;}else{if(side)self.douyindisc_rotationSpeedPlus=step;else self.douyindisc_rotationSpeedMinus=step;}
         }
-        (void)valueRows;
     }
     NSMutableArray<NSLayoutConstraint *> *layoutConstraints=[NSMutableArray arrayWithArray:@[
         [content.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14], [content.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
@@ -248,7 +254,49 @@ static UIColor *douyindisc_color(NSString *hex) {
     self.douyindisc_imageButton.accessibilityLabel=title;
     self.douyindisc_clearButton.enabled=hasImage;
 }
-- (void)douyindisc_inputAccessoryDone {if(self.douyindisc_value.isFirstResponder)[self.douyindisc_value resignFirstResponder];else [self.douyindisc_sizeValue resignFirstResponder];}
+- (void)douyindisc_inputAccessoryDone { [self endEditing:YES]; }
+- (void)douyindisc_configureAppearanceInput:(UITextField *)field {
+    field.keyboardType=UIKeyboardTypeNumberPad;
+    field.textColor=UIColor.labelColor;
+    field.backgroundColor=UIColor.tertiarySystemGroupedBackgroundColor;
+    field.layer.cornerRadius=8;field.layer.masksToBounds=YES;
+    field.autocorrectionType=UITextAutocorrectionTypeNo;
+    field.spellCheckingType=UITextSpellCheckingTypeNo;
+    [field addTarget:self action:@selector(douyindisc_editingAppearanceInput:) forControlEvents:UIControlEventEditingDidBegin];
+    [field addTarget:self action:@selector(douyindisc_commitAppearanceInput:) forControlEvents:UIControlEventEditingDidEnd];
+    UIToolbar *toolbar=[[UIToolbar alloc]initWithFrame:CGRectMake(0,0,0,44)];
+    UIBarButtonItem *space=[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+    UIBarButtonItem *done=[[UIBarButtonItem alloc]initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(douyindisc_inputAccessoryDone)];
+    toolbar.items=@[space,done];field.inputAccessoryView=toolbar;
+}
+- (void)douyindisc_editingAppearanceInput:(UITextField *)field {
+    if(field!=self.douyindisc_angleValue&&field!=self.douyindisc_cornerValue&&field!=self.douyindisc_rotationSpeedValue)return;
+    double value=field==self.douyindisc_angleValue?self.douyindisc_angle:(field==self.douyindisc_cornerValue?self.douyindisc_cornerRadius:self.douyindisc_rotationSpeed*100);
+    field.text=[NSString stringWithFormat:@"%ld",(long)lrint(value)];
+}
+- (void)douyindisc_commitAppearanceInput:(UITextField *)field {
+    if(field!=self.douyindisc_angleValue&&field!=self.douyindisc_cornerValue&&field!=self.douyindisc_rotationSpeedValue)return;
+    BOOL angle=field==self.douyindisc_angleValue,speed=field==self.douyindisc_rotationSpeedValue;
+    NSInteger minimum=speed?25:0,maximum=angle?359:(speed?300:50);
+    NSInteger previous=(NSInteger)lrint(angle?self.douyindisc_angle:(speed?self.douyindisc_rotationSpeed*100:self.douyindisc_cornerRadius));
+    NSString *unit=angle?@"°":@"%";
+    NSString *raw=[field.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]?:@"";
+    if([raw hasSuffix:unit])raw=[[raw substringToIndex:raw.length-1] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    BOOL valid=raw.length>0;NSInteger value=0;
+    // Saturate while parsing: arbitrarily long digit input cannot overflow.
+    for(NSUInteger i=0;i<raw.length;i++){
+        unichar digit=[raw characterAtIndex:i];
+        if(digit<'0'||digit>'9'){valid=NO;break;}
+        value=MIN(maximum,value*10+(digit-'0'));
+    }
+    value=valid?MAX(minimum,value):previous;
+    field.text=[NSString stringWithFormat:@"%ld%@",(long)value,unit];
+    if(!valid||value==previous)return;
+    if(angle)self.douyindisc_angle=value;
+    else if(speed)self.douyindisc_rotationSpeed=value/100.0;
+    else self.douyindisc_cornerRadius=value;
+    if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);
+}
 - (void)douyindisc_changeOpacityByMinus {[self douyindisc_adjustOpacity:-1];}
 - (void)douyindisc_changeOpacityByPlus {[self douyindisc_adjustOpacity:1];}
 - (void)douyindisc_changeSizeByMinus {[self douyindisc_adjustSize:-1];}
@@ -258,16 +306,16 @@ static UIColor *douyindisc_color(NSString *hex) {
 - (BOOL)douyindisc_validPercentText:(NSString *)text {NSString *trim=[text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];return trim.length>0&&[trim rangeOfCharacterFromSet:NSCharacterSet.decimalDigitCharacterSet.invertedSet].location==NSNotFound;}
 - (void)douyindisc_adjustOpacity:(NSInteger)delta {[self.douyindisc_value resignFirstResponder];NSInteger v=MAX(0,MIN(100,(NSInteger)lrint(self.douyindisc_opacity*100)+delta));self.douyindisc_opacity=v/100.0;self.douyindisc_value.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_preview)self.douyindisc_preview(self,self.douyindisc_opacity);if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
 - (void)douyindisc_adjustSize:(NSInteger)delta {[self.douyindisc_sizeValue resignFirstResponder];BOOL speed=[self.douyindisc_identifier isEqualToString:@"video_disc"];NSInteger minimum=speed?25:50,maximum=speed?300:150;NSInteger v=MAX(minimum,MIN(maximum,(NSInteger)lrint(self.douyindisc_scale*100)+delta));self.douyindisc_scale=v/100.0;self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_scale);if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_scale);}
-- (void)douyindisc_changeAngle:(NSInteger)delta {NSInteger value=(NSInteger)lrint(self.douyindisc_angle);value=(value+delta)%360;if(value<0)value+=360;self.douyindisc_angle=value;self.douyindisc_angleValue.text=[NSString stringWithFormat:@"%ld°",(long)value];if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
-- (void)douyindisc_changeCorner:(NSInteger)delta {NSInteger value=MAX(0,MIN(50,(NSInteger)lrint(self.douyindisc_cornerRadius)+delta));self.douyindisc_cornerRadius=value;self.douyindisc_cornerValue.text=[NSString stringWithFormat:@"%ld%%",(long)value];if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
-- (void)douyindisc_changeRotationSpeed:(NSInteger)delta {NSInteger value=MAX(25,MIN(300,(NSInteger)lrint(self.douyindisc_rotationSpeed*100)+delta*5));self.douyindisc_rotationSpeed=value/100.0;self.douyindisc_rotationSpeedValue.text=[NSString stringWithFormat:@"%ld%%",(long)value];if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
+- (void)douyindisc_changeAngle:(NSInteger)delta {[self endEditing:YES];NSInteger value=(NSInteger)lrint(self.douyindisc_angle);value=(value+delta)%360;if(value<0)value+=360;self.douyindisc_angle=value;self.douyindisc_angleValue.text=[NSString stringWithFormat:@"%ld°",(long)value];if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
+- (void)douyindisc_changeCorner:(NSInteger)delta {[self endEditing:YES];NSInteger value=MAX(0,MIN(50,(NSInteger)lrint(self.douyindisc_cornerRadius)+delta));self.douyindisc_cornerRadius=value;self.douyindisc_cornerValue.text=[NSString stringWithFormat:@"%ld%%",(long)value];if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
+- (void)douyindisc_changeRotationSpeed:(NSInteger)delta {[self endEditing:YES];NSInteger value=MAX(25,MIN(300,(NSInteger)lrint(self.douyindisc_rotationSpeed*100)+delta*5));self.douyindisc_rotationSpeed=value/100.0;self.douyindisc_rotationSpeedValue.text=[NSString stringWithFormat:@"%ld%%",(long)value];if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
 - (void)douyindisc_changeAngleMinus {[self douyindisc_changeAngle:-1];}
 - (void)douyindisc_changeAnglePlus {[self douyindisc_changeAngle:1];}
 - (void)douyindisc_changeCornerMinus {[self douyindisc_changeCorner:-1];}
 - (void)douyindisc_changeCornerPlus {[self douyindisc_changeCorner:1];}
 - (void)douyindisc_changeRotationSpeedMinus {[self douyindisc_changeRotationSpeed:-1];}
 - (void)douyindisc_changeRotationSpeedPlus {[self douyindisc_changeRotationSpeed:1];}
-- (void)douyindisc_rotationSwitchChanged {self.douyindisc_rotationEnabled=self.douyindisc_rotationSwitch.isOn;if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
+- (void)douyindisc_rotationSwitchChanged {BOOL requested=self.douyindisc_rotationSwitch.isOn;[self endEditing:YES];self.douyindisc_rotationEnabled=requested;self.douyindisc_rotationSwitch.on=requested;if(self.douyindisc_changeAppearance)self.douyindisc_changeAppearance(self);}
 - (void)douyindisc_commitOpacityInput {NSString *raw=[self.douyindisc_value.text stringByReplacingOccurrencesOfString:@"%" withString:@""];if(![self douyindisc_validPercentText:raw]){self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];return;}double parsed=raw.doubleValue;if(!isfinite(parsed)){self.douyindisc_value.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_opacity*100)];return;}NSInteger v=(NSInteger)lrint(MIN(100.0,MAX(0.0,parsed)));self.douyindisc_opacity=v/100.0;self.douyindisc_value.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_preview)self.douyindisc_preview(self,self.douyindisc_opacity);if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
 - (void)douyindisc_commitSizeInput {NSString *raw=[self.douyindisc_sizeValue.text stringByReplacingOccurrencesOfString:@"%" withString:@""];if(![self douyindisc_validPercentText:raw]){self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];return;}double parsed=raw.doubleValue;if(!isfinite(parsed)){self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%d%%",(int)lrint(self.douyindisc_scale*100)];return;}BOOL speed=[self.douyindisc_identifier isEqualToString:@"video_disc"];double minimum=speed?25:50,maximum=speed?300:150;NSInteger v=(NSInteger)lrint(MIN(maximum,MAX(minimum,parsed)));self.douyindisc_scale=v/100.0;self.douyindisc_sizeValue.text=[NSString stringWithFormat:@"%ld%%",(long)v];if(self.douyindisc_previewScale)self.douyindisc_previewScale(self,self.douyindisc_scale);if(self.douyindisc_changeScale)self.douyindisc_changeScale(self,self.douyindisc_scale);}
 - (void)douyindisc_switchChanged {if(self.douyindisc_change)self.douyindisc_change(self,self.douyindisc_switch.isOn,self.douyindisc_opacity);}
@@ -460,6 +508,7 @@ static void douyindisc_uiTestObservePicker(DouyinDiscSettingsViewController *own
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [self.view endEditing:YES];
     for (NSDictionary *item in douyindisc_navigationItems()) {
         [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearOpacityPreviewForIdentifier:item[@"identifier"]];
         [DouyinDiscNavigationStore.douyindisc_sharedStore douyindisc_clearScalePreviewForIdentifier:item[@"identifier"]];
@@ -649,6 +698,7 @@ NSError *failure=nil;
 
 #if defined(DOUYINDISC_UI_TEST)
 #include "../tests/ui/DouyinDiscSettingsLayoutCases.inc"
+#include "../tests/ui/DouyinDiscNumericInputCases.inc"
 BOOL douyindisc_uiTestPickerAppearanceStable(UIImage *image) {
  NSDictionary *item=douyindisc_navigationItems().firstObject;DouyinDiscNavigationRow *row=[[DouyinDiscNavigationRow alloc]initWithItem:item entry:@{@"enabled":@NO,@"opacity":@.99,@"scale":@.89} image:nil];row.frame=CGRectMake(0,0,390,350);[row setNeedsLayout];[row layoutIfNeeded];
  BOOL labels=[row.douyindisc_opacityTitle.text isEqualToString:@"透明度"]&&[row.douyindisc_sizeTitle.text isEqualToString:@"图标大小"];

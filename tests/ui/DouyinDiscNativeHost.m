@@ -199,6 +199,8 @@ static void douyindisc_writeProgress(void) {
 } while (0)
 
 extern NSDictionary *douyindisc_uiTestSettingsLayout(UIWindow *window);
+extern NSDictionary *douyindisc_uiTestNumericInput(UIWindow *window);
+extern void douyindisc_uiTestKeyboardVisible(UIWindow *window, void(^done)(BOOL));
 #import "../../Sources/DouyinDiscNavigationHooks.m"
 #include "DouyinDiscClarityCases.h"
 #include "DouyinDiscCaptionCases.h"
@@ -505,14 +507,23 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
 - (void)douyindisc_finish {
     if(douyindisc_storeTestsStarted)return;
     douyindisc_storeTestsStarted=YES;
+    douyindisc_uiTestKeyboardVisible(self.window, ^(BOOL visible){
+        DD_CHECK(visible,"numeric keyboard posts did-show with a visible frame and Done dismisses it without modifying configuration");
+        [self douyindisc_finishNumericCases];
+    });
+}
+- (void)douyindisc_finishNumericCases {
+    NSDictionary *numeric=douyindisc_uiTestNumericInput(self.window);
+    NSArray<NSString *> *numericKeys=@[@"fixtureReady",@"textFields",@"windowHits",@"numberPadAndDone",@"eventBindings",@"firstResponder",@"inputModeAvailable",@"beginRemovesUnit",@"editingEvents",@"doneEndsEditing",@"angleCommit",@"cornerCommit",@"speedCommit",@"unitsAccepted",@"emptyRejected",@"invalidRejected",@"lowerBounds",@"upperBounds",@"overflowClamped",@"steppersUnchanged",@"otherItemUnchanged",@"videoDiscUnchanged",@"unrelatedSettingsUnchanged",@"coldStorePersistence",@"reopenPersistence",@"saveFailureRollback",@"restored"];
+    for(NSString *key in numericKeys){NSString *label=[@"numeric input: " stringByAppendingString:key];DD_CHECK_NS([numeric[key] boolValue],label);}
     douyindisc_navigationCases(self.window);
     NSDictionary *layout=douyindisc_uiTestSettingsLayout(self.window);
-    DD_CHECK([layout[@"navigationCount"] unsignedIntegerValue]==13&&[layout[@"controlCount"] unsignedIntegerValue]==217,"layout suite mounts all thirteen navigation rows plus the unchanged video disc");
+    DD_CHECK([layout[@"navigationCount"] unsignedIntegerValue]==13&&[layout[@"controlCount"] unsignedIntegerValue]==256,"layout suite mounts all thirteen navigation rows plus the unchanged video disc");
     DD_CHECK([layout[@"aligned"] boolValue],"every setting label value minus and plus share a common vertical center");
     DD_CHECK([layout[@"ordered"] boolValue],"opacity size angle corner rotation and speed occupy separate ordered rows");
     DD_CHECK([layout[@"bounded"] boolValue],"all setting rows fit inside their card with no large empty lower block");
     DD_CHECK([layout[@"unambiguous"] boolValue],"mounted appearance controls have complete unambiguous layout constraints");
-    DD_CHECK([layout[@"windowHits"] boolValue],"all 217 control centers hit the intended control from UIWindow without obstruction");
+    DD_CHECK([layout[@"windowHits"] boolValue],"all 256 control centers hit the intended control from UIWindow without obstruction");
     DD_CHECK([layout[@"discUnchanged"] boolValue],"video disc card keeps its original height and control scope");
     douyindisc_navigationStoreCases(^{
       douyindisc_pickerCases(self.window, ^{

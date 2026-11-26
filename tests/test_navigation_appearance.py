@@ -53,7 +53,7 @@ class NavigationAppearanceTests(unittest.TestCase):
         self.assertIn('settings-layout.png',helper)
         host=(ROOT/"tests/ui/DouyinDiscNativeHost.m").read_text()
         self.assertIn('douyindisc_uiTestSettingsLayout(self.window)',host)
-        self.assertIn('all 217 control centers hit',host)
+        self.assertIn('all 256 control centers hit',host)
 
     def test_host_covers_static_angle_auto_rotation_and_restore(self):
         host=(ROOT/"tests/ui/DouyinDiscNativeHost.m").read_text()

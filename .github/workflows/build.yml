@@ -89,6 +89,9 @@ jobs:
             reports/toolchain-verification.json
             reports/uikit-report.txt
             reports/settings-layout.png
+            reports/numeric-keyboard-panel.png
+            reports/numeric-keyboard-screen.png
+            reports/numeric-keyboard-visible.json
             tests/report.txt
             toolchain-lock.json
           if-no-files-found: error
