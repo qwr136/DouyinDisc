@@ -29,6 +29,7 @@ void douyindisc_installNavigationHooks(void);
 - (void)douyindisc_cancelImagePickingForIdentifier:(NSString *)identifier;
 - (void)douyindisc_saveImageData:(NSData *)data identifier:(NSString *)identifier pickingGeneration:(NSUInteger)pickingGeneration completion:(void (^)(NSError *error))completion;
 - (BOOL)douyindisc_saveEnabled:(BOOL)enabled opacity:(CGFloat)opacity scale:(CGFloat)scale identifier:(NSString *)identifier error:(NSError **)error;
+- (BOOL)douyindisc_saveNavigationAppearanceForIdentifier:(NSString *)identifier angle:(CGFloat)angle cornerRadius:(CGFloat)cornerRadius rotationEnabled:(BOOL)rotationEnabled rotationSpeed:(CGFloat)rotationSpeed error:(NSError **)error;
 - (void)douyindisc_saveImageData:(NSData *)data identifier:(NSString *)identifier completion:(void (^)(NSError *error))completion;
 - (BOOL)douyindisc_clearImageForIdentifier:(NSString *)identifier error:(NSError **)error;
 @end

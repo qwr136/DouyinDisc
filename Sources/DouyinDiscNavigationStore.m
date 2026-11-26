@@ -49,6 +49,10 @@ static BOOL douyindisc_validIdentifier(NSString *identifier) {
     return NO;
 }
 
+static BOOL douyindisc_isNavigationIconIdentifier(NSString *identifier) {
+    return [identifier hasPrefix:@"top_"] || [identifier hasPrefix:@"bottom_"];
+}
+
 static NSError *douyindisc_error(NSInteger code, NSString *message) {
     return [NSError errorWithDomain:@"com.minis.douyindisc.navigation" code:code userInfo:@{NSLocalizedDescriptionKey:message}];
 }
@@ -123,7 +127,7 @@ static NSUInteger douyindisc_gifDecodedCost(DouyinDiscGIFAnimation *animation) {
 }
 static BOOL douyindisc_validConfig(id value) {
     if (![value isKindOfClass:NSDictionary.class]) return NO;
-    NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"scale", @"speed", @"image"]];
+    NSSet *allowed = [NSSet setWithArray:@[@"enabled", @"opacity", @"scale", @"speed", @"image", @"angle", @"cornerRadius", @"rotationEnabled", @"rotationSpeed"]];
     for (id key in (NSDictionary *)value) {
         id entry = value[key];
         if (![key isKindOfClass:NSString.class] || !douyindisc_validIdentifier(key) || ![entry isKindOfClass:NSDictionary.class]) return NO;
@@ -132,11 +136,18 @@ static BOOL douyindisc_validConfig(id value) {
         if (entry[@"opacity"] && ![entry[@"opacity"] isKindOfClass:NSNumber.class]) return NO;
         if (entry[@"scale"] && ![entry[@"scale"] isKindOfClass:NSNumber.class]) return NO;
         if (entry[@"speed"] && (![key isEqualToString:@"video_disc"] || ![entry[@"speed"] isKindOfClass:NSNumber.class])) return NO;
+        if(entry[@"angle"]&&(!douyindisc_isNavigationIconIdentifier(key)||![entry[@"angle"] isKindOfClass:NSNumber.class]))return NO;
+        if(entry[@"cornerRadius"]&&(!douyindisc_isNavigationIconIdentifier(key)||![entry[@"cornerRadius"] isKindOfClass:NSNumber.class]))return NO;
+        if(entry[@"rotationEnabled"]&&(!douyindisc_isNavigationIconIdentifier(key)||![entry[@"rotationEnabled"] isKindOfClass:NSNumber.class]))return NO;
+        if(entry[@"rotationSpeed"]&&(!douyindisc_isNavigationIconIdentifier(key)||![entry[@"rotationSpeed"] isKindOfClass:NSNumber.class]))return NO;
         if (entry[@"image"] && !douyindisc_validImageName(entry[@"image"])) return NO;
         double opacity = [entry[@"opacity"] respondsToSelector:@selector(doubleValue)] ? [entry[@"opacity"] doubleValue] : 1;
         double scale = [entry[@"scale"] respondsToSelector:@selector(doubleValue)] ? [entry[@"scale"] doubleValue] : 1;
         double speed = [entry[@"speed"] respondsToSelector:@selector(doubleValue)] ? [entry[@"speed"] doubleValue] : 1;
-        if (!isfinite(opacity) || opacity < 0 || opacity > 1 || !isfinite(scale) || scale < .5 || scale > 1.5 || !isfinite(speed) || speed < .25 || speed > 3) return NO;
+        double angle=[entry[@"angle"] respondsToSelector:@selector(doubleValue)]?[entry[@"angle"] doubleValue]:0;
+        double corner=[entry[@"cornerRadius"] respondsToSelector:@selector(doubleValue)]?[entry[@"cornerRadius"] doubleValue]:0;
+        double rotationSpeed=[entry[@"rotationSpeed"] respondsToSelector:@selector(doubleValue)]?[entry[@"rotationSpeed"] doubleValue]:1;
+        if (!isfinite(opacity) || opacity < 0 || opacity > 1 || !isfinite(scale) || scale < .5 || scale > 1.5 || !isfinite(speed) || speed < .25 || speed > 3 || !isfinite(angle) || angle < 0 || angle > 360 || !isfinite(corner) || corner < 0 || corner > 50 || !isfinite(rotationSpeed) || rotationSpeed < .25 || rotationSpeed > 3) return NO;
     }
     return YES;
 }
@@ -276,7 +287,8 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     NSNumber *opacity = self.douyindisc_previewOpacity[identifier] ?: stored[@"opacity"] ?: @1;
     NSNumber *adjustment=self.douyindisc_previewScale[identifier] ?: (videoDisc?(stored[@"speed"]?:@1):(stored[@"scale"]?:@1));
     NSNumber *enabled=stored[@"enabled"] ?: @(videoDisc);
-    return @{@"enabled":enabled, @"opacity":opacity, @"scale":adjustment, @"speed":adjustment, @"hasImage":@(stored[@"image"] != nil)};
+    BOOL navigationIcon=douyindisc_isNavigationIconIdentifier(identifier);
+    return @{@"enabled":enabled, @"opacity":opacity, @"scale":adjustment, @"speed":adjustment, @"hasImage":@(stored[@"image"] != nil), @"angle":navigationIcon?(stored[@"angle"]?:@0):@0, @"cornerRadius":navigationIcon?(stored[@"cornerRadius"]?:@0):@0, @"rotationEnabled":navigationIcon?(stored[@"rotationEnabled"]?:@NO):@NO, @"rotationSpeed":navigationIcon?(stored[@"rotationSpeed"]?:@1):@1};
 }
 
 - (BOOL)douyindisc_imagePickingEnabledForIdentifier:(NSString *)identifier {
@@ -437,6 +449,16 @@ static NSData *douyindisc_PNGData(CGImageRef image, NSError **error) {
     if(committed&&!enabled){[self douyindisc_cancelImagePickingForIdentifier:identifier];self.douyindisc_preloadGeneration++;[self.douyindisc_animations removeObjectForKey:identifier];}
     else if(committed&&enabled&&!wasEnabled){NSString *name=self.douyindisc_config[identifier][@"image"];NSString *gifName=douyindisc_gifNameForImageName(name);if(gifName&&[NSFileManager.defaultManager fileExistsAtPath:[self.douyindisc_storeDirectory URLByAppendingPathComponent:gifName].path])[self douyindisc_preloadImagesWithCompletion:nil];}
     return committed;
+}
+
+- (BOOL)douyindisc_saveNavigationAppearanceForIdentifier:(NSString *)identifier angle:(CGFloat)angle cornerRadius:(CGFloat)cornerRadius rotationEnabled:(BOOL)rotationEnabled rotationSpeed:(CGFloat)rotationSpeed error:(NSError **)error {
+    NSAssert(NSThread.isMainThread,@"Navigation store access must be on main thread");
+    if(!douyindisc_isNavigationIconIdentifier(identifier)||!isfinite(angle)||angle<0||angle>360||!isfinite(cornerRadius)||cornerRadius<0||cornerRadius>50||!isfinite(rotationSpeed)||rotationSpeed<.25||rotationSpeed>3){if(error)*error=douyindisc_error(3,@"导航图标角度、圆角或旋转速度无效。");return NO;}
+    NSMutableDictionary *config=[self.douyindisc_config mutableCopy]?:[NSMutableDictionary dictionary];
+    NSMutableDictionary *entry=[config[identifier] mutableCopy]?:[NSMutableDictionary dictionary];
+    entry[@"angle"]=@(angle);entry[@"cornerRadius"]=@(cornerRadius);entry[@"rotationEnabled"]=@(rotationEnabled);entry[@"rotationSpeed"]=@(rotationSpeed);
+    config[identifier]=entry;
+    return [self douyindisc_commitLatestConfig:config beforeNotify:nil error:error];
 }
 
 - (void)douyindisc_saveImageData:(NSData *)data identifier:(NSString *)identifier completion:(void (^)(NSError *))completion {

@@ -39,8 +39,14 @@
 @property(nonatomic,strong) CAShapeLayer *douyindisc_ownedMask;
 @property(nonatomic,weak) UIView *douyindisc_overlayHost;
 @property(nonatomic,strong) UIImageView *douyindisc_overlay;
+@property(nonatomic,strong) UIImage *douyindisc_image;
 @property(nonatomic,strong) DouyinDiscGIFAnimation *douyindisc_animation;
 @property(nonatomic) BOOL douyindisc_animationVisible;
+@property(nonatomic) BOOL douyindisc_rotationEnabled;
+@property(nonatomic) BOOL douyindisc_rotationConfigured;
+@property(nonatomic) CGFloat douyindisc_angle;
+@property(nonatomic) CGFloat douyindisc_cornerRadius;
+@property(nonatomic) CGFloat douyindisc_rotationSpeed;
 @end
 static NSMutableSet<NSString *> *douyindisc_installedHooks;
 static NSMapTable<UILabel *,DouyinDiscTextLease *> *douyindisc_leases;
@@ -88,31 +94,67 @@ static void douyindisc_gifSetVisible(DouyinDiscTextLease *lease,BOOL visible) {
     animation.calculationMode=kCAAnimationDiscrete;animation.repeatCount=HUGE_VALF;animation.removedOnCompletion=NO;animation.fillMode=kCAFillModeBoth;
     [lease.douyindisc_overlay.layer addAnimation:animation forKey:key];lease.douyindisc_animationVisible=YES;
 }
+static void douyindisc_spinSetVisible(DouyinDiscTextLease *lease,BOOL visible) {
+    NSString *key=@"com.minis.douyindisc.navigation.rotation";
+    BOOL active=visible&&lease.douyindisc_rotationEnabled&&!UIAccessibilityIsReduceMotionEnabled();
+    if(!active){[lease.douyindisc_overlay.layer removeAnimationForKey:key];return;}
+    if([lease.douyindisc_overlay.layer animationForKey:key])return;
+    CABasicAnimation *spin=[CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
+    spin.fromValue=@0;spin.toValue=@(2*M_PI);spin.duration=6.0/MAX(.25,MIN(3,lease.douyindisc_rotationSpeed));spin.repeatCount=HUGE_VALF;spin.additive=YES;spin.removedOnCompletion=NO;spin.fillMode=kCAFillModeBoth;
+    spin.beginTime=[lease.douyindisc_overlay.layer convertTime:CACurrentMediaTime() fromLayer:nil];
+    [lease.douyindisc_overlay.layer addAnimation:spin forKey:key];
+}
 static void douyindisc_gifRefresh(void) {
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{douyindisc_gifRefresh();});return;}
-    if(UIApplication.sharedApplication.applicationState!=UIApplicationStateActive){for(DouyinDiscTextLease *lease in douyindisc_leases.objectEnumerator.allObjects)[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];[douyindisc_gifVisibilityTimer invalidate];douyindisc_gifVisibilityTimer=nil;return;}
+    if(UIApplication.sharedApplication.applicationState!=UIApplicationStateActive){for(DouyinDiscTextLease *lease in douyindisc_leases.objectEnumerator.allObjects){[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.navigation.rotation"];}[douyindisc_gifVisibilityTimer invalidate];douyindisc_gifVisibilityTimer=nil;return;}
     BOOL any=NO;
     for(DouyinDiscTextLease *lease in douyindisc_leases.objectEnumerator.allObjects){
-        if(!lease.douyindisc_animation)continue;any=YES;douyindisc_gifSetVisible(lease,douyindisc_gifLeaseVisible(lease));
+        BOOL needsTimer=!UIAccessibilityIsReduceMotionEnabled()&&(lease.douyindisc_animation!=nil||lease.douyindisc_rotationEnabled);
+        if(!needsTimer){douyindisc_gifSetVisible(lease,NO);douyindisc_spinSetVisible(lease,NO);continue;}
+        any=YES;BOOL visible=douyindisc_gifLeaseVisible(lease);douyindisc_gifSetVisible(lease,visible);douyindisc_spinSetVisible(lease,visible);
     }
-    if(any&&!douyindisc_gifVisibilityTimer){douyindisc_gifVisibilityTimer=[NSTimer scheduledTimerWithTimeInterval:.5 repeats:YES block:^(NSTimer *timer){(void)timer;douyindisc_gifRefresh();}];}
+    if(any&&!douyindisc_gifVisibilityTimer){douyindisc_gifVisibilityTimer=[NSTimer scheduledTimerWithTimeInterval:.25 repeats:YES block:^(NSTimer *timer){(void)timer;douyindisc_gifRefresh();}];}
     else if(!any){[douyindisc_gifVisibilityTimer invalidate];douyindisc_gifVisibilityTimer=nil;}
 }
-static void douyindisc_removeIcon(UILabel *l){DouyinDiscTextLease *x=[douyindisc_leases objectForKey:l];[x.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];[x.douyindisc_overlay removeFromSuperview];if(x&&l.alpha==0)l.alpha=x.douyindisc_originalAlpha;[douyindisc_leases removeObjectForKey:l];douyindisc_gifRefresh();}
-static DouyinDiscTextLease *douyindisc_installTextIcon(UIView *v,UILabel *l,NSString *identifier,UIImage *image,DouyinDiscGIFAnimation *animation,CGFloat opacity,CGFloat scale){
- UIView *host=l.superview;if(!v||!l||!host||!image.CGImage||![l isDescendantOfView:v])return nil;DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:l];
- if(!lease){lease=[DouyinDiscTextLease new];lease.douyindisc_label=l;lease.douyindisc_textView=v;lease.douyindisc_identifier=identifier;lease.douyindisc_originalAlpha=l.alpha;lease.douyindisc_overlay=[UIImageView new];lease.douyindisc_overlay.userInteractionEnabled=NO;lease.douyindisc_overlay.isAccessibilityElement=NO;lease.douyindisc_overlay.contentMode=UIViewContentModeScaleAspectFit;[douyindisc_leases setObject:lease forKey:l];}else if(l.alpha!=0)lease.douyindisc_originalAlpha=l.alpha;
+static void douyindisc_stopAnimations(void) {
+    if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{douyindisc_stopAnimations();});return;}
+    for(DouyinDiscTextLease *lease in douyindisc_leases.objectEnumerator.allObjects){[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.navigation.rotation"];}[douyindisc_gifVisibilityTimer invalidate];douyindisc_gifVisibilityTimer=nil;
+}
+static void douyindisc_removeIcon(UILabel *label) {
+    DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:label];
+    [lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];
+    [lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.navigation.rotation"];
+    [lease.douyindisc_overlay removeFromSuperview];
+    if(lease&&label.alpha==0)label.alpha=lease.douyindisc_originalAlpha;
+    [douyindisc_leases removeObjectForKey:label];douyindisc_gifRefresh();
+}
+static DouyinDiscTextLease *douyindisc_installTextIcon(UIView *v,UILabel *l,NSString *identifier,UIImage *image,DouyinDiscGIFAnimation *animation,CGFloat opacity,CGFloat scale,CGFloat angle,CGFloat cornerRadius,BOOL rotationEnabled,CGFloat rotationSpeed){
+ UIView *host=l.superview;if(!v||!l||!host||!image.CGImage||![l isDescendantOfView:v])return nil;
+ DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:l];
+ if(!lease){lease=[DouyinDiscTextLease new];lease.douyindisc_label=l;lease.douyindisc_textView=v;lease.douyindisc_identifier=identifier;lease.douyindisc_originalAlpha=l.alpha;lease.douyindisc_overlay=[UIImageView new];lease.douyindisc_overlay.userInteractionEnabled=NO;lease.douyindisc_overlay.isAccessibilityElement=NO;lease.douyindisc_overlay.contentMode=UIViewContentModeScaleAspectFit;[douyindisc_leases setObject:lease forKey:l];}
+ else {if(l.alpha!=0)lease.douyindisc_originalAlpha=l.alpha;if(![lease.douyindisc_identifier isEqualToString:identifier]){[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];[lease.douyindisc_overlay.layer removeAnimationForKey:@"com.minis.douyindisc.navigation.rotation"];lease.douyindisc_identifier=[identifier copy];lease.douyindisc_image=nil;lease.douyindisc_animation=nil;lease.douyindisc_rotationConfigured=NO;}}
  UIImageView *overlay=lease.douyindisc_overlay;if(overlay.superview!=host){[overlay removeFromSuperview];[host addSubview:overlay];}lease.douyindisc_overlayHost=host;
- if(lease.douyindisc_animation!=animation){[overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];lease.douyindisc_animation=animation;overlay.image=animation.frames.firstObject?:image;lease.douyindisc_animationVisible=NO;}else if(!overlay.image)overlay.image=animation.frames.firstObject?:image;
- CGRect fitRect=[l convertRect:l.bounds toView:host];CGPoint center=CGPointMake(CGRectGetMidX(fitRect),CGRectGetMidY(fitRect));if([v isKindOfClass:NSClassFromString(@"AWEHPTopTabItemTextContentView")]){UIView *item=v.superview;if([item isKindOfClass:NSClassFromString(@"AWEHPTopTabItemView")]){CGRect itemRect=[item convertRect:item.bounds toView:host];center=CGPointMake(CGRectGetMidX(itemRect),CGRectGetMidY(itemRect));}}BOOL bottomItem=[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarTextView")]||[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarIconTextView")];CGFloat fit=MIN(fitRect.size.width/image.size.width,fitRect.size.height/image.size.height);scale=fmin(1.5,fmax(.5,scale));CGFloat factor;
- if(bottomItem){CGFloat targetLongEdge=16.0*scale;factor=targetLongEdge/MAX(image.size.width,image.size.height);}
- else factor=fit*scale;
- overlay.bounds=CGRectMake(0,0,image.size.width*factor,image.size.height*factor);overlay.center=center;overlay.alpha=fmin(1,fmax(0,opacity));if(l.alpha!=0)l.alpha=0;
- douyindisc_gifSetVisible(lease,douyindisc_gifLeaseVisible(lease));if(animation)douyindisc_gifRefresh();return lease;
-}static void douyindisc_apply(UIView *v){
+ BOOL imageChanged=lease.douyindisc_image!=image,animationChanged=lease.douyindisc_animation!=animation;
+ if(animationChanged)[overlay.layer removeAnimationForKey:@"com.minis.douyindisc.animated-gif"];
+ if(imageChanged||animationChanged){lease.douyindisc_image=image;lease.douyindisc_animation=animation;overlay.image=animation.frames.firstObject?:image;lease.douyindisc_animationVisible=NO;}
+ BOOL rotationChanged=!lease.douyindisc_rotationConfigured||fabs(lease.douyindisc_angle-angle)>.001||fabs(lease.douyindisc_cornerRadius-cornerRadius)>.001||lease.douyindisc_rotationEnabled!=rotationEnabled||fabs(lease.douyindisc_rotationSpeed-rotationSpeed)>.001;
+ if(rotationChanged)[overlay.layer removeAnimationForKey:@"com.minis.douyindisc.navigation.rotation"];
+ lease.douyindisc_angle=angle;lease.douyindisc_cornerRadius=cornerRadius;lease.douyindisc_rotationEnabled=rotationEnabled;lease.douyindisc_rotationSpeed=rotationSpeed;lease.douyindisc_rotationConfigured=YES;
+ CGRect fitRect=[l convertRect:l.bounds toView:host];CGPoint center=CGPointMake(CGRectGetMidX(fitRect),CGRectGetMidY(fitRect));
+ if([v isKindOfClass:NSClassFromString(@"AWEHPTopTabItemTextContentView")]){UIView *item=v.superview;if([item isKindOfClass:NSClassFromString(@"AWEHPTopTabItemView")]){CGRect itemRect=[item convertRect:item.bounds toView:host];center=CGPointMake(CGRectGetMidX(itemRect),CGRectGetMidY(itemRect));}}
+ BOOL bottomItem=[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarTextView")]||[v isKindOfClass:NSClassFromString(@"AWENormalModeTabBarIconTextView")];CGFloat fit=MIN(fitRect.size.width/image.size.width,fitRect.size.height/image.size.height);scale=fmin(1.5,fmax(.5,scale));CGFloat factor;
+ if(bottomItem){CGFloat targetLongEdge=16.0*scale;factor=targetLongEdge/MAX(image.size.width,image.size.height);}else factor=fit*scale;
+ overlay.bounds=CGRectMake(0,0,image.size.width*factor,image.size.height*factor);overlay.center=center;overlay.alpha=fmin(1,fmax(0,opacity));
+ CGFloat radius=MIN(overlay.bounds.size.width,overlay.bounds.size.height)*fmin(.5,fmax(0,cornerRadius/100.0));
+ [CATransaction begin];[CATransaction setDisableActions:YES];overlay.layer.cornerRadius=radius;overlay.layer.masksToBounds=radius>.01;overlay.layer.transform=CATransform3DMakeRotation(angle*M_PI/180.0,0,0,1);[CATransaction commit];
+ if(l.alpha!=0)l.alpha=0;
+ BOOL visible=douyindisc_gifLeaseVisible(lease);douyindisc_gifSetVisible(lease,visible);douyindisc_spinSetVisible(lease,visible);
+ if(animation||rotationEnabled)douyindisc_gifRefresh();return lease;
+}
+static void douyindisc_apply(UIView *v){
  if(!NSThread.isMainThread||!v)return;UILabel *l=douyindisc_label(v);if(!l)return;NSString *identifier=douyindisc_identifier(v,l);DouyinDiscTextLease *lease=[douyindisc_leases objectForKey:l];if(!identifier){if(lease)douyindisc_removeIcon(l);return;}
  DouyinDiscNavigationStore *store=[DouyinDiscNavigationStore douyindisc_sharedStore];NSDictionary *entry=[store douyindisc_entryForIdentifier:identifier];UIImage *image=[store douyindisc_imageForIdentifier:identifier];if(![entry[@"enabled"] boolValue]||!image.CGImage){if(lease)douyindisc_removeIcon(l);return;}
- douyindisc_installTextIcon(v,l,identifier,image,[store douyindisc_animationForIdentifier:identifier],[entry[@"opacity"] doubleValue],[entry[@"scale"] doubleValue]);
+ douyindisc_installTextIcon(v,l,identifier,image,[store douyindisc_animationForIdentifier:identifier],[entry[@"opacity"] doubleValue],[entry[@"scale"] doubleValue],[entry[@"angle"] doubleValue],[entry[@"cornerRadius"] doubleValue],[entry[@"rotationEnabled"] boolValue],[entry[@"rotationSpeed"] doubleValue]);
 }
 static IMP douyindisc_originalTopLayout,douyindisc_originalBottomLayout,douyindisc_originalBottomUpdate,douyindisc_originalBottomAnimatedUpdate,douyindisc_originalIconTextUpdate,douyindisc_originalTopUpdate,douyindisc_originalTopSelected,douyindisc_originalBottomStatus,douyindisc_originalIconStatus,douyindisc_originalRootSettingsAppear,douyindisc_originalRootSettingsWillAppear,douyindisc_originalRootDidSelect,douyindisc_originalRootWillDisplay,douyindisc_originalSettingsViewModelSetSections;
 static void douyindisc_topLayout(id o,SEL s){((void(*)(id,SEL))douyindisc_originalTopLayout)(o,s);douyindisc_apply(o);}static void douyindisc_bottomLayout(id o,SEL s){((void(*)(id,SEL))douyindisc_originalBottomLayout)(o,s);douyindisc_apply(o);}static void douyindisc_bottomUpdate(id o,SEL s,id t){((void(*)(id,SEL,id))douyindisc_originalBottomUpdate)(o,s,t);douyindisc_apply(o);}static void douyindisc_bottomAnimatedUpdate(id o,SEL s,id t,BOOL a){((void(*)(id,SEL,id,BOOL))douyindisc_originalBottomAnimatedUpdate)(o,s,t,a);douyindisc_apply(o);}static void douyindisc_iconTextUpdate(id o,SEL s,id t){((void(*)(id,SEL,id))douyindisc_originalIconTextUpdate)(o,s,t);douyindisc_apply(o);}static void douyindisc_topUpdate(id o,SEL s,id t){((void(*)(id,SEL,id))douyindisc_originalTopUpdate)(o,s,t);douyindisc_apply(o);}static void douyindisc_topSelected(id o,SEL s,BOOL a,BOOL b){((void(*)(id,SEL,BOOL,BOOL))douyindisc_originalTopSelected)(o,s,a,b);douyindisc_apply(douyindisc_ivar(o,"AWEHPTopTabItemView","_textContentView","@\"AWEHPTopTabItemTextContentView\""));}static void douyindisc_bottomStatus(id o,SEL s,NSInteger a,BOOL b){((void(*)(id,SEL,NSInteger,BOOL))douyindisc_originalBottomStatus)(o,s,a,b);douyindisc_apply(o);}static void douyindisc_iconStatus(id o,SEL s,NSInteger a,BOOL b){((void(*)(id,SEL,NSInteger,BOOL))douyindisc_originalIconStatus)(o,s,a,b);douyindisc_apply(o);}
@@ -314,7 +356,7 @@ void douyindisc_installNavigationHooks(void){if(!NSThread.isMainThread){dispatch
  }
  Class vmClass=NSClassFromString(@"AWESettingsViewModel");
  if(vmClass&&douyindisc_encoding(vmClass,setSections,"v24@0:8@16")&&!douyindisc_originalSettingsViewModelSetSections)douyindisc_hook(vmClass,setSections,(IMP)douyindisc_settingsViewModelSetSections,"v24@0:8@16",&douyindisc_originalSettingsViewModelSetSections);
- if(!douyindisc_originalTopLayout)douyindisc_hook(top,@selector(layoutSubviews),(IMP)douyindisc_topLayout,"v16@0:8",&douyindisc_originalTopLayout);if(!douyindisc_originalBottomLayout)douyindisc_hook(bottom,@selector(layoutSubviews),(IMP)douyindisc_bottomLayout,"v16@0:8",&douyindisc_originalBottomLayout);if(!douyindisc_originalBottomUpdate)douyindisc_hook(bottom,@selector(updateTitle:),(IMP)douyindisc_bottomUpdate,"v24@0:8@16",&douyindisc_originalBottomUpdate);if(!douyindisc_originalBottomAnimatedUpdate)douyindisc_hook(bottom,@selector(updateTitle:animated:),(IMP)douyindisc_bottomAnimatedUpdate,"v28@0:8@16B24",&douyindisc_originalBottomAnimatedUpdate);if(!douyindisc_originalIconTextUpdate)douyindisc_hook(icon,@selector(updateTitle:),(IMP)douyindisc_iconTextUpdate,"v24@0:8@16",&douyindisc_originalIconTextUpdate);if(!douyindisc_originalTopUpdate)douyindisc_hook(top,@selector(setContentText:),(IMP)douyindisc_topUpdate,"v24@0:8@16",&douyindisc_originalTopUpdate);if(!douyindisc_originalTopSelected)douyindisc_hook(item,@selector(updateSelected:animated:),(IMP)douyindisc_topSelected,"v24@0:8B16B20",&douyindisc_originalTopSelected);if(!douyindisc_originalBottomStatus)douyindisc_hook(bottom,@selector(tabbarStatusDidChanged:animated:),(IMP)douyindisc_bottomStatus,"v28@0:8q16B24",&douyindisc_originalBottomStatus);if(!douyindisc_originalIconStatus)douyindisc_hook(icon,@selector(tabbarStatusDidChanged:animated:),(IMP)douyindisc_iconStatus,"v28@0:8q16B24",&douyindisc_originalIconStatus);if(!douyindisc_observersInstalled){douyindisc_observersInstalled=YES;[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_gifRefresh();douyindisc_reload();}];[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_gifRefresh();}];[NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.changed" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_reload();}];[NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.preview" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){NSString *key=[n.object isKindOfClass:NSString.class]?n.object:nil;for(DouyinDiscTextLease *l in douyindisc_leases.objectEnumerator.allObjects)if(!key||[l.douyindisc_identifier isEqualToString:key])douyindisc_apply(l.douyindisc_textView);}];}douyindisc_reload();}
+ if(!douyindisc_originalTopLayout)douyindisc_hook(top,@selector(layoutSubviews),(IMP)douyindisc_topLayout,"v16@0:8",&douyindisc_originalTopLayout);if(!douyindisc_originalBottomLayout)douyindisc_hook(bottom,@selector(layoutSubviews),(IMP)douyindisc_bottomLayout,"v16@0:8",&douyindisc_originalBottomLayout);if(!douyindisc_originalBottomUpdate)douyindisc_hook(bottom,@selector(updateTitle:),(IMP)douyindisc_bottomUpdate,"v24@0:8@16",&douyindisc_originalBottomUpdate);if(!douyindisc_originalBottomAnimatedUpdate)douyindisc_hook(bottom,@selector(updateTitle:animated:),(IMP)douyindisc_bottomAnimatedUpdate,"v28@0:8@16B24",&douyindisc_originalBottomAnimatedUpdate);if(!douyindisc_originalIconTextUpdate)douyindisc_hook(icon,@selector(updateTitle:),(IMP)douyindisc_iconTextUpdate,"v24@0:8@16",&douyindisc_originalIconTextUpdate);if(!douyindisc_originalTopUpdate)douyindisc_hook(top,@selector(setContentText:),(IMP)douyindisc_topUpdate,"v24@0:8@16",&douyindisc_originalTopUpdate);if(!douyindisc_originalTopSelected)douyindisc_hook(item,@selector(updateSelected:animated:),(IMP)douyindisc_topSelected,"v24@0:8B16B20",&douyindisc_originalTopSelected);if(!douyindisc_originalBottomStatus)douyindisc_hook(bottom,@selector(tabbarStatusDidChanged:animated:),(IMP)douyindisc_bottomStatus,"v28@0:8q16B24",&douyindisc_originalBottomStatus);if(!douyindisc_originalIconStatus)douyindisc_hook(icon,@selector(tabbarStatusDidChanged:animated:),(IMP)douyindisc_iconStatus,"v28@0:8q16B24",&douyindisc_originalIconStatus);if(!douyindisc_observersInstalled){douyindisc_observersInstalled=YES;[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_gifRefresh();douyindisc_reload();}];[NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillResignActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_stopAnimations();}];[NSNotificationCenter.defaultCenter addObserverForName:UIAccessibilityReduceMotionStatusDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_gifRefresh();}];[NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.changed" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){(void)n;douyindisc_reload();}];[NSNotificationCenter.defaultCenter addObserverForName:@"com.minis.douyindisc.navigation.preview" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n){NSString *key=[n.object isKindOfClass:NSString.class]?n.object:nil;for(DouyinDiscTextLease *l in douyindisc_leases.objectEnumerator.allObjects)if(!key||[l.douyindisc_identifier isEqualToString:key])douyindisc_apply(l.douyindisc_textView);}];}douyindisc_reload();}
 
 @implementation DouyinDiscTextLease
 @end

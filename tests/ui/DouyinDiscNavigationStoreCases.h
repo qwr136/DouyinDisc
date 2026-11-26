@@ -98,7 +98,7 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     for (NSDictionary *item in items) {
         NSDictionary *entry = [store douyindisc_entryForIdentifier:item[@"identifier"]];
         BOOL videoDisc=[item[@"identifier"] isEqual:@"video_disc"];
-        DD_CHECK_NS([entry[@"enabled"] boolValue]==videoDisc && [entry[@"opacity"] doubleValue]==1 && [entry[@"scale"] doubleValue]==1 && [entry[@"speed"] doubleValue]==1 && ![entry[@"hasImage"] boolValue], @"navigation entries default off while the built-in video disc preserves its on state and 100 percent adjustment");
+        DD_CHECK_NS([entry[@"enabled"] boolValue]==videoDisc && [entry[@"opacity"] doubleValue]==1 && [entry[@"scale"] doubleValue]==1 && [entry[@"speed"] doubleValue]==1 && ![entry[@"hasImage"] boolValue]&&[entry[@"angle"] doubleValue]==0&&[entry[@"cornerRadius"] doubleValue]==0&&![entry[@"rotationEnabled"] boolValue]&&[entry[@"rotationSpeed"] doubleValue]==1, @"entries preserve legacy off/default values, zero angle/corners, and disabled rotation");
     }
     NSUInteger discTicket=[store douyindisc_beginImagePickingForIdentifier:@"video_disc"];
     DD_CHECK_NS(discTicket>0&&[store douyindisc_imagePickingEnabledForIdentifier:@"video_disc"],@"legacy built-in disc remains enabled and can start a custom-image picker without configuration migration");
@@ -109,6 +109,14 @@ static void douyindisc_navigationStoreCases(void (^done)(void)) {
     DD_CHECK_NS([speedStore douyindisc_saveEnabled:YES opacity:.72 scale:3 identifier:@"video_disc" error:&speedError] && [speedStore douyindisc_entryForIdentifier:@"video_disc"][@"speed"] && fabs([[speedStore douyindisc_entryForIdentifier:@"video_disc"][@"speed"] doubleValue]-3)<.001, @"video disc accepts the maximum 300 percent speed and persists it as speed");
     NSError *invalidSpeedError=nil;
     DD_CHECK_NS(![speedStore douyindisc_saveEnabled:YES opacity:.72 scale:3.01 identifier:@"video_disc" error:&invalidSpeedError] && invalidSpeedError!=nil, @"video disc rejects speeds above the explicit three-times ceiling");
+    NSURL *appearanceDirectory=[base URLByAppendingPathComponent:@"appearance" isDirectory:YES];
+    [NSFileManager.defaultManager createDirectoryAtURL:appearanceDirectory withIntermediateDirectories:YES attributes:nil error:nil];
+    DouyinDiscNavigationStore *appearanceStore=douyindisc_uiTestCreateStore(appearanceDirectory);NSError *appearanceSaveError=nil;
+    BOOL appearanceSaved=[appearanceStore douyindisc_saveNavigationAppearanceForIdentifier:@"bottom_home" angle:123 cornerRadius:25 rotationEnabled:YES rotationSpeed:1.75 error:&appearanceSaveError];
+    NSDictionary *appearanceEntry=[appearanceStore douyindisc_entryForIdentifier:@"bottom_home"];
+    DD_CHECK_NS(appearanceSaved&&appearanceSaveError==nil&&fabs([appearanceEntry[@"angle"] doubleValue]-123)<.001&&fabs([appearanceEntry[@"cornerRadius"] doubleValue]-25)<.001&&[appearanceEntry[@"rotationEnabled"] boolValue]&&fabs([appearanceEntry[@"rotationSpeed"] doubleValue]-1.75)<.001,@"static angle, corner radius, rotation switch and speed persist independently for a navigation icon");
+    NSError *invalidAppearanceError=nil;
+    DD_CHECK_NS(![appearanceStore douyindisc_saveNavigationAppearanceForIdentifier:@"video_disc" angle:45 cornerRadius:10 rotationEnabled:YES rotationSpeed:1 error:&invalidAppearanceError]&&invalidAppearanceError!=nil,@"video-disc settings cannot consume navigation-only appearance controls");
     NSError *invalidError = nil;
     DD_CHECK_NS(![store douyindisc_saveEnabled:YES opacity:.4 scale:1 identifier:@"not_a_navigation_item" error:&invalidError] && invalidError != nil,
              @"invalid identifier is rejected synchronously");
