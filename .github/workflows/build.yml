@@ -92,6 +92,11 @@ jobs:
             reports/numeric-keyboard-panel.png
             reports/numeric-keyboard-screen.png
             reports/numeric-keyboard-visible.json
+            reports/uikit-timeline.jsonl
+            reports/uikit-start.json
+            reports/uikit-begin.json
+            reports/uikit-complete.json
+            reports/uikit-runner-timeline.jsonl
             tests/report.txt
             toolchain-lock.json
           if-no-files-found: error

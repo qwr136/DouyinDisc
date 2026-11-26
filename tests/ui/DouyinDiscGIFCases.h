@@ -65,7 +65,9 @@ static void douyindisc_gifStoreAndPlaybackCases(UIWindow *window,dispatch_block_
             DD_CHECK_NS(![lease.douyindisc_overlay.layer animationForKey:@"com.minis.douyindisc.animated-gif"]&&![lease.douyindisc_overlay.layer animationForKey:@"com.minis.douyindisc.navigation.rotation"],@"hidden icon stops both GIF and automatic rotation");
             lease.douyindisc_overlay.hidden=NO;douyindisc_gifRefresh();
             DD_CHECK_NS(UIAccessibilityIsReduceMotionEnabled()||[lease.douyindisc_overlay.layer animationForKey:@"com.minis.douyindisc.navigation.rotation"]!=nil,@"visible item resumes per-item rotation after returning onscreen");
+            douyindisc_uiTraceEvent(@"GIF_FRAME_SCHEDULE",nil);
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(.14*NSEC_PER_SEC)),dispatch_get_main_queue(),^{
+                douyindisc_uiTraceEvent(@"GIF_FRAME_CALLBACK",nil);
                 CALayer *presentation=(CALayer *)lease.douyindisc_overlay.layer.presentationLayer;NSData *presentedPixel=douyindisc_gifCasePixel((__bridge CGImageRef)presentation.contents);NSData *firstPixel=douyindisc_gifCasePixel(coldAnimation.frames.firstObject.CGImage);BOOL matchedNonInitialFrame=NO;
                 for(NSUInteger i=1;i<coldAnimation.frames.count;i++){NSData *framePixel=douyindisc_gifCasePixel(coldAnimation.frames[i].CGImage);if([presentedPixel isEqualToData:framePixel]){matchedNonInitialFrame=YES;break;}}
                 DD_CHECK_NS(presentedPixel.length==3&&firstPixel.length==3&&matchedNonInitialFrame&&! [presentedPixel isEqualToData:firstPixel],@"rendered presentation advances beyond the first GIF frame");

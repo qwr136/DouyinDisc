@@ -47,7 +47,9 @@ static void douyindisc_clarityCases(DouyinDiscDisplay *driver, AWEMusicCoverButt
     button.layer.mask=nativeMask;
     [driver douyindisc_refresh:button];
     DD_CHECK(button.layer.mask != nativeMask, "a later native mask is temporarily suppressed with ownership recorded");
+    douyindisc_uiTraceEvent(@"CLARITY_RESTORE_BEGIN",nil);
     [surface douyindisc_restore];
+    douyindisc_uiTraceEvent(@"CLARITY_RESTORE_END",nil);
     DD_CHECK(button.layer.mask == nativeMask && button.alpha==savedAlpha, "lease cleanup restores latest native mask and original interactive alpha");
     DD_CHECK(button->_guidanceView.alpha==1 && button->_guidanceView.layer.mask==nil, "cleanup restores native child alpha and mask independently");
     objc_setAssociatedObject(button,&douyindisc_leaseKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);

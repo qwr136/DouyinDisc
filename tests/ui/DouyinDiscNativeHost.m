@@ -183,9 +183,11 @@ static UIImage *douyindisc_rootPlaceholderFixture;
 static NSUInteger douyindisc_checks;
 static NSMutableArray<NSString *> *douyindisc_results;
 static BOOL douyindisc_storeTestsStarted;
+#include "DouyinDiscUITimeline.inc"
 static void douyindisc_writeProgress(void) {
     NSString *path = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"uikit-report.txt"];
     [[douyindisc_results componentsJoinedByString:@"\n"] writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    douyindisc_uiTraceEvent(@"CHECK",douyindisc_results.lastObject);
 }
 #define DD_CHECK(condition, message) do { \
     ++douyindisc_checks; \
@@ -272,6 +274,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
 @implementation DouyinDiscTestApp
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)options {
     (void)app; (void)options;
+    douyindisc_uiTraceEvent(@"APP_STARTED",@"didFinishLaunching");
     self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
     self.window.rootViewController = [UIViewController new];
     [self.window makeKeyAndVisible]; return YES;
@@ -282,8 +285,19 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     self.douyindisc_running = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
         douyindisc_results=[NSMutableArray array];
+        douyindisc_uiTraceEvent(@"TEST_BEGIN",@"keyboard first, complete suite retained");
         douyindisc_installNavigationHooks();
-        douyindisc_gifCases(self.window, ^{[self douyindisc_run];});
+        douyindisc_uiTraceEvent(@"KEYBOARD_BEGIN",nil);
+        douyindisc_uiTestKeyboardVisible(self.window, ^(BOOL visible){
+            douyindisc_uiTraceEvent(@"KEYBOARD_END",visible?@"passed":@"failed");
+            DD_CHECK(visible,"numeric keyboard posts did-show with a visible frame and Done dismisses it without modifying configuration");
+            douyindisc_uiTraceEvent(@"NUMERIC_BEGIN",nil);
+            NSDictionary *numeric=douyindisc_uiTestNumericInput(self.window);
+            douyindisc_uiTraceEvent(@"NUMERIC_END",numeric.description);
+            NSArray<NSString *> *numericKeys=@[@"fixtureReady",@"textFields",@"windowHits",@"numberPadAndDone",@"eventBindings",@"firstResponder",@"inputModeAvailable",@"beginRemovesUnit",@"editingEvents",@"doneEndsEditing",@"angleCommit",@"cornerCommit",@"speedCommit",@"unitsAccepted",@"emptyRejected",@"invalidRejected",@"lowerBounds",@"upperBounds",@"overflowClamped",@"steppersUnchanged",@"otherItemUnchanged",@"videoDiscUnchanged",@"unrelatedSettingsUnchanged",@"coldStorePersistence",@"reopenPersistence",@"saveFailureRollback",@"restored"];
+            for(NSString *key in numericKeys){NSString *label=[@"numeric input: " stringByAppendingString:key];DD_CHECK_NS([numeric[key] boolValue],label);}
+            douyindisc_gifCases(self.window, ^{[self douyindisc_run];});
+        });
     });
 }
 - (void)douyindisc_nativeTap:(id)sender { (void)sender; ++self.douyindisc_clicks; }
@@ -507,15 +521,6 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
 - (void)douyindisc_finish {
     if(douyindisc_storeTestsStarted)return;
     douyindisc_storeTestsStarted=YES;
-    douyindisc_uiTestKeyboardVisible(self.window, ^(BOOL visible){
-        DD_CHECK(visible,"numeric keyboard posts did-show with a visible frame and Done dismisses it without modifying configuration");
-        [self douyindisc_finishNumericCases];
-    });
-}
-- (void)douyindisc_finishNumericCases {
-    NSDictionary *numeric=douyindisc_uiTestNumericInput(self.window);
-    NSArray<NSString *> *numericKeys=@[@"fixtureReady",@"textFields",@"windowHits",@"numberPadAndDone",@"eventBindings",@"firstResponder",@"inputModeAvailable",@"beginRemovesUnit",@"editingEvents",@"doneEndsEditing",@"angleCommit",@"cornerCommit",@"speedCommit",@"unitsAccepted",@"emptyRejected",@"invalidRejected",@"lowerBounds",@"upperBounds",@"overflowClamped",@"steppersUnchanged",@"otherItemUnchanged",@"videoDiscUnchanged",@"unrelatedSettingsUnchanged",@"coldStorePersistence",@"reopenPersistence",@"saveFailureRollback",@"restored"];
-    for(NSString *key in numericKeys){NSString *label=[@"numeric input: " stringByAppendingString:key];DD_CHECK_NS([numeric[key] boolValue],label);}
     douyindisc_navigationCases(self.window);
     NSDictionary *layout=douyindisc_uiTestSettingsLayout(self.window);
     DD_CHECK([layout[@"navigationCount"] unsignedIntegerValue]==13&&[layout[@"controlCount"] unsignedIntegerValue]==256,"layout suite mounts all thirteen navigation rows plus the unchanged video disc");
@@ -530,7 +535,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
         NSUInteger failures=0;
         for(NSString *line in douyindisc_results)if([line hasPrefix:@"FAIL"])++failures;
         [douyindisc_results addObject:[NSString stringWithFormat:@"UIKit host: %lu checks, %lu failures",(unsigned long)douyindisc_checks,(unsigned long)failures]];
-        douyindisc_writeProgress();NSLog(@"%@",douyindisc_results.lastObject);exit(failures?1:0);
+        douyindisc_writeProgress();douyindisc_uiTraceEvent(@"TEST_DONE",douyindisc_results.lastObject);NSLog(@"%@",douyindisc_results.lastObject);exit(failures?1:0);
       });
     });
 }
