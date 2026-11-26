@@ -504,6 +504,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
 - (void)douyindisc_finish {
     if(douyindisc_storeTestsStarted)return;
     douyindisc_storeTestsStarted=YES;
+    douyindisc_navigationCases(self.window);
     douyindisc_navigationStoreCases(^{
       douyindisc_pickerCases(self.window, ^{
         NSUInteger failures=0;

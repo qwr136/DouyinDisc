@@ -41,7 +41,9 @@ class NavigationAppearanceTests(unittest.TestCase):
         self.assertIn('imageChanged=lease.douyindisc_image!=image',hooks)
 
     def test_host_covers_static_angle_auto_rotation_and_restore(self):
+        host=(ROOT/"tests/ui/DouyinDiscNativeHost.m").read_text()
         tests=(ROOT/"tests/ui/DouyinDiscNavigationCases.h").read_text()
+        self.assertIn('douyindisc_navigationCases(self.window);',host)
         for token in ('per-item static angle rotates the image layer',
                       'continuous rotation uses an independent layer animation',
                       'zero corner and disabled rotation restore the legacy static appearance'):
