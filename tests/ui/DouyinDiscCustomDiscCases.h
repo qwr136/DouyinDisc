@@ -18,7 +18,7 @@ static void douyindisc_customDiscCases(DouyinDiscDisplay *driver, AWEMusicCoverB
     DouyinDiscSurface *surface=objc_getAssociatedObject(button,&douyindisc_leaseKey);
     DD_CHECK_NS(surface&&surface.douyindisc_overlay.contents==(__bridge id)icon.CGImage,@"video-page disc displays the user-selected icon rather than embedded artwork");
     DD_CHECK_NS(surface.douyindisc_overlay.masksToBounds&&fabs(surface.douyindisc_overlay.cornerRadius-22)<.5&&[surface.douyindisc_overlay.contentsGravity isEqualToString:kCAGravityResizeAspectFill],@"custom photo is aspect-filled and clipped to a circular icon");
-    DD_CHECK_NS(fabs(surface.douyindisc_artworkGroup.opacity-.72)<.001&&fabs(surface.douyindisc_overlay.opacity-1)<.001&&fabs(surface.douyindisc_accentArcs.opacity-1)<.001&&fabs(surface.douyindisc_centerOverlay.opacity-.9)<.001,@"one parent opacity applies to the fully composited disc without layered over-opacity");
+    DD_CHECK_NS(fabs(surface.douyindisc_artworkGroup.opacity-.72)<.001&&fabs(surface.douyindisc_overlay.opacity-1)<.001&&surface.douyindisc_accentArcs.hidden&&surface.douyindisc_centerOverlay.hidden&&![surface.douyindisc_accentArcs animationForKey:douyindisc_spinKey]&&![surface.douyindisc_centerOverlay animationForKey:douyindisc_spinKey], @"custom icon mode removes all bundled artwork and its animations");
     CGFloat renderedAlpha=douyindisc_customDiscRenderedMaxAlpha(surface.douyindisc_artworkGroup);
     DD_CHECK_NS(renderedAlpha>=.70&&renderedAlpha<=.74,@"rasterized composite alpha matches the requested seventy-two percent opacity");
     UIImage *secondFrame=[[[UIGraphicsImageRenderer alloc]initWithSize:CGSizeMake(44,44)] imageWithActions:^(UIGraphicsImageRendererContext *context){(void)context;[UIColor.systemOrangeColor setFill];[[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0,0,44,44)] fill];}];
@@ -39,7 +39,7 @@ static void douyindisc_customDiscCases(DouyinDiscDisplay *driver, AWEMusicCoverB
     button.frame=visibleFrame;[driver douyindisc_refresh:button];
     DD_CHECK_NS([surface.douyindisc_overlay animationForKey:douyindisc_discGIFKey]!=nil,@"GIF playback resumes when the disc returns to the visible viewport");
     douyindisc_uiTestSetNavigationImage(@"video_disc",nil,YES);douyindisc_uiTestSetDiscSettings(YES,.72,1.5);[driver douyindisc_refresh:button];
-    DD_CHECK_NS(surface.douyindisc_overlay.contents==(__bridge id)driver.douyindisc_image.CGImage&&fabs(surface.douyindisc_artworkGroup.opacity-.72)<.001&&surface.douyindisc_overlay.opacity==.5f,@"clearing custom artwork restores the built-in disc while retaining the overall transparency setting");
+    DD_CHECK_NS(surface.douyindisc_overlay.contents==(__bridge id)driver.douyindisc_image.CGImage&&!surface.douyindisc_accentArcs.hidden&&!surface.douyindisc_centerOverlay.hidden&&[surface.douyindisc_accentArcs animationForKey:douyindisc_spinKey]&&[surface.douyindisc_centerOverlay animationForKey:douyindisc_spinKey]&&fabs(surface.douyindisc_artworkGroup.opacity-.72)<.001&&surface.douyindisc_overlay.opacity==.5f,@"clearing custom artwork restores every bundled disc layer, rotation and retained transparency setting");
     douyindisc_uiTestSetDiscSettings(NO,.72,1.5);[driver douyindisc_refresh:button];
     DD_CHECK_NS(objc_getAssociatedObject(button,&douyindisc_leaseKey)==nil&&button->_imageContentView.alpha==1&&button.userInteractionEnabled,@"switch-off restores original pixels and preserves the native clickable control");
     douyindisc_uiTestSetDiscSettings(YES,1,1);[driver douyindisc_refresh:button];

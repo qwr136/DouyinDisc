@@ -296,16 +296,19 @@ static void douyindisc_changed(UIControl *control) {
     CALayer *arcs=surface.douyindisc_accentArcs;
     if(arcs){
         arcs.bounds=overlay.bounds; arcs.position=overlay.position; arcs.contentsScale=scale;
+        arcs.hidden=customImage!=nil;
         arcs.opacity=1.0f; arcs.minificationFilter=kCAFilterTrilinear; arcs.magnificationFilter=kCAFilterLinear;
         if(arcs.superlayer!=group)[group addSublayer:arcs];
     }
     CALayer *ring=surface.douyindisc_centerOverlay;
     if (ring) {
         ring.bounds=overlay.bounds; ring.position=overlay.position; ring.contentsScale=scale;
+        ring.hidden=customImage!=nil;
         ring.opacity=0.9f; ring.minificationFilter=kCAFilterTrilinear; ring.magnificationFilter=kCAFilterLinear;
         if(ring.superlayer!=group)[group addSublayer:ring];
     }
     if(surface.douyindisc_customAnimation!=customAnimation){[overlay removeAnimationForKey:douyindisc_discGIFKey];surface.douyindisc_customAnimation=customAnimation;}
+    if(customImage){[arcs removeAnimationForKey:douyindisc_spinKey];[ring removeAnimationForKey:douyindisc_spinKey];}
     BOOL reduceMotion=UIAccessibilityIsReduceMotionEnabled();
     BOOL customGIFVisible=customImage&&customAnimation&&douyindisc_onScreen(control);
     if(!customGIFVisible||reduceMotion)[overlay removeAnimationForKey:douyindisc_discGIFKey];
@@ -335,14 +338,15 @@ static void douyindisc_changed(UIControl *control) {
         }
         BOOL hasSpin=[overlay animationForKey:douyindisc_spinKey]!=nil;
         BOOL surfaceSpeedChanged=fabs(surface.douyindisc_spinSpeed-spinSpeed)>.001;
-        if(!hasSpin||surfaceSpeedChanged){
+        BOOL bundledSpinMissing=!customImage&&((arcs&&![arcs animationForKey:douyindisc_spinKey])||(ring&&![ring animationForKey:douyindisc_spinKey]));
+        if(!hasSpin||surfaceSpeedChanged||bundledSpinMissing){
             for(NSUInteger i=0;i<3;i++)[spinLayers[i] removeAnimationForKey:douyindisc_spinKey];
             CABasicAnimation *spin=[CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
             spin.fromValue=@0;spin.toValue=@(2*M_PI);spin.duration=7.0/spinSpeed;spin.repeatCount=HUGE_VALF;
             spin.beginTime=[overlay convertTime:self.douyindisc_epoch fromLayer:nil];
             [overlay addAnimation:spin forKey:douyindisc_spinKey];
             for(NSUInteger i=1;i<3;i++){
-                CALayer *layer=spinLayers[i];if(!layer)continue;
+                CALayer *layer=spinLayers[i];if(!layer||customImage)continue;
                 CABasicAnimation *copy=[spin copy];copy.beginTime=[layer convertTime:self.douyindisc_epoch fromLayer:nil];[layer addAnimation:copy forKey:douyindisc_spinKey];
             }
             surface.douyindisc_spinSpeed=spinSpeed;

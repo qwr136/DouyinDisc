@@ -29,7 +29,8 @@ class VideoDiscContractTests(unittest.TestCase):
         self.assertIn('overlay.contentsGravity=customImage?kCAGravityResizeAspectFill:kCAGravityResizeAspect;', display)
         self.assertIn('overlay.cornerRadius=customImage?MIN(overlay.bounds.size.width,overlay.bounds.size.height)*.5:0;', display)
         self.assertIn('group.opacity=customOpacity;', display)
-        self.assertIn('overlay.opacity = customImage?1.0f:0.5f;', display)
+        self.assertIn('arcs.hidden=customImage!=nil;', display)
+        self.assertIn('ring.hidden=customImage!=nil;', display)
         self.assertIn('spin.duration=7.0/spinSpeed', display)
         self.assertIn('animationWithKeyPath:@"contents"', display)
         self.assertIn('customImage&&customAnimation&&douyindisc_onScreen(control)', display)
@@ -49,7 +50,8 @@ class VideoDiscContractTests(unittest.TestCase):
                          'new feed controls join the same adjusted rotation phase',
                          'prepared but offscreen feed disc keeps its lease',
                          'GIF playback resumes when the disc returns',
-                         'clearing custom artwork restores the built-in disc',
+                         'custom icon mode removes all bundled artwork',
+                         'clearing custom artwork restores every bundled disc layer',
                          'switch-off restores original pixels'):
             self.assertIn(contract, cases)
 
