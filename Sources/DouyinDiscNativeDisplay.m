@@ -150,6 +150,10 @@ static UIView *douyindisc_scopedShare(UIControl *control) {
 @implementation DouyinDiscSurface
 - (void)douyindisc_restore {
     [CATransaction begin]; [CATransaction setDisableActions:YES];
+    [self.douyindisc_overlay removeAnimationForKey:douyindisc_discGIFKey];
+    [self.douyindisc_overlay removeAnimationForKey:douyindisc_spinKey];
+    [self.douyindisc_accentArcs removeAnimationForKey:douyindisc_spinKey];
+    [self.douyindisc_centerOverlay removeAnimationForKey:douyindisc_spinKey];
     [self.douyindisc_artworkGroup removeFromSuperlayer];
     [self.douyindisc_overlay removeFromSuperlayer];
     [self.douyindisc_accentArcs removeFromSuperlayer];
@@ -167,6 +171,7 @@ static UIView *douyindisc_scopedShare(UIControl *control) {
 @property (nonatomic) CFTimeInterval douyindisc_epoch;
 @property (nonatomic) CGFloat douyindisc_spinSpeed;
 @property (nonatomic) BOOL douyindisc_refreshing;
+@property (nonatomic) BOOL douyindisc_refreshSuspended;
 - (void)douyindisc_refresh:(UIControl *)control;
 @end
 
@@ -189,7 +194,6 @@ static void douyindisc_changed(UIControl *control) {
 - (void)douyindisc_refresh:(UIControl *)control {
     if (!control || self.douyindisc_refreshing || !NSThread.isMainThread || !douyindisc_nativeMusic(control)) return;
     if (self.douyindisc_controls.count < 64) [self.douyindisc_controls addObject:control];
-    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     self.douyindisc_refreshing = YES;
     DouyinDiscSurface *surface = objc_getAssociatedObject(control, &douyindisc_leaseKey);
     BOOL sameScope = surface && surface.douyindisc_window == control.window && surface.douyindisc_scope == control.superview &&
@@ -199,9 +203,17 @@ static void douyindisc_changed(UIControl *control) {
         objc_setAssociatedObject(control, &douyindisc_leaseKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         surface = nil;
     }
-    UIView *canvas = sameScope ? surface.douyindisc_canvas : douyindisc_scopedShare(control);
     DouyinDiscNavigationStore *store=DouyinDiscNavigationStore.douyindisc_sharedStore;
     NSDictionary *discEntry=[store douyindisc_entryForIdentifier:@"video_disc"];
+    if(self.douyindisc_refreshSuspended||UIApplication.sharedApplication.applicationState!=UIApplicationStateActive){
+        // Retain the last submitted animations; explicit removal still wins.
+        if(surface&&(![discEntry[@"enabled"] boolValue]||(surface.douyindisc_customImage&&![store douyindisc_imageForIdentifier:@"video_disc"].CGImage))){
+            [surface douyindisc_restore];
+            objc_setAssociatedObject(control,&douyindisc_leaseKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+        self.douyindisc_refreshing=NO;return;
+    }
+    UIView *canvas = sameScope ? surface.douyindisc_canvas : douyindisc_scopedShare(control);
     BOOL valid = [discEntry[@"enabled"] boolValue] && douyindisc_preparedGeometry(control) && canvas;
     UIImage *customImage=valid?[store douyindisc_imageForIdentifier:@"video_disc"]:nil;
     DouyinDiscGIFAnimation *customAnimation=customImage?[store douyindisc_animationForIdentifier:@"video_disc"]:nil;
@@ -357,11 +369,13 @@ static void douyindisc_changed(UIControl *control) {
 }
 
 - (void)douyindisc_tick {
+    if (self.douyindisc_refreshSuspended) return;
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     for (UIControl *control in self.douyindisc_controls.allObjects) [self douyindisc_refresh:control];
 }
 
 - (void)douyindisc_bootstrap:(UIWindow *)window {
+    if (self.douyindisc_refreshSuspended || UIApplication.sharedApplication.applicationState!=UIApplicationStateActive) return;
     if (!window || window.windowLevel != UIWindowLevelNormal) return;
     NSMutableArray<UIView *> *pending = [NSMutableArray arrayWithObject:window];
     NSUInteger visited = 0;
@@ -377,6 +391,7 @@ static void douyindisc_changed(UIControl *control) {
     (void)notification;
     UIApplication *app = UIApplication.sharedApplication;
     if (app.applicationState != UIApplicationStateActive) return;
+    self.douyindisc_refreshSuspended=NO;
     for (UIScene *scene in app.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class] || scene.activationState != UISceneActivationStateForegroundActive) continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows) [self douyindisc_bootstrap:window];
@@ -396,17 +411,26 @@ static void douyindisc_changed(UIControl *control) {
 
 - (void)douyindisc_resignedActive:(NSNotification *)notification {
     (void)notification;
+    self.douyindisc_refreshSuspended=YES;
     [self.douyindisc_timer invalidate]; self.douyindisc_timer = nil;
-    for(UIControl *control in self.douyindisc_controls.allObjects){DouyinDiscSurface *surface=objc_getAssociatedObject(control,&douyindisc_leaseKey);[surface.douyindisc_overlay removeAnimationForKey:douyindisc_discGIFKey];}
-    // Retain visible layers for system snapshots, but never keep custom frame playback running in background.
+    // Do not remove submitted GIF/spin keys on loss of focus. No keepalive or polling.
 }
 
 - (void)douyindisc_motionChanged:(NSNotification *)notification {
-    (void)notification; [self douyindisc_tick];
+    (void)notification;
+    if(UIAccessibilityIsReduceMotionEnabled())for(UIControl *control in self.douyindisc_controls.allObjects){
+        DouyinDiscSurface *surface=objc_getAssociatedObject(control,&douyindisc_leaseKey);
+        [surface.douyindisc_overlay removeAnimationForKey:douyindisc_discGIFKey];
+        [surface.douyindisc_overlay removeAnimationForKey:douyindisc_spinKey];
+        [surface.douyindisc_accentArcs removeAnimationForKey:douyindisc_spinKey];
+        [surface.douyindisc_centerOverlay removeAnimationForKey:douyindisc_spinKey];
+    }
+    [self douyindisc_tick];
 }
 
 - (void)douyindisc_navigationChanged:(NSNotification *)notification {
-    (void)notification; [self douyindisc_tick];
+    (void)notification;
+    for(UIControl *control in self.douyindisc_controls.allObjects)[self douyindisc_refresh:control];
 }
 
 - (void)douyindisc_navigationPreview:(NSNotification *)notification {

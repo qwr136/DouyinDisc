@@ -267,6 +267,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
 }
 
 #include "DouyinDiscStartupCases.h"
+#include "DouyinDiscSwitcherCases.h"
 
 @interface DouyinDiscTestApp : UIResponder <UIApplicationDelegate>
 @property (nonatomic, strong) UIWindow *window;
@@ -301,6 +302,9 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
             douyindisc_uiTraceEvent(@"STARTUP_FIRST_FRAME_BEGIN",nil);
             douyindisc_startupCases(self.window);
             douyindisc_uiTraceEvent(@"STARTUP_FIRST_FRAME_END",nil);
+            douyindisc_uiTraceEvent(@"SWITCHER_POLICY_BEGIN",nil);
+            douyindisc_switcherCases(self.window);
+            douyindisc_uiTraceEvent(@"SWITCHER_POLICY_END",nil);
             douyindisc_gifCases(self.window, ^{[self douyindisc_run];});
         });
     });
@@ -419,6 +423,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     [driver douyindisc_tick];
     DD_CHECK(objc_getAssociatedObject(incoming, &douyindisc_leaseKey) == b, "temporary key transfer retains known original window surface");
     panel.hidden = YES; [window makeKeyAndVisible];
+    [NSNotificationCenter.defaultCenter postNotificationName:UIApplicationDidBecomeActiveNotification object:nil];
     first->_guidanceView.alpha = .35;
     [driver douyindisc_refresh:first];
     [item removeFromSuperview];
@@ -503,6 +508,7 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
             DD_CHECK(incoming->_imageContentView.hidden && incoming->_imageBgView.hidden, "cleanup preserves native hidden flags");
             [listen removeFromSuperview];
             [driver douyindisc_resignedActive:nil];
+            [driver douyindisc_becameActive:nil];
             AWEMusicCoverButton *singleButton=douyindisc_makeButton(art);
             singleButton.accessibilityLabel=@"音乐详情";
             UIControl *singleShare=[UIButton buttonWithType:UIButtonTypeSystem];
