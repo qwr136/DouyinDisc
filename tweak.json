@@ -14,7 +14,7 @@
   "scheme": "trollfools",
   "target_type": "dylib",
   "architecture": "arm64",
-  "version": "4.40",
+  "version": "4.50",
   "preferences": false,
   "slider": false,
   "github_actions": true,

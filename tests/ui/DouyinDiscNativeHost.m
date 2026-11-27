@@ -266,6 +266,8 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
     return item;
 }
 
+#include "DouyinDiscStartupCases.h"
+
 @interface DouyinDiscTestApp : UIResponder <UIApplicationDelegate>
 @property (nonatomic, strong) UIWindow *window;
 @property (nonatomic) BOOL douyindisc_running;
@@ -296,6 +298,9 @@ static UIView *douyindisc_item(UIWindow *window, UIScrollView *scroll, CGFloat y
             douyindisc_uiTraceEvent(@"NUMERIC_END",numeric.description);
             NSArray<NSString *> *numericKeys=@[@"fixtureReady",@"textFields",@"windowHits",@"numberPadAndDone",@"eventBindings",@"firstResponder",@"inputModeAvailable",@"beginRemovesUnit",@"editingEvents",@"doneEndsEditing",@"angleCommit",@"cornerCommit",@"speedCommit",@"unitsAccepted",@"emptyRejected",@"invalidRejected",@"lowerBounds",@"upperBounds",@"overflowClamped",@"steppersUnchanged",@"otherItemUnchanged",@"videoDiscUnchanged",@"unrelatedSettingsUnchanged",@"coldStorePersistence",@"reopenPersistence",@"saveFailureRollback",@"restored"];
             for(NSString *key in numericKeys){NSString *label=[@"numeric input: " stringByAppendingString:key];DD_CHECK_NS([numeric[key] boolValue],label);}
+            douyindisc_uiTraceEvent(@"STARTUP_FIRST_FRAME_BEGIN",nil);
+            douyindisc_startupCases(self.window);
+            douyindisc_uiTraceEvent(@"STARTUP_FIRST_FRAME_END",nil);
             douyindisc_gifCases(self.window, ^{[self douyindisc_run];});
         });
     });

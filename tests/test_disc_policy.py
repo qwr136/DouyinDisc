@@ -116,6 +116,9 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(file=relative):
                 content = (ROOT / relative).read_bytes()
                 if relative == 'Sources/DouyinDiscEntry.m':
+                    # Startup PNG preparation is separately behavior-tested; retain
+                    # the original host guard and installation scheduling here.
+                    content = content.replace(b'        [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_prepareStartupImages];\n', b'')
                     content = content.replace(b'#import "DouyinDiscNavigation.h"\n', b'')
                     content = content.replace(b'#import "DouyinDiscHostVersion.h"', b'#include "DouyinDiscPolicy.h"')
                     content = content.replace(b'    if (!douyindisc_hostVersionAllowed()) return;',

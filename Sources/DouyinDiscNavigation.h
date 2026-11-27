@@ -13,6 +13,7 @@ void douyindisc_installNavigationHooks(void);
 
 @interface DouyinDiscNavigationStore : NSObject
 + (instancetype)douyindisc_sharedStore;
+- (void)douyindisc_prepareStartupImages;
 - (void)douyindisc_preloadImagesWithCompletion:(void (^)(void))completion;
 - (void)douyindisc_previewOpacity:(CGFloat)opacity identifier:(NSString *)identifier;
 - (void)douyindisc_clearOpacityPreviewForIdentifier:(NSString *)identifier;

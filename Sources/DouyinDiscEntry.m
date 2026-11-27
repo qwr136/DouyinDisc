@@ -7,6 +7,7 @@ void douyindisc_startDisplay(void);
 static void douyindisc_initialize(void) {
     if (!douyindisc_hostVersionAllowed()) return;
     dispatch_async(dispatch_get_main_queue(), ^{
+        [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_prepareStartupImages];
         douyindisc_startDisplay();
         douyindisc_installNavigationHooks();
         [[DouyinDiscNavigationStore douyindisc_sharedStore] douyindisc_preloadImagesWithCompletion:nil];
