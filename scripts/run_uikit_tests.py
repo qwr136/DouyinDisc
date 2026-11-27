@@ -201,7 +201,7 @@ def main():
             (app / 'Info.plist').write_bytes(plistlib.dumps(meta))
             sdk = run('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path')
             run('xcrun', '--sdk', 'iphonesimulator', 'clang', '-target', 'arm64-apple-ios15.0-simulator',
-                '-isysroot', sdk, '-fobjc-arc', '-DDOUYINDISC_UI_TEST=1', '-Wall', '-Wextra', '-framework', 'Foundation',
+                '-isysroot', sdk, '-fobjc-arc', '-Oz', '-DDOUYINDISC_UI_TEST=1', '-Wall', '-Wextra', '-framework', 'Foundation',
                 '-framework', 'UIKit', '-framework', 'QuartzCore', '-framework', 'CoreGraphics',
                 '-framework', 'ImageIO', '-framework', 'Photos',
                 'tests/ui/DouyinDiscNativeHost.m', 'Sources/DouyinDiscPolicy.c',

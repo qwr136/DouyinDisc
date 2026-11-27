@@ -1,5 +1,6 @@
 """Source and mocked wrapper contracts; never runs clang, codesign or prepare."""
 
+import ast
 import json
 import os
 import shutil
@@ -150,6 +151,18 @@ class SourceContractTests(unittest.TestCase):
         self.assertIn('disabling image restores original label visibility and glyph content',host)
         self.assertIn('CGImageSourceCreateWithData',store)
 
+    def test_size_optimization_is_used_by_device_and_uikit_compilers(self):
+        for relative in ('scripts/build_dylib.py', 'scripts/run_uikit_tests.py'):
+            tree = ast.parse((ROOT / relative).read_text(encoding='utf-8'))
+            compilers = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'run':
+                    args = [arg.value for arg in node.args if isinstance(arg, ast.Constant) and isinstance(arg.value, str)]
+                    if 'clang' in args:
+                        compilers.append(args)
+            self.assertEqual(len(compilers), 1, relative)
+            self.assertEqual([value for value in compilers[0] if value.startswith('-O')], ['-Oz'], relative)
+
     def test_static_policy_on_generated_project(self):
         meta = json.loads((ROOT / 'tweak.json').read_text(encoding='utf-8'))
         self.assertEqual(check_project(ROOT, meta), [])
@@ -168,6 +181,8 @@ class SourceContractTests(unittest.TestCase):
                 (SOURCE, lambda src: src.replace('douyindisc_entry', 'other_entry'), 'hard-guarded'),
                 (SOURCE, lambda src: src.replace('@"com.ss.iphone.ugc.Aweme"', '@"com.example.other"'), 'hard-guarded'),
                 (SOURCE, lambda src: '#import <substrate.h>\n' + src, 'jailbreak header'),
+                (Path('scripts/build_dylib.py'), lambda src: src.replace("'-Oz',", ''), 'Apple-only'),
+                (Path('scripts/build_dylib.py'), lambda src: src.replace("'-Oz'", "'-O0'"), 'Apple-only'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace('arm64-apple-ios', 'arm64e-apple-ios'), 'TARGET differs'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace("*SOURCE_FILES, '-o'", "*SOURCE_FILES, '-lsubstrate', '-o'"), 'Apple-only'),
                 (Path('scripts/build_dylib.py'), lambda src: src.replace("'ImageIO'", "'Substrate'"), 'framework list'),

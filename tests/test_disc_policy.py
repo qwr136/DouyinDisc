@@ -137,6 +137,8 @@ class PolicyTests(unittest.TestCase):
                     self.assertEqual(hashlib.sha256(helpers + geometry).hexdigest(), '81f61877132c8cd8285d37d53b32f00eb5b840215d6b99d4165e432f0d673e3e')
                     continue
                 if relative == 'scripts/build_dylib.py':
+                    # Build-only size optimization must not be mistaken for a runtime behavior change.
+                    content = content.replace(b"'-dynamiclib', '-fobjc-arc', '-Oz',", b"'-dynamiclib', '-fobjc-arc',")
                     content = content.replace(b'DouyinDiscNativeDisplay.m', b'DouyinDiscDisplay.m')
                     content = content.replace(b"FRAMEWORKS = ('Foundation', 'UIKit', 'QuartzCore', 'CoreGraphics', 'ImageIO', 'Photos')\n", b'')
                     content = content.replace(b", 'Sources/DouyinDiscNavigationStore.m', 'Sources/DouyinDiscNavigation.m', 'Sources/DouyinDiscNavigationHooks.m'", b'')
