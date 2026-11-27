@@ -58,7 +58,7 @@ def check_builder(project, name, domain, minimum, sdk):
     expected = (
         "run(sys.executable, 'scripts/toolchain.py', 'verify', '--output', 'reports/local-toolchain.json')",
         "run('/usr/bin/xcrun', '--sdk', 'iphoneos', 'clang', '-target', TARGET, '-isysroot', str(sdk), "
-        "'-dynamiclib', '-fobjc-arc', '-fvisibility=hidden', '-Wall', '-Wextra', "
+        "'-dynamiclib', '-fobjc-arc', '-Oz', '-fvisibility=hidden', '-Wall', '-Wextra', "
         "'-install_name', '@loader_path/' + output.name, *[value for framework in FRAMEWORKS for value in ('-framework', framework)], *SOURCE_FILES, '-o', str(staged))",
         "run('/usr/bin/codesign', '--force', '--sign', '-', '--timestamp=none', '--identifier', IDENTIFIER, str(staged))",
         "run('/usr/bin/codesign', '--verify', '--strict', str(staged))",

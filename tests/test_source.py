@@ -251,7 +251,7 @@ printf '%s\\n' "$stage" >> order
                                 'Sources/DouyinDiscNavigationHooks.m']
             self.assertEqual((root / 'compile.args').read_text().splitlines()[:-1],
                              ['--sdk', 'iphoneos', 'clang', '-target', 'arm64-apple-ios15.0',
-                              '-isysroot', str(sdk), '-dynamiclib', '-fobjc-arc', '-fvisibility=hidden',
+                              '-isysroot', str(sdk), '-dynamiclib', '-fobjc-arc', '-Oz', '-fvisibility=hidden',
                               '-Wall', '-Wextra', '-install_name', '@loader_path/DouyinDisc.dylib',
                               *expected_frameworks, *expected_sources, '-o'])
             self.assertEqual(verify_dylib(artifact, project=root)['architecture'], 'arm64')

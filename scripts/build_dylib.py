@@ -45,7 +45,7 @@ def build():
     with tempfile.TemporaryDirectory(prefix='.build.', dir=artifacts) as work:
         staged = Path(work) / output.name
         run('/usr/bin/xcrun', '--sdk', 'iphoneos', 'clang',
-            '-target', TARGET, '-isysroot', str(sdk), '-dynamiclib', '-fobjc-arc',
+            '-target', TARGET, '-isysroot', str(sdk), '-dynamiclib', '-fobjc-arc', '-Oz',
             '-fvisibility=hidden', '-Wall', '-Wextra',
             '-install_name', '@loader_path/' + output.name,
             *[value for framework in FRAMEWORKS for value in ('-framework', framework)],
